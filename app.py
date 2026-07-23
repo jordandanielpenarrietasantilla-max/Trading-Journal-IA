@@ -78,6 +78,7 @@ with tabs[0]:
 
                             payload = {
                                 "model": "google/gemini-2.5-flash",
+                                "max_tokens": 300,
                                 "messages": [
                                     {
                                         "role": "user",
@@ -215,6 +216,7 @@ with tabs[0]:
                         }
                         payload = {
                             "model": "google/gemini-2.5-flash",
+                            "max_tokens": 300,
                             "messages": [{"role": "user", "content": prompt_audit}],
                         }
                         res = requests.post(
