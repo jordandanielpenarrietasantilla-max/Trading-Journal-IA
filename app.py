@@ -22,7 +22,6 @@ def aplicar_fondo_local(ruta_imagen):
 
     css_fondo = f"""
     <style>
-    /* Animación de Neón para Bordes y Líneas */
     @keyframes neonGlow {{
         0% {{
             border-color: rgba(0, 242, 254, 0.4);
@@ -38,7 +37,6 @@ def aplicar_fondo_local(ruta_imagen):
         }}
     }}
 
-    /* Fondo Principal */
     .stApp {{
         {bg_style}
         background-size: cover !important;
@@ -46,13 +44,11 @@ def aplicar_fondo_local(ruta_imagen):
         background-attachment: fixed !important;
     }}
     
-    /* Tipografía y Colores General */
     .stApp, p, label, h1, h2, h3, h4, span, div {{
         color: #f0f3fa !important;
         font-family: 'Trebuchet MS', sans-serif !important;
     }}
     
-    /* Título con Degradado Neón */
     h1 {{
         background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
         -webkit-background-clip: text;
@@ -60,7 +56,6 @@ def aplicar_fondo_local(ruta_imagen):
         font-weight: 800 !important;
     }}
     
-    /* Paneles con efecto Glassmorphism y BORDES ANIMADOS */
     div[data-testid="stColumn"], div[data-testid="stExpander"] {{
         background: rgba(15, 20, 30, 0.82) !important;
         backdrop-filter: blur(12px) !important;
@@ -71,7 +66,6 @@ def aplicar_fondo_local(ruta_imagen):
         animation: neonGlow 4s infinite ease-in-out !important;
     }}
     
-    /* Cajas de Entrada con Animación de Enfoque */
     .stNumberInput input, .stTextArea textarea, .stTextInput input {{
         background-color: #0b0e14 !important;
         color: #00f2fe !important;
@@ -85,7 +79,6 @@ def aplicar_fondo_local(ruta_imagen):
         box-shadow: 0 0 12px rgba(0, 242, 254, 0.8) !important;
     }}
 
-    /* --- FIX Y ESTILO ANIMADO PARA SELECTBOX & DESPLEGABLES --- */
     div[data-baseweb="select"] > div {{
         background-color: #0b0e14 !important;
         color: #00f2fe !important;
@@ -97,7 +90,6 @@ def aplicar_fondo_local(ruta_imagen):
         color: #ffffff !important;
     }}
 
-    /* Menú emergente de las listas desplegables */
     div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {{
         background-color: #0d121d !important;
         border: 1px solid #00f2fe !important;
@@ -114,7 +106,6 @@ def aplicar_fondo_local(ruta_imagen):
         color: #ffffff !important;
     }}
 
-    /* Botones Neón Estilizados */
     .stButton>button {{
         background: linear-gradient(135deg, #2962ff 0%, #00d2ff 100%) !important;
         color: #ffffff !important;
@@ -159,12 +150,11 @@ if "trades" not in st.session_state:
             res = supabase.table("trades").select("*").order("id", desc=False).execute()
             st.session_state.trades = res.data
         except Exception as e:
-            st.warning(f"No se pudieron cargar los trades desde la nube: {e}")
+            st.warning(f"No se pudieron cargar los datos desde la nube: {e}")
 
 st.title("📈 Journaling & AI Trading Audit")
 st.write("Sube o pega tus capturas, audita tus emociones, calcula lotaje y mide tu progreso con estilo neón.")
 
-# LISTA PREDETERMINADA DE ACTIVOS
 LISTA_ACTIVOS = [
     "Otro (Escribir manualmente)", "XAU/USD (Oro)", "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", 
     "USD/CAD", "USD/CHF", "NZD/USD", "GBP/JPY", "EUR/JPY", "EUR/GBP", "BTC/USDT", 
@@ -278,7 +268,6 @@ with tabs[0]:
         with c1:
             par_seleccionado = st.selectbox("Seleccionar Activo / Par", LISTA_ACTIVOS, index=idx_par)
             
-            # Opción para escribir un par personalizado si elige 'Otro'
             if par_seleccionado == "Otro (Escribir manualmente)":
                 par = st.text_input("✍️ Escribe el nombre del Activo:", placeholder="Ej. NVDA, US2000, DOGEUSD...")
             else:
@@ -487,7 +476,6 @@ with tabs[3]:
         with c_p1:
             par_proy_sel = st.selectbox("Seleccionar Activo / Par", LISTA_ACTIVOS, key="par_proy_sel")
             
-            # Opción para escribir un par personalizado en Proyecciones
             if par_proy_sel == "Otro (Escribir manualmente)":
                 par_proy = st.text_input("✍️ Escribe el nombre del Activo:", placeholder="Ej. TSLA, NVDA, USTEC...", key="par_proy_manual")
             else:
@@ -547,41 +535,102 @@ with tabs[3]:
 
 # ----------------- PESTAÑA 5: DIARIO Y PSICOTRADING -----------------
 with tabs[4]:
-    st.subheader("📖 Diario de Trading & Psicotrading")
-    trades_ejecutados = [t for t in st.session_state.trades if not t.get("es_analisis_previo")]
+    st.subheader("📖 Diario de Trading, Hábitos & Psicotrading")
+    
+    # SECCIÓN NUEVA: BITÁCORA LIBRE DE HÁBITOS
+    with st.expander("✍️ Escribir Bitácora de Hábitos y Estado Mental del Día", expanded=True):
+        col_psico1, col_psico2 = st.columns([1, 1])
+        
+        with col_psico1:
+            fecha_psico = st.date_input("Fecha de la Bitácora", datetime.now(), key="fecha_psico")
+            estado_emocional_dia = st.selectbox(
+                "Dominio Emocional de la Sesión / Día:",
+                ["🎯 Disciplinado / Neutro", "⚡ Enfocado / Confiado", "😰 Ansioso / Con Miedo", "🚀 Euforico / Sobreconfiado", "😡 Venganza (FOMO)", "😴 Cansado / Distraído"],
+                key="estado_emocional_dia"
+            )
+        
+        with col_psico2:
+            cumplio_plan = st.radio("¿Respetaste tu Plan de Trading y Gestión?", ["Sí 🟢", "Parcialmente 🟡", "No 🔴"], horizontal=True, key="cumplio_plan")
+        
+        bitacora_texto = st.text_area(
+            "🧠 Espacio Libre: Escribe tus reflexiones, hábitos cumplidos (sueño, ejercicio, preparación), emociones sentidas o lecciones aprendidas hoy:",
+            height=150,
+            placeholder="Ejemplo: Hoy dormí 8 horas y estuve muy paciente. Esperé a que el precio llegara a mi FVG en Killzone de Nueva York sin entrar antes por FOMO...",
+            key="input_bitacora_texto"
+        )
+        
+        if st.button("💾 Guardar Reflexión de Psicotrading"):
+            if bitacora_texto.strip() != "":
+                nueva_bitacora = {
+                    "par": "BITÁCORA DIARIA",
+                    "direccion": "PSICOTRADING",
+                    "rr": 0.0,
+                    "resultado": cumplio_plan,
+                    "notas": f"Reflexión: {bitacora_texto}",
+                    "evaluacion_ia": "Bitácora mental diaria guardada.",
+                    "es_analisis_previo": True,
+                    "fecha": str(fecha_psico),
+                    "emocion": estado_emocional_dia,
+                    "notas_emocionales": bitacora_texto
+                }
+
+                if supabase:
+                    try:
+                        res = supabase.table("trades").insert(nueva_bitacora).execute()
+                        st.session_state.trades.append(res.data[0])
+                        st.success("¡Reflexión y Hábitos de Psicotrading guardados exitosamente! 🧠✨")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error guardando en Supabase: {e}")
+                else:
+                    st.session_state.trades.append(nueva_bitacora)
+                    st.success("Guardado localmente.")
+                    st.rerun()
+            else:
+                st.warning("Escribe una reflexión antes de guardar.")
+
+    st.markdown("---")
+    st.subheader("📚 Historial de Trades & Bitácoras Guardadas")
+
+    trades_ejecutados = [t for t in st.session_state.trades if not t.get("es_analisis_previo") or t.get("par") == "BITÁCORA DIARIA"]
 
     if not trades_ejecutados:
-        st.write("No hay entradas ejecutadas guardadas aún.")
+        st.write("No hay entradas ejecutadas o bitácoras guardadas aún.")
     else:
         for t in reversed(trades_ejecutados):
             fecha_str = t.get('fecha', 'Fecha N/A')
             emocion_str = t.get('emocion', 'Sin registro emocional')
             
-            with st.expander(f"📅 {fecha_str} | Trade #{t.get('id', 'N/A')} | {t['par']} ({t['direccion']}) | {t['resultado']} | {emocion_str}"):
-                c_before, c_after, c_info = st.columns([1, 1, 1])
-                
-                with c_before:
-                    st.markdown("#### 🟢 ANTES (Entrada)")
-                    if t.get("imagen_b64"):
-                        st.image(f"data:image/png;base64,{t['imagen_b64']}", use_container_width=True)
-                    else:
-                        st.caption("Sin imagen.")
+            if t.get("par") == "BITÁCORA DIARIA":
+                with st.expander(f"🧠 BITÁCORA DE HÁBITOS [{fecha_str}] | Estado: {emocion_str} | Plan: {t.get('resultado', '')}"):
+                    st.markdown(f"**💭 Bitácora Mental & Reflexión:**")
+                    st.info(t.get("notas_emocionales") or t.get("notas", ""))
+            else:
+                with st.expander(f"📅 {fecha_str} | Trade #{t.get('id', 'N/A')} | {t['par']} ({t['direccion']}) | {t['resultado']} | {emocion_str}"):
+                    c_before, c_after, c_info = st.columns([1, 1, 1])
+                    
+                    with c_before:
+                        st.markdown("#### 🟢 ANTES (Entrada)")
+                        if t.get("imagen_b64"):
+                            st.image(f"data:image/png;base64,{t['imagen_b64']}", use_container_width=True)
+                        else:
+                            st.caption("Sin imagen.")
 
-                with c_after:
-                    st.markdown("#### 🔴 DESPUÉS (Resultado)")
-                    if t.get("imagen_despues_b64"):
-                        st.image(f"data:image/png;base64,{t['imagen_despues_b64']}", use_container_width=True)
-                    else:
-                        st.caption("Sin imagen.")
+                    with c_after:
+                        st.markdown("#### 🔴 DESPUÉS (Resultado)")
+                        if t.get("imagen_despues_b64"):
+                            st.image(f"data:image/png;base64,{t['imagen_despues_b64']}", use_container_width=True)
+                        else:
+                            st.caption("Sin imagen.")
 
-                with c_info:
-                    st.markdown(f"**🧠 Estado Emocional:** {emocion_str}")
-                    if t.get("notas_emocionales"):
-                        st.markdown(f"**💭 Bitácora Mental:** {t.get('notas_emocionales')}")
-                    st.markdown(f"**📝 Notas Técnicas:** {t.get('notas', '')}")
-                    st.markdown("---")
-                    st.markdown("### 🤖 Auditoría IA")
-                    st.markdown(t.get("evaluacion_ia", ""))
+                    with c_info:
+                        st.markdown(f"**🧠 Estado Emocional:** {emocion_str}")
+                        if t.get("notas_emocionales"):
+                            st.markdown(f"**💭 Bitácora Mental:** {t.get('notas_emocionales')}")
+                        st.markdown(f"**📝 Notas Técnicas:** {t.get('notas', '')}")
+                        st.markdown("---")
+                        st.markdown("### 🤖 Auditoría IA")
+                        st.markdown(t.get("evaluacion_ia", ""))
 
 # ----------------- PESTAÑA 6: DASHBOARD & PROGRESO -----------------
 with tabs[5]:
