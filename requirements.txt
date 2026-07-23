@@ -1,6 +1,5 @@
 streamlit
-groq
+google-genai
 pillow
 plotly
 pandas
-requests
