@@ -110,9 +110,9 @@ if "trades" not in st.session_state:
             st.warning(f"No se pudieron cargar los trades desde la nube: {e}")
 
 st.title("📈 Journaling & AI Trading Audit")
-st.write("Sube tu captura de TradingView para auto-detectar precios, posición y ratio R:R con IA.")
+st.write("Sube tu captura de TradingView para auto-detectar precios, auditar trades y comparar tu análisis con IA.")
 
-tabs = st.tabs(["➕ Registrar Trade", "📖 Diario & Auditoría IA", "📊 Dashboard & Analytics"])
+tabs = st.tabs(["➕ Registrar Trade", "🆚 Análisis vs IA", "📖 Diario & Auditoría IA", "📊 Dashboard & Analytics"])
 
 # ----------------- PESTAÑA 1: NUEVO TRADE -----------------
 with tabs[0]:
@@ -120,7 +120,7 @@ with tabs[0]:
 
     with col_right:
         st.subheader("🖼️ Captura del Gráfico (TradingView)")
-        uploaded_image = st.file_uploader("Sube el Screenshot", type=["jpg", "jpeg", "png"])
+        uploaded_image = st.file_uploader("Sube el Screenshot", type=["jpg", "jpeg", "png"], key="upload_trade")
 
         if uploaded_image:
             st.image(uploaded_image, caption="Gráfico Cargado", use_container_width=True)
@@ -294,8 +294,81 @@ with tabs[0]:
 
             st.rerun()
 
-# ----------------- PESTAÑA 2: DIARIO -----------------
+# ----------------- PESTAÑA 2: ANÁLISIS VS IA -----------------
 with tabs[1]:
+    st.subheader("🆚 Comparar tu Análisis Técnico con la IA")
+    st.write("Sube tu proyección o gráfico de análisis y escribe tu hipótesis para ver qué opina la IA.")
+
+    col_a1, col_a2 = st.columns([1, 1])
+
+    with col_a1:
+        img_analisis = st.file_uploader("Sube el Gráfico de tu Análisis", type=["jpg", "jpeg", "png"], key="upload_analysis")
+        hipotesis_usuario = st.text_area(
+            "✍️ Tu Análisis / Hipótesis:",
+            placeholder="Ejemplo: Veo un barrido de liquidez en M15 y espero un retroceso a la zona de FVG para entrar en Long buscando los máximos de la sesión de Asia.",
+            height=150
+        )
+        btn_comparar = st.button("🔎 Comparar mi Análisis con IA")
+
+    with col_a2:
+        if img_analisis and btn_comparar:
+            if not openrouter_key:
+                st.error("⚠️ Falta la clave de OpenRouter en los Secrets.")
+            else:
+                with st.spinner("Analizando tu hipótesis con la IA... 🧠⚡"):
+                    try:
+                        img_analisis.seek(0)
+                        img_bytes = img_analisis.read()
+                        base64_img = base64.b64encode(img_bytes).decode("utf-8")
+                        mime_type = img_analisis.type
+
+                        prompt_compare = (
+                            f"El usuario propone este análisis técnico/hipótesis de trading: '{hipotesis_usuario}'. "
+                            "Examina la imagen adjunta del gráfico. Responde en español de forma profesional, breve e indica: "
+                            "1) ¿Coincide el gráfico con la hipótesis del usuario? "
+                            "2) Riesgos o detalles no considerados (zonas de liquidez, tendencia, etc.). "
+                            "3) Veredicto final / Sugerencia de confirmación."
+                        )
+
+                        headers = {
+                            "Authorization": f"Bearer {openrouter_key}",
+                            "Content-Type": "application/json",
+                        }
+
+                        payload = {
+                            "model": "google/gemini-2.5-flash",
+                            "max_tokens": 300,
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "text", "text": prompt_compare},
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {"url": f"data:{mime_type};base64,{base64_img}"},
+                                        },
+                                    ],
+                                }
+                            ],
+                        }
+
+                        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+                        res_json = response.json()
+
+                        if "choices" in res_json:
+                            resultado_comparacion = res_json["choices"][0]["message"]["content"]
+                            st.markdown("### 🤖 Veredicto de la IA:")
+                            st.info(resultado_comparacion)
+                        else:
+                            st.error(f"Error procesando: {res_json}")
+                    except Exception as e:
+                        st.error(f"Error durante la comparación: {e}")
+
+        elif img_analisis:
+            st.image(img_analisis, caption="Análisis Cargado", use_container_width=True)
+
+# ----------------- PESTAÑA 3: DIARIO -----------------
+with tabs[2]:
     st.subheader("📖 Historial de Trades (Guardados en Nube)")
     if not st.session_state.trades:
         st.write("No hay entradas guardadas aún.")
@@ -312,8 +385,8 @@ with tabs[1]:
                     st.markdown("### 🧠 Auditoría de IA")
                     st.markdown(t.get("evaluacion_ia", ""))
 
-# ----------------- PESTAÑA 3: DASHBOARD -----------------
-with tabs[2]:
+# ----------------- PESTAÑA 4: DASHBOARD -----------------
+with tabs[3]:
     st.subheader("📊 Analytics")
     if st.session_state.trades:
         df = pd.DataFrame(st.session_state.trades)
