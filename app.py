@@ -100,4 +100,25 @@ with tabs[0]:
 
                             if "choices" in res_json:
                                 raw_text = res_json["choices"][0]["message"]["content"]
-                                clean_text = raw_text.replace("```json", "").replace("
+                                
+                                # Limpieza segura de JSON
+                                clean_text = raw_text.strip()
+                                if clean_text.startswith("```"):
+                                    clean_text = clean_text.split("\n", 1)[-1]
+                                if clean_text.endswith("```"):
+                                    clean_text = clean_text.rsplit("```", 1)[0]
+                                clean_text = clean_text.strip()
+
+                                data = json.loads(clean_text)
+
+                                st.session_state["val_par"] = data.get("par", "XAU/USD")
+                                st.session_state["val_dir"] = "LONG 🟢" if data.get("direccion") == "LONG" else "SHORT 🔴"
+                                st.session_state["val_entry"] = float(data.get("precio_entrada", 0.0))
+                                st.session_state["val_sl"] = float(data.get("stop_loss", 0.0))
+                                st.session_state["val_tp"] = float(data.get("take_profit", 0.0))
+                                st.session_state["val_rr"] = float(data.get("ratio_rr", 0.0))
+
+                                st.success("¡Lectura completada!")
+                                st.rerun()
+                            else:
+                                st
