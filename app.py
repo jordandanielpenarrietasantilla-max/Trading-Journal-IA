@@ -61,13 +61,13 @@ def aplicar_fondo_local(ruta_imagen):
     }}
     
     /* Paneles con efecto Glassmorphism y BORDES ANIMADOS */
-    div[data-testid="stColumn"] {{
+    div[data-testid="stColumn"], div[data-testid="stExpander"] {{
         background: rgba(15, 20, 30, 0.82) !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
         border: 2px solid rgba(0, 210, 255, 0.4) !important;
         border-radius: 14px !important;
-        padding: 22px !important;
+        padding: 15px !important;
         animation: neonGlow 4s infinite ease-in-out !important;
     }}
     
@@ -278,7 +278,7 @@ with tabs[0]:
         with c1:
             par_seleccionado = st.selectbox("Seleccionar Activo / Par", LISTA_ACTIVOS, index=idx_par)
             
-            # Opción para escribir un par personalizado si elige 'Otro' o desea escribirlo
+            # Opción para escribir un par personalizado si elige 'Otro'
             if par_seleccionado == "Otro (Escribir manualmente)":
                 par = st.text_input("✍️ Escribe el nombre del Activo:", placeholder="Ej. NVDA, US2000, DOGEUSD...")
             else:
@@ -485,8 +485,14 @@ with tabs[3]:
     with st.expander("➕ Guardar Nueva Proyección Manualmente", expanded=False):
         c_p1, c_p2 = st.columns([1, 1])
         with c_p1:
-            par_proy_sel = st.selectbox("Activo / Par", LISTA_ACTIVOS, key="par_proy_sel")
-            par_proy = st.text_input("✍️ Escribe el Activo (Si elegiste 'Otro'):", key="par_proy_manual") if par_proy_sel == "Otro (Escribir manualmente)" else par_proy_sel
+            par_proy_sel = st.selectbox("Seleccionar Activo / Par", LISTA_ACTIVOS, key="par_proy_sel")
+            
+            # Opción para escribir un par personalizado en Proyecciones
+            if par_proy_sel == "Otro (Escribir manualmente)":
+                par_proy = st.text_input("✍️ Escribe el nombre del Activo:", placeholder="Ej. TSLA, NVDA, USTEC...", key="par_proy_manual")
+            else:
+                par_proy = par_proy_sel
+
             notas_proy = st.text_area("Descripción / Hipótesis", key="notas_proy")
         with c_p2:
             img_proy = st.file_uploader("Captura de la Proyección", type=["jpg", "jpeg", "png"], key="upload_proy_manual")
