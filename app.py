@@ -486,4 +486,81 @@ with tabs[3]:
     st.markdown("---")
     analisis_filtrados = [t for t in st.session_state.trades if t.get("es_analisis_previo") == True or t.get("resultado") == "PROYECCIÓN 📁"]
 
-    if not analisis_filtr
+    if not analisis_filtrados:
+        st.info("No hay análisis no ejecutados guardados.")
+    else:
+        for a in reversed(analisis_filtrados):
+            with st.expander(f"Proyección [{a.get('fecha', 'Sin fecha')}] | {a.get('par', 'Activo')} - {a.get('notas', 'Sin notas')[:40]}..."):
+                c_img_a, c_info_a = st.columns([1, 1])
+                with c_img_a:
+                    if a.get("imagen_b64"):
+                        st.image(f"data:image/png;base64,{a['imagen_b64']}", use_container_width=True)
+                with c_info_a:
+                    st.markdown(f"**{a.get('notas', '')}**")
+                    st.markdown("---")
+                    st.markdown("### 🤖 Veredicto")
+                    st.markdown(a.get("evaluacion_ia", ""))
+
+# ----------------- PESTAÑA 5: DIARIO Y PSICOTRADING -----------------
+with tabs[4]:
+    st.subheader("📖 Diario de Trading & Psicotrading")
+    trades_ejecutados = [t for t in st.session_state.trades if not t.get("es_analisis_previo")]
+
+    if not trades_ejecutados:
+        st.write("No hay entradas ejecutadas guardadas aún.")
+    else:
+        for t in reversed(trades_ejecutados):
+            fecha_str = t.get('fecha', 'Fecha N/A')
+            emocion_str = t.get('emocion', 'Sin registro emocional')
+            
+            with st.expander(f"📅 {fecha_str} | Trade #{t.get('id', 'N/A')} | {t['par']} ({t['direccion']}) | {t['resultado']} | {emocion_str}"):
+                c_before, c_after, c_info = st.columns([1, 1, 1])
+                
+                with c_before:
+                    st.markdown("#### 🟢 ANTES (Entrada)")
+                    if t.get("imagen_b64"):
+                        st.image(f"data:image/png;base64,{t['imagen_b64']}", use_container_width=True)
+                    else:
+                        st.caption("Sin imagen.")
+
+                with c_after:
+                    st.markdown("#### 🔴 DESPUÉS (Resultado)")
+                    if t.get("imagen_despues_b64"):
+                        st.image(f"data:image/png;base64,{t['imagen_despues_b64']}", use_container_width=True)
+                    else:
+                        st.caption("Sin imagen.")
+
+                with c_info:
+                    st.markdown(f"**🧠 Estado Emocional:** {emocion_str}")
+                    if t.get("notas_emocionales"):
+                        st.markdown(f"**💭 Bitácora Mental:** {t.get('notas_emocionales')}")
+                    st.markdown(f"**📝 Notas Técnicas:** {t.get('notas', '')}")
+                    st.markdown("---")
+                    st.markdown("### 🤖 Auditoría IA")
+                    st.markdown(t.get("evaluacion_ia", ""))
+
+# ----------------- PESTAÑA 6: DASHBOARD & PROGRESO -----------------
+with tabs[5]:
+    st.subheader("📊 Analytics & Evolución en el Tiempo")
+    trades_ejecutados = [t for t in st.session_state.trades if not t.get("es_analisis_previo")]
+    
+    if trades_ejecutados:
+        df = pd.DataFrame(trades_ejecutados)
+        wins = len(df[df["resultado"].str.contains("WIN")])
+        total = len(df)
+        win_rate = round((wins / total) * 100, 1) if total > 0 else 0
+
+        c_m1, c_m2, c_m3 = st.columns(3)
+        c_m1.metric("Total Trades", total)
+        c_m2.metric("Win Rate", f"{win_rate}%")
+        c_m3.metric("R Promedio", f"1:{round(df['rr'].mean(), 2)}")
+
+        # Gráfico por fecha para medir progreso temporal
+        if 'fecha' in df.columns:
+            df['fecha'] = pd.to_datetime(df['fecha'])
+            df = df.sort_values('fecha')
+            fig_tiempo = px.histogram(df, x="fecha", color="resultado", title="Evolución de Trades por Fecha", template="plotly_dark")
+            st.plotly_chart(fig_tiempo, use_container_width=True)
+
+        fig_activos = px.bar(df, x="par", color="resultado", title="Rendimiento por Activo", template="plotly_dark")
+        st.plotly_chart(fig_activos, use_container_width=True)
