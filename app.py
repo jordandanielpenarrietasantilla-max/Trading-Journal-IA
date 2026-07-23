@@ -112,29 +112,42 @@ if "trades" not in st.session_state:
 st.title("📈 Journaling & AI Trading Audit")
 st.write("Sube tu captura de TradingView para auto-detectar precios, auditar trades y comparar tu análisis con IA.")
 
-tabs = st.tabs(["➕ Registrar Trade", "🆚 Análisis vs IA", "📖 Diario & Auditoría IA", "📊 Dashboard & Analytics"])
+tabs = st.tabs([
+    "➕ Registrar Trade (Antes/Después)", 
+    "🆚 Análisis vs IA", 
+    "📁 Proyecciones (No Ejecutadas)", 
+    "📖 Diario & Auditoría IA", 
+    "📊 Dashboard & Analytics"
+])
 
-# ----------------- PESTAÑA 1: NUEVO TRADE -----------------
+# ----------------- PESTAÑA 1: NUEVO TRADE (ANTES/DESPUÉS) -----------------
 with tabs[0]:
     col_left, col_right = st.columns([1, 1])
 
     with col_right:
-        st.subheader("🖼️ Captura del Gráfico (TradingView)")
-        uploaded_image = st.file_uploader("Sube el Screenshot", type=["jpg", "jpeg", "png"], key="upload_trade")
+        st.subheader("🖼️ Capturas del Gráfico (Antes & Después)")
+        
+        uploaded_image_before = st.file_uploader("1️⃣ Sube el Screenshot ANTES (Entrada / Setup)", type=["jpg", "jpeg", "png"], key="upload_trade_before")
+        uploaded_image_after = st.file_uploader("2️⃣ Sube el Screenshot DESPUÉS (Cierre / Resultado)", type=["jpg", "jpeg", "png"], key="upload_trade_after")
 
-        if uploaded_image:
-            st.image(uploaded_image, caption="Gráfico Cargado", use_container_width=True)
+        if uploaded_image_before:
+            c_preview1, c_preview2 = st.columns(2)
+            with c_preview1:
+                st.image(uploaded_image_before, caption="🟢 ANTES (Entrada)", use_container_width=True)
+            with c_preview2:
+                if uploaded_image_after:
+                    st.image(uploaded_image_after, caption="🔴 DESPUÉS (Resultado)", use_container_width=True)
 
             if not openrouter_key:
                 st.error("⚠️ No se detectó OPENROUTER_API_KEY en los Secrets de Streamlit.")
             else:
-                if st.button("🪄 Escanear Gráfico con IA"):
+                if st.button("🪄 Escanear Gráfico ANTES con IA"):
                     with st.spinner("Escaneando gráfico con IA... 👁️✨"):
                         try:
-                            uploaded_image.seek(0)
-                            img_bytes = uploaded_image.read()
+                            uploaded_image_before.seek(0)
+                            img_bytes = uploaded_image_before.read()
                             base64_image = base64.b64encode(img_bytes).decode("utf-8")
-                            mime_type = uploaded_image.type
+                            mime_type = uploaded_image_before.type
 
                             prompt_vision = (
                                 "Analiza esta captura de TradingView. "
@@ -204,7 +217,7 @@ with tabs[0]:
     with col_left:
         st.subheader("📝 Parámetros (Auto-completados por IA)")
 
-        pares_lista = ["XAU/USD", "EUR/USD", "GBP/USD", "USD/JPY", "BTC/USDT", "NAS100", "US30"]
+        pares_lista = ["XAU/USD", "EUR/USD", "GBP/USD", "USD/JPY", "BTC/USDT", "NAS100", "US30", "GBP/JPY"]
         idx_par = pares_lista.index(val_par) if val_par in pares_lista else 0
 
         c1, c2 = st.columns(2)
@@ -236,7 +249,7 @@ with tabs[0]:
 
         notas = st.text_area("Notas sobre la operación")
 
-        if st.button("🚀 Guardar Trade y Generar Auditoría"):
+        if st.button("🚀 Guardar Trade Ejecutado"):
             evaluacion_ia = "Evaluación no disponible."
 
             if openrouter_key:
@@ -257,10 +270,15 @@ with tabs[0]:
                     except Exception as e:
                         evaluacion_ia = f"Error auditando: {e}"
 
-            img_b64 = None
-            if uploaded_image:
-                uploaded_image.seek(0)
-                img_b64 = base64.b64encode(uploaded_image.getvalue()).decode("utf-8")
+            img_b64_before = None
+            if uploaded_image_before:
+                uploaded_image_before.seek(0)
+                img_b64_before = base64.b64encode(uploaded_image_before.getvalue()).decode("utf-8")
+
+            img_b64_after = None
+            if uploaded_image_after:
+                uploaded_image_after.seek(0)
+                img_b64_after = base64.b64encode(uploaded_image_after.getvalue()).decode("utf-8")
 
             nuevo_trade = {
                 "par": par,
@@ -272,7 +290,9 @@ with tabs[0]:
                 "resultado": resultado,
                 "notas": notas,
                 "evaluacion_ia": evaluacion_ia,
-                "imagen_b64": img_b64,
+                "imagen_b64": img_b64_before,
+                "imagen_despues_b64": img_b64_after,
+                "es_analisis_previo": False
             }
 
             # Guardar en Supabase permanente
@@ -286,7 +306,7 @@ with tabs[0]:
                     st.session_state.trades.append(nuevo_trade)
             else:
                 st.session_state.trades.append(nuevo_trade)
-                st.success("Trade guardado localmente (configura Supabase para guardar en la nube).")
+                st.success("Trade guardado localmente.")
 
             for k in ["val_entry", "val_sl", "val_tp", "val_rr"]:
                 if k in st.session_state:
@@ -305,12 +325,15 @@ with tabs[1]:
         img_analisis = st.file_uploader("Sube el Gráfico de tu Análisis", type=["jpg", "jpeg", "png"], key="upload_analysis")
         hipotesis_usuario = st.text_area(
             "✍️ Tu Análisis / Hipótesis:",
-            placeholder="Ejemplo: Veo un barrido de liquidez en M15 y espero un retroceso a la zona de FVG para entrar en Long buscando los máximos de la sesión de Asia.",
+            placeholder="Ejemplo: Veo un barrido de liquidez en M15 y espero un retroceso a la zona de FVG para entrar en Long...",
             height=150
         )
         btn_comparar = st.button("🔎 Comparar mi Análisis con IA")
 
     with col_a2:
+        if img_analisis:
+            st.image(img_analisis, caption="🖼️ Gráfico de Análisis Bajo Revisión", use_container_width=True)
+
         if img_analisis and btn_comparar:
             if not openrouter_key:
                 st.error("⚠️ Falta la clave de OpenRouter en los Secrets.")
@@ -357,39 +380,101 @@ with tabs[1]:
 
                         if "choices" in res_json:
                             resultado_comparacion = res_json["choices"][0]["message"]["content"]
-                            st.markdown("### 🤖 Veredicto de la IA:")
-                            st.info(resultado_comparacion)
+                            st.session_state["ultimo_veredicto_ia"] = resultado_comparacion
+                            st.session_state["ultima_img_analisis_b64"] = base64_img
+                            st.session_state["ultima_hipotesis"] = hipotesis_usuario
                         else:
                             st.error(f"Error procesando: {res_json}")
                     except Exception as e:
                         st.error(f"Error durante la comparación: {e}")
 
-        elif img_analisis:
-            st.image(img_analisis, caption="Análisis Cargado", use_container_width=True)
+        if "ultimo_veredicto_ia" in st.session_state and st.session_state["ultimo_veredicto_ia"]:
+            st.markdown("### 🤖 Veredicto de la IA:")
+            st.info(st.session_state["ultimo_veredicto_ia"])
 
-# ----------------- PESTAÑA 3: DIARIO -----------------
+            if st.button("📁 Guardar como Análisis No Ejecutado / Proyección"):
+                nuevo_analisis = {
+                    "par": "ANÁLISIS PREVIO",
+                    "direccion": "NO EJECUTADO",
+                    "rr": 0.0,
+                    "resultado": "PROYECCIÓN 📁",
+                    "notas": f"Hipótesis: {st.session_state.get('ultima_hipotesis', '')}",
+                    "evaluacion_ia": st.session_state.get("ultimo_veredicto_ia", ""),
+                    "imagen_b64": st.session_state.get("ultima_img_analisis_b64", None),
+                    "es_analisis_previo": True
+                }
+
+                if supabase:
+                    try:
+                        res = supabase.table("trades").insert(nuevo_analisis).execute()
+                        st.session_state.trades.append(res.data[0])
+                        st.success("¡Análisis guardado en la carpeta de No Ejecutados! 📁")
+                    except Exception as e:
+                        st.error(f"Error guardando: {e}")
+                else:
+                    st.session_state.trades.append(nuevo_analisis)
+
+# ----------------- PESTAÑA 3: PROYECCIONES NO EJECUTADAS -----------------
 with tabs[2]:
-    st.subheader("📖 Historial de Trades (Guardados en Nube)")
-    if not st.session_state.trades:
-        st.write("No hay entradas guardadas aún.")
+    st.subheader("📁 Registro de Análisis & Proyecciones No Ejecutadas")
+    st.write("Espacio dedicado a ideas de trading, análisis previos y operaciones que no se activaron.")
+
+    analisis_filtrados = [t for t in st.session_state.trades if t.get("es_analisis_previo") == True or t.get("resultado") == "PROYECCIÓN 📁"]
+
+    if not analisis_filtrados:
+        st.write("No hay análisis no ejecutados guardados aún.")
     else:
-        for t in reversed(st.session_state.trades):
+        for a in reversed(analisis_filtrados):
+            with st.expander(f"Proyección #{a.get('id', 'N/A')} | {a.get('notas', 'Sin notas')[:50]}..."):
+                c_img_a, c_info_a = st.columns([1, 1])
+                with c_img_a:
+                    if a.get("imagen_b64"):
+                        st.image(f"data:image/png;base64,{a['imagen_b64']}", use_container_width=True)
+                with c_info_a:
+                    st.markdown(f"**{a.get('notas', '')}**")
+                    st.markdown("---")
+                    st.markdown("### 🤖 Veredicto / Evaluación de la IA")
+                    st.markdown(a.get("evaluacion_ia", ""))
+
+# ----------------- PESTAÑA 4: DIARIO (TRADES EJECUTADOS) -----------------
+with tabs[3]:
+    st.subheader("📖 Historial de Trades Ejecutados (Guardados en Nube)")
+    trades_ejecutados = [t for t in st.session_state.trades if not t.get("es_analisis_previo")]
+
+    if not trades_ejecutados:
+        st.write("No hay entradas ejecutadas guardadas aún.")
+    else:
+        for t in reversed(trades_ejecutados):
             with st.expander(f"Trade #{t.get('id', 'N/A')} | {t['par']} - {t['direccion']} | {t['resultado']} (R:R 1:{t['rr']})"):
-                c_img, c_info = st.columns([1, 1])
-                with c_img:
+                c_before, c_after, c_info = st.columns([1, 1, 1])
+                
+                with c_before:
+                    st.markdown("#### 🟢 ANTES (Entrada)")
                     if t.get("imagen_b64"):
                         st.image(f"data:image/png;base64,{t['imagen_b64']}", use_container_width=True)
+                    else:
+                        st.caption("Sin imagen de entrada.")
+
+                with c_after:
+                    st.markdown("#### 🔴 DESPUÉS (Resultado)")
+                    if t.get("imagen_despues_b64"):
+                        st.image(f"data:image/png;base64,{t['imagen_despues_b64']}", use_container_width=True)
+                    else:
+                        st.caption("Sin imagen de resultado.")
+
                 with c_info:
                     st.markdown(f"**Notas:** {t.get('notas', '')}")
                     st.markdown("---")
                     st.markdown("### 🧠 Auditoría de IA")
                     st.markdown(t.get("evaluacion_ia", ""))
 
-# ----------------- PESTAÑA 4: DASHBOARD -----------------
-with tabs[3]:
-    st.subheader("📊 Analytics")
-    if st.session_state.trades:
-        df = pd.DataFrame(st.session_state.trades)
+# ----------------- PESTAÑA 5: DASHBOARD -----------------
+with tabs[4]:
+    st.subheader("📊 Analytics (Solo Trades Ejecutados)")
+    trades_ejecutados = [t for t in st.session_state.trades if not t.get("es_analisis_previo")]
+    
+    if trades_ejecutados:
+        df = pd.DataFrame(trades_ejecutados)
         wins = len(df[df["resultado"].str.contains("WIN")])
         total = len(df)
         win_rate = round((wins / total) * 100, 1) if total > 0 else 0
