@@ -12,7 +12,7 @@ from supabase import create_client, Client
 st.set_page_config(page_title="Diario de Trading IA", page_icon="📈", layout="wide")
 
 
-# Función para aplicar fondo estilizado con imagen local (fondo.jpg)
+# Función para aplicar fondo estilizado con imagen local (fondo.jpg) y FIX de CSS para Selectbox
 def aplicar_fondo_local(ruta_imagen):
     bg_style = ""
     if os.path.exists(ruta_imagen):
@@ -30,7 +30,7 @@ def aplicar_fondo_local(ruta_imagen):
         background-attachment: fixed !important;
     }}
     
-    /* Tipografía y Colores */
+    /* Tipografía y Colores General */
     .stApp, p, label, h1, h2, h3, h4, span, div {{
         color: #f0f3fa !important;
         font-family: 'Trebuchet MS', sans-serif !important;
@@ -55,28 +55,47 @@ def aplicar_fondo_local(ruta_imagen):
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5) !important;
     }}
     
-    /* Fix para Cajas de entrada y Desplegables (EVITAR TEXTO BLANCO SOBRE BLANCO) */
-    .stNumberInput input, .stSelectbox div[data-baseweb="select"], .stTextArea textarea, .stTextInput input {{
+    /* Cajas de entrada */
+    .stNumberInput input, .stTextArea textarea, .stTextInput input {{
         background-color: #0b0e14 !important;
         color: #00f2fe !important;
         border: 1px solid rgba(0, 210, 255, 0.4) !important;
         border-radius: 6px !important;
     }}
+
+    /* --- FIX TOTAL PARA SELECTBOX & BUSCADORES DE STREAMLIT --- */
+    div[data-baseweb="select"] > div {{
+        background-color: #0b0e14 !important;
+        color: #00f2fe !important;
+        border: 1px solid rgba(0, 210, 255, 0.4) !important;
+    }}
     
-    /* Estilo del menú desplegable emergente */
-    ul[role="listbox"], div[data-baseweb="menu"] {{
+    div[data-baseweb="select"] input {{
+        color: #ffffff !important;
+    }}
+
+    /* Menú desplegable emergente (Dropdown list) */
+    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {{
         background-color: #0d121d !important;
         border: 1px solid #00f2fe !important;
     }}
-    
-    li[role="option"] {{
-        color: #ffffff !important;
+
+    /* Opciones individuales dentro de la lista */
+    li[role="option"], div[role="option"] {{
         background-color: #0d121d !important;
+        color: #ffffff !important;
     }}
-    
-    li[role="option"]:hover {{
+
+    /* Estado cuando pasas el mouse o seleccionas */
+    li[role="option"]:hover, div[role="option"]:hover, [aria-selected="true"] {{
         background-color: #2962ff !important;
         color: #ffffff !important;
+    }}
+
+    /* Texto de entrada dentro del cuadro de búsqueda */
+    input[aria-autocomplete="list"] {{
+        color: #00f2fe !important;
+        background-color: #0b0e14 !important;
     }}
     
     /* Botones principales */
@@ -355,10 +374,8 @@ with tabs[1]:
 
         if distancia_sl_pips > 0:
             if "Forex" in tipo_instrumento:
-                # 1 Lote Estándar Forex = $10 USD por pip aproximadamente
                 lotes = monto_riesgo_usd / (distancia_sl_pips * 10)
             elif "Oro" in tipo_instrumento:
-                # En Oro, 1 lote = $10 por cada $1.00 de movimiento (10 pips)
                 lotes = monto_riesgo_usd / (distancia_sl_pips * 10)
             elif "Índices" in tipo_instrumento:
                 lotes = monto_riesgo_usd / distancia_sl_pips
@@ -555,7 +572,6 @@ with tabs[5]:
         c_m2.metric("Win Rate", f"{win_rate}%")
         c_m3.metric("R Promedio", f"1:{round(df['rr'].mean(), 2)}")
 
-        # Gráfico por fecha para medir progreso temporal
         if 'fecha' in df.columns:
             df['fecha'] = pd.to_datetime(df['fecha'])
             df = df.sort_values('fecha')
