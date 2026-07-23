@@ -12,7 +12,7 @@ from supabase import create_client, Client
 st.set_page_config(page_title="Diario de Trading IA", page_icon="📈", layout="wide")
 
 
-# Función para aplicar fondo estilizado con imagen local (fondo.jpg) y FIX de CSS para Selectbox
+# Función para aplicar fondo estilizado con bordes e insumos animados (Neon Glow)
 def aplicar_fondo_local(ruta_imagen):
     bg_style = ""
     if os.path.exists(ruta_imagen):
@@ -22,6 +22,22 @@ def aplicar_fondo_local(ruta_imagen):
 
     css_fondo = f"""
     <style>
+    /* Animación de Neón para Bordes y Líneas */
+    @keyframes neonGlow {{
+        0% {{
+            border-color: rgba(0, 242, 254, 0.4);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2), inset 0 0 5px rgba(0, 242, 254, 0.1);
+        }}
+        50% {{
+            border-color: rgba(41, 98, 255, 0.8);
+            box-shadow: 0 0 20px rgba(41, 98, 255, 0.5), inset 0 0 10px rgba(41, 98, 255, 0.2);
+        }}
+        100% {{
+            border-color: rgba(0, 242, 254, 0.4);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2), inset 0 0 5px rgba(0, 242, 254, 0.1);
+        }}
+    }}
+
     /* Fondo Principal */
     .stApp {{
         {bg_style}
@@ -44,61 +60,61 @@ def aplicar_fondo_local(ruta_imagen):
         font-weight: 800 !important;
     }}
     
-    /* Paneles con efecto Glassmorphism */
+    /* Paneles con efecto Glassmorphism y BORDES ANIMADOS */
     div[data-testid="stColumn"] {{
-        background: rgba(15, 20, 30, 0.78) !important;
-        backdrop-filter: blur(10px) !important;
-        -webkit-backdrop-filter: blur(10px) !important;
-        border: 1px solid rgba(0, 210, 255, 0.25) !important;
-        border-radius: 12px !important;
-        padding: 20px !important;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5) !important;
+        background: rgba(15, 20, 30, 0.82) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 2px solid rgba(0, 210, 255, 0.4) !important;
+        border-radius: 14px !important;
+        padding: 22px !important;
+        animation: neonGlow 4s infinite ease-in-out !important;
     }}
     
-    /* Cajas de entrada */
+    /* Cajas de Entrada con Animación de Enfoque */
     .stNumberInput input, .stTextArea textarea, .stTextInput input {{
         background-color: #0b0e14 !important;
         color: #00f2fe !important;
-        border: 1px solid rgba(0, 210, 255, 0.4) !important;
-        border-radius: 6px !important;
+        border: 1px solid rgba(0, 210, 255, 0.5) !important;
+        border-radius: 8px !important;
+        transition: all 0.3s ease-in-out !important;
     }}
 
-    /* --- FIX TOTAL PARA SELECTBOX & BUSCADORES DE STREAMLIT --- */
+    .stNumberInput input:focus, .stTextArea textarea:focus, .stTextInput input:focus {{
+        border-color: #00f2fe !important;
+        box-shadow: 0 0 12px rgba(0, 242, 254, 0.8) !important;
+    }}
+
+    /* --- FIX Y ESTILO ANIMADO PARA SELECTBOX & DESPLEGABLES --- */
     div[data-baseweb="select"] > div {{
         background-color: #0b0e14 !important;
         color: #00f2fe !important;
-        border: 1px solid rgba(0, 210, 255, 0.4) !important;
+        border: 1px solid rgba(0, 210, 255, 0.5) !important;
+        border-radius: 8px !important;
     }}
     
     div[data-baseweb="select"] input {{
         color: #ffffff !important;
     }}
 
-    /* Menú desplegable emergente (Dropdown list) */
+    /* Menú emergente de las listas desplegables */
     div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {{
         background-color: #0d121d !important;
         border: 1px solid #00f2fe !important;
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.3) !important;
     }}
 
-    /* Opciones individuales dentro de la lista */
     li[role="option"], div[role="option"] {{
         background-color: #0d121d !important;
         color: #ffffff !important;
     }}
 
-    /* Estado cuando pasas el mouse o seleccionas */
     li[role="option"]:hover, div[role="option"]:hover, [aria-selected="true"] {{
         background-color: #2962ff !important;
         color: #ffffff !important;
     }}
 
-    /* Texto de entrada dentro del cuadro de búsqueda */
-    input[aria-autocomplete="list"] {{
-        color: #00f2fe !important;
-        background-color: #0b0e14 !important;
-    }}
-    
-    /* Botones principales */
+    /* Botones Neón Estilizados */
     .stButton>button {{
         background: linear-gradient(135deg, #2962ff 0%, #00d2ff 100%) !important;
         color: #ffffff !important;
@@ -107,13 +123,13 @@ def aplicar_fondo_local(ruta_imagen):
         font-weight: bold !important;
         width: 100%;
         height: 48px;
-        box-shadow: 0px 4px 15px rgba(0, 210, 255, 0.3) !important;
+        box-shadow: 0px 4px 15px rgba(0, 210, 255, 0.4) !important;
         transition: all 0.3s ease !important;
     }}
     
     .stButton>button:hover {{
         transform: translateY(-2px) !important;
-        box-shadow: 0px 6px 20px rgba(0, 210, 255, 0.6) !important;
+        box-shadow: 0px 6px 25px rgba(0, 210, 255, 0.8) !important;
     }}
     </style>
     """
@@ -146,13 +162,14 @@ if "trades" not in st.session_state:
             st.warning(f"No se pudieron cargar los trades desde la nube: {e}")
 
 st.title("📈 Journaling & AI Trading Audit")
-st.write("Sube o pega (Ctrl+V) tus capturas, audita tus emociones, calcula lotaje y mide tu progreso en el tiempo.")
+st.write("Sube o pega tus capturas, audita tus emociones, calcula lotaje y mide tu progreso con estilo neón.")
 
-# LISTA COMPLETA DE ACTIVOS
+# LISTA PREDETERMINADA DE ACTIVOS
 LISTA_ACTIVOS = [
-    "XAU/USD (Oro)", "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "NZD/USD",
-    "GBP/JPY", "EUR/JPY", "EUR/GBP", "BTC/USDT", "ETH/USDT", "SOL/USDT", "NAS100 / US100", 
-    "US30 / Dow Jones", "SPX500 / S&P500", "GER30 / DAX40", "USOIL (Petróleo)"
+    "Otro (Escribir manualmente)", "XAU/USD (Oro)", "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", 
+    "USD/CAD", "USD/CHF", "NZD/USD", "GBP/JPY", "EUR/JPY", "EUR/GBP", "BTC/USDT", 
+    "ETH/USDT", "SOL/USDT", "NAS100 / US100", "US30 / Dow Jones", "SPX500 / S&P500", 
+    "GER30 / DAX40", "USOIL (Petróleo)"
 ]
 
 tabs = st.tabs([
@@ -255,11 +272,18 @@ with tabs[0]:
 
         fecha_trade = st.date_input("Fecha de la Operación", datetime.now())
         
-        idx_par = LISTA_ACTIVOS.index(val_par) if val_par in LISTA_ACTIVOS else 0
+        idx_par = LISTA_ACTIVOS.index(val_par) if val_par in LISTA_ACTIVOS else 1
 
         c1, c2 = st.columns(2)
         with c1:
-            par = st.selectbox("Activo / Par", LISTA_ACTIVOS, index=idx_par)
+            par_seleccionado = st.selectbox("Seleccionar Activo / Par", LISTA_ACTIVOS, index=idx_par)
+            
+            # Opción para escribir un par personalizado si elige 'Otro' o desea escribirlo
+            if par_seleccionado == "Otro (Escribir manualmente)":
+                par = st.text_input("✍️ Escribe el nombre del Activo:", placeholder="Ej. NVDA, US2000, DOGEUSD...")
+            else:
+                par = par_seleccionado
+
             dir_index = 0 if "LONG" in val_dir else 1
             direccion = st.radio("Dirección", ["LONG 🟢", "SHORT 🔴"], index=dir_index, horizontal=True)
             precio_entrada = st.number_input("Precio Entrada", value=val_entry, format="%.2f")
@@ -319,7 +343,7 @@ with tabs[0]:
                 img_b64_after = base64.b64encode(uploaded_image_after.getvalue()).decode("utf-8")
 
             nuevo_trade = {
-                "par": par,
+                "par": par if par else "S/D",
                 "direccion": direccion,
                 "precio_entrada": precio_entrada,
                 "stop_loss": stop_loss,
@@ -373,12 +397,8 @@ with tabs[1]:
         st.markdown(f"### 💵 Dinero en Riesgo: **${monto_riesgo_usd:.2f} USD**")
 
         if distancia_sl_pips > 0:
-            if "Forex" in tipo_instrumento:
+            if "Forex" in tipo_instrumento or "Oro" in tipo_instrumento:
                 lotes = monto_riesgo_usd / (distancia_sl_pips * 10)
-            elif "Oro" in tipo_instrumento:
-                lotes = monto_riesgo_usd / (distancia_sl_pips * 10)
-            elif "Índices" in tipo_instrumento:
-                lotes = monto_riesgo_usd / distancia_sl_pips
             else:
                 lotes = monto_riesgo_usd / distancia_sl_pips
 
@@ -465,7 +485,8 @@ with tabs[3]:
     with st.expander("➕ Guardar Nueva Proyección Manualmente", expanded=False):
         c_p1, c_p2 = st.columns([1, 1])
         with c_p1:
-            par_proy = st.selectbox("Activo / Par", LISTA_ACTIVOS, key="par_proy")
+            par_proy_sel = st.selectbox("Activo / Par", LISTA_ACTIVOS, key="par_proy_sel")
+            par_proy = st.text_input("✍️ Escribe el Activo (Si elegiste 'Otro'):", key="par_proy_manual") if par_proy_sel == "Otro (Escribir manualmente)" else par_proy_sel
             notas_proy = st.text_area("Descripción / Hipótesis", key="notas_proy")
         with c_p2:
             img_proy = st.file_uploader("Captura de la Proyección", type=["jpg", "jpeg", "png"], key="upload_proy_manual")
@@ -477,7 +498,7 @@ with tabs[3]:
                 img_proy_b64 = base64.b64encode(img_proy.read()).decode("utf-8")
 
             nueva_proy_manual = {
-                "par": par_proy,
+                "par": par_proy if par_proy else "S/D",
                 "direccion": "NO EJECUTADO",
                 "rr": 0.0,
                 "resultado": "PROYECCIÓN 📁",
