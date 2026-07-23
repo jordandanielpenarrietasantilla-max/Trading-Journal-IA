@@ -110,7 +110,7 @@ if "trades" not in st.session_state:
             st.warning(f"No se pudieron cargar los trades desde la nube: {e}")
 
 st.title("📈 Journaling & AI Trading Audit")
-st.write("Sube tu captura de TradingView para auto-detectar precios, auditar trades y comparar tu análisis con IA.")
+st.write("Sube o pega (Ctrl+V) tus capturas de TradingView para auto-detectar precios, auditar trades y comparar tu análisis con IA.")
 
 tabs = st.tabs([
     "➕ Registrar Trade (Antes/Después)", 
@@ -125,10 +125,10 @@ with tabs[0]:
     col_left, col_right = st.columns([1, 1])
 
     with col_right:
-        st.subheader("🖼️ Capturas del Gráfico (Antes & Después)")
+        st.subheader("🖼️ Capturas del Gráfico (Puedes Pegar con Ctrl + V)")
         
-        uploaded_image_before = st.file_uploader("1️⃣ Sube el Screenshot ANTES (Entrada / Setup)", type=["jpg", "jpeg", "png"], key="upload_trade_before")
-        uploaded_image_after = st.file_uploader("2️⃣ Sube el Screenshot DESPUÉS (Cierre / Resultado)", type=["jpg", "jpeg", "png"], key="upload_trade_after")
+        uploaded_image_before = st.file_uploader("1️⃣ Arrastra o Presiona Ctrl + V para el Screenshot ANTES", type=["jpg", "jpeg", "png"], key="upload_trade_before")
+        uploaded_image_after = st.file_uploader("2️⃣ Arrastra o Presiona Ctrl + V para el Screenshot DESPUÉS", type=["jpg", "jpeg", "png"], key="upload_trade_after")
 
         if uploaded_image_before:
             c_preview1, c_preview2 = st.columns(2)
@@ -317,12 +317,12 @@ with tabs[0]:
 # ----------------- PESTAÑA 2: ANÁLISIS VS IA -----------------
 with tabs[1]:
     st.subheader("🆚 Comparar tu Análisis Técnico con la IA")
-    st.write("Sube tu proyección o gráfico de análisis y escribe tu hipótesis para ver qué opina la IA.")
+    st.write("Sube o pega (Ctrl+V) tu proyección de análisis y escribe tu hipótesis para ver qué opina la IA.")
 
     col_a1, col_a2 = st.columns([1, 1])
 
     with col_a1:
-        img_analisis = st.file_uploader("Sube el Gráfico de tu Análisis", type=["jpg", "jpeg", "png"], key="upload_analysis")
+        img_analisis = st.file_uploader("Sube o pega (Ctrl + V) el Gráfico de tu Análisis", type=["jpg", "jpeg", "png"], key="upload_analysis")
         hipotesis_usuario = st.text_area(
             "✍️ Tu Análisis / Hipótesis:",
             placeholder="Ejemplo: Veo un barrido de liquidez en M15 y espero un retroceso a la zona de FVG para entrar en Long...",
@@ -417,15 +417,55 @@ with tabs[1]:
 # ----------------- PESTAÑA 3: PROYECCIONES NO EJECUTADAS -----------------
 with tabs[2]:
     st.subheader("📁 Registro de Análisis & Proyecciones No Ejecutadas")
-    st.write("Espacio dedicado a ideas de trading, análisis previos y operaciones que no se activaron.")
+    st.write("Guarda ideas de trading, proyecciones o trades que no se activaron.")
 
+    # Formulario para agregar proyecciones manualmente
+    with st.expander("➕ Guardar Nueva Proyección Manualmente", expanded=False):
+        c_p1, c_p2 = st.columns([1, 1])
+        with c_p1:
+            par_proy = st.selectbox("Par / Activo", ["XAU/USD", "EUR/USD", "GBP/USD", "USD/JPY", "BTC/USDT", "NAS100", "US30", "GBP/JPY"], key="par_proy")
+            notas_proy = st.text_area("Descripción / Hipótesis de la Proyección", key="notas_proy")
+        with c_p2:
+            img_proy = st.file_uploader("Sube o pega (Ctrl + V) la Captura de la Proyección", type=["jpg", "jpeg", "png"], key="upload_proy_manual")
+        
+        if st.button("💾 Guardar Proyección Manual"):
+            img_proy_b64 = None
+            if img_proy:
+                img_proy.seek(0)
+                img_proy_b64 = base64.b64encode(img_proy.read()).decode("utf-8")
+
+            nueva_proy_manual = {
+                "par": par_proy,
+                "direccion": "NO EJECUTADO",
+                "rr": 0.0,
+                "resultado": "PROYECCIÓN 📁",
+                "notas": notas_proy,
+                "evaluacion_ia": "Análisis guardado manualmente sin evaluación de IA.",
+                "imagen_b64": img_proy_b64,
+                "es_analisis_previo": True
+            }
+
+            if supabase:
+                try:
+                    res = supabase.table("trades").insert(nueva_proy_manual).execute()
+                    st.session_state.trades.append(res.data[0])
+                    st.success("¡Proyección guardada con éxito! 📁")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error guardando: {e}")
+            else:
+                st.session_state.trades.append(nueva_proy_manual)
+                st.success("Proyección guardada localmente.")
+                st.rerun()
+
+    st.markdown("---")
     analisis_filtrados = [t for t in st.session_state.trades if t.get("es_analisis_previo") == True or t.get("resultado") == "PROYECCIÓN 📁"]
 
     if not analisis_filtrados:
-        st.write("No hay análisis no ejecutados guardados aún.")
+        st.info("No hay análisis no ejecutados guardados aún. Usa el formulario de arriba o la pestaña 'Análisis vs IA'.")
     else:
         for a in reversed(analisis_filtrados):
-            with st.expander(f"Proyección #{a.get('id', 'N/A')} | {a.get('notas', 'Sin notas')[:50]}..."):
+            with st.expander(f"Proyección #{a.get('id', 'N/A')} | {a.get('par', 'Activo')} - {a.get('notas', 'Sin notas')[:50]}..."):
                 c_img_a, c_info_a = st.columns([1, 1])
                 with c_img_a:
                     if a.get("imagen_b64"):
@@ -433,7 +473,7 @@ with tabs[2]:
                 with c_info_a:
                     st.markdown(f"**{a.get('notas', '')}**")
                     st.markdown("---")
-                    st.markdown("### 🤖 Veredicto / Evaluación de la IA")
+                    st.markdown("### 🤖 Veredicto / Evaluación")
                     st.markdown(a.get("evaluacion_ia", ""))
 
 # ----------------- PESTAÑA 4: DIARIO (TRADES EJECUTADOS) -----------------
