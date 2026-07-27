@@ -1,7 +1,7 @@
 import base64
 import json
 import os
-from datetime import datetime
+from datetime import datetime, time
 import pandas as pd
 import plotly.express as px
 import requests
@@ -9,7 +9,7 @@ import streamlit as st
 from supabase import create_client, Client
 
 # ---------------------------------------------------------------------
-# 1. CONFIGURACIÓN INICIAL Y ESTILOS (CSS + FONDO)
+# 1. CONFIGURACIÓN INICIAL Y ESTILOS AVANZADOS (CSS NEÓN + SIDEBAR)
 # ---------------------------------------------------------------------
 st.set_page_config(page_title="AI Trading Journal & Auditor", page_icon="📈", layout="wide")
 
@@ -28,6 +28,7 @@ def aplicar_fondo_local(ruta_imagen):
         100% {{ border-color: rgba(0, 242, 254, 0.4); box-shadow: 0 0 10px rgba(0, 242, 254, 0.2); }}
     }}
 
+    /* Fondo Global de la Aplicación */
     .stApp {{
         {bg_style}
         background-size: cover !important;
@@ -35,6 +36,7 @@ def aplicar_fondo_local(ruta_imagen):
         background-attachment: fixed !important;
     }}
     
+    /* Tipografía Global */
     .stApp, p, label, h1, h2, h3, h4, span, div, .stMarkdown, .stTabs {{
         color: #f0f3fa !important;
         font-family: 'Trebuchet MS', sans-serif !important;
@@ -47,6 +49,31 @@ def aplicar_fondo_local(ruta_imagen):
         font-weight: 800 !important;
     }}
     
+    /* ELIMINAR EL FONDO BLANCO DE LA BARRA LATERAL (SIDEBAR) */
+    section[data-testid="stSidebar"] {{
+        background-color: rgba(11, 14, 20, 0.92) !important;
+        border-right: 1px solid rgba(0, 210, 255, 0.3) !important;
+        backdrop-filter: blur(15px) !important;
+    }}
+
+    section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] {{
+        padding-top: 1.5rem;
+    }}
+
+    /* Botón especial para Cerrar Sesión en el Sidebar */
+    section[data-testid="stSidebar"] .stButton>button {{
+        background: linear-gradient(135deg, #ff2a2a 0%, #990000 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0px 4px 15px rgba(255, 42, 42, 0.4) !important;
+        border: none !important;
+    }}
+    
+    section[data-testid="stSidebar"] .stButton>button:hover {{
+        box-shadow: 0px 6px 25px rgba(255, 42, 42, 0.8) !important;
+        transform: translateY(-2px) !important;
+    }}
+    
+    /* Contenedores con Estilo Glassmorphism Neón */
     div[data-testid="stColumn"], div[data-testid="stExpander"], div[data-testid="stMetricBlock"] {{
         background: rgba(15, 20, 30, 0.85) !important;
         backdrop-filter: blur(12px) !important;
@@ -57,6 +84,7 @@ def aplicar_fondo_local(ruta_imagen):
         animation: neonGlow 4s infinite ease-in-out !important;
     }}
     
+    /* Inputs y Selects */
     .stNumberInput input, .stTextArea textarea, .stTextInput input {{
         background-color: #0b0e14 !important;
         color: #00f2fe !important;
@@ -81,6 +109,7 @@ def aplicar_fondo_local(ruta_imagen):
         color: #ffffff !important;
     }}
 
+    /* Botones Principales */
     .stButton>button {{
         background: linear-gradient(135deg, #2962ff 0%, #00d2ff 100%) !important;
         color: #ffffff !important;
@@ -194,16 +223,90 @@ else:
         except Exception as e:
             st.warning(f"No se pudieron cargar tus datos: {e}")
 
+    # =================================================================
+    # BARRA LATERAL (SIDEBAR): CENTRO DE CONTROL DE TRADER
+    # =================================================================
     with st.sidebar:
-        st.markdown(f"👤 **Usuario:** `{user_email}`")
+        st.markdown("## 👤 Perfil Trader")
+
+        # Foto de Perfil + Datos del Usuario
+        col_av, col_dt = st.columns([1, 2])
+        with col_av:
+            if "foto_b64" in st.session_state and st.session_state["foto_b64"]:
+                st.image(f"data:image/png;base64,{st.session_state['foto_b64']}", use_container_width=True)
+            else:
+                st.markdown("👤")
+                
+        with col_dt:
+            alias_display = st.session_state.get("alias_user", "Trader Pro")
+            st.markdown(f"**{alias_display}**")
+            st.caption(f"`{user_email}`")
+
+        # Editar Perfil (Modal/Expander)
+        with st.expander("⚙️ Modificar Perfil", expanded=False):
+            nuevo_alias = st.text_input("Nombre / Alias:", value=st.session_state.get("alias_user", "Trader Pro"))
+            cap_actual_input = st.number_input("Capital Actual ($USD):", value=st.session_state.get("cap_actual", 10000.0), step=500.0)
+            cap_meta_input = st.number_input("Meta de Capital ($USD):", value=st.session_state.get("cap_meta", 15000.0), step=1000.0)
+            uploaded_avatar = st.file_uploader("Foto de Perfil", type=["jpg", "png"], key="upload_avatar")
+
+            if st.button("💾 Guardar Cambios"):
+                st.session_state["alias_user"] = nuevo_alias
+                st.session_state["cap_actual"] = cap_actual_input
+                st.session_state["cap_meta"] = cap_meta_input
+                if uploaded_avatar:
+                    st.session_state["foto_b64"] = base64.b64encode(uploaded_avatar.read()).decode("utf-8")
+                st.success("¡Perfil actualizado!")
+                st.rerun()
+
+        st.markdown("---")
+
+        # Progreso de Capital y Meta
+        c_act = st.session_state.get("cap_actual", 10000.0)
+        c_met = st.session_state.get("cap_meta", 15000.0)
+        progreso_val = min(1.0, max(0.0, c_act / c_met)) if c_met > 0 else 0.0
+
+        st.markdown(f"🎯 **Meta de Cuenta:** `${c_act:,.0f}` / `${c_met:,.0f}`")
+        st.progress(progreso_val)
+
+        st.markdown("---")
+
+        # Reloj de Mercado
+        st.markdown("### 🌐 Sesiones de Mercado")
+        hora_utc = datetime.utcnow().time()
+        
+        # Estados simples de sesión (UTC)
+        londres = "🟢 ABIERTO" if time(7,0) <= hora_utc <= time(16,0) else "🔴 CERRADO"
+        ny = "🟢 ABIERTO" if time(12,0) <= hora_utc <= time(21,0) else "🔴 CERRADO"
+        tokio = "🟢 ABIERTO" if time(0,0) <= hora_utc <= time(9,0) else "🔴 CERRADO"
+
+        st.caption(f"🇬🇧 **Londres:** {londres}")
+        st.caption(f"🇺🇸 **Nueva York:** {ny}")
+        st.caption(f"🇯🇵 **Tokio / Asia:** {tokio}")
+
+        st.markdown("---")
+
+        # Reglas de Oro
+        st.markdown("### 🎯 Reglas de Disciplina")
+        st.markdown("""
+        * 🛑 Acepta la pérdida antes de entrar.
+        * ✂️ Corta pérdidas rápido.
+        * 🧘 Evita la venganza (FOMO).
+        """)
+
+        st.markdown("---")
+
+        # Botón de Cerrar Sesión
         if st.button("🚪 Cerrar Sesión"):
             supabase.auth.sign_out()
             st.session_state.usuario_logueado = None
             st.session_state.trades = []
             st.rerun()
 
+    # =================================================================
+    # ÁREA PRINCIPAL Y HERRAMIENTAS
+    # =================================================================
     st.title("📈 Journaling & AI Trading Audit")
-    st.write("Bienvenido de nuevo. Mide tu progreso y disciplina en tiempo real.")
+    st.write("Mide tu progreso, audita con IA y gestiona tu psicología operativa.")
 
     LISTA_ACTIVOS = [
         "Otro (Escribir manualmente)", "XAU/USD (Oro)", "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", 
@@ -350,7 +453,7 @@ else:
         col_calc1, col_calc2 = st.columns([1, 1])
 
         with col_calc1:
-            balance_cuenta = st.number_input("💰 Capital ($ USD)", value=10000.0, step=500.0)
+            balance_cuenta = st.number_input("💰 Capital ($ USD)", value=st.session_state.get("cap_actual", 10000.0), step=500.0)
             porcentaje_riesgo = st.number_input("⚠️ Riesgo deseado (%)", value=1.0, step=0.25)
             distancia_sl_pips = st.number_input("📏 Stop Loss (Pips / Puntos)", value=20.0, step=1.0)
             tipo_instrumento = st.selectbox("📈 Tipo de Activo", ["Forex (Pares de Divisas)", "Oro / XAUUSD", "Índices (NAS100/US30)", "Criptos"])
