@@ -3,6 +3,7 @@ import datetime
 import requests
 import json
 import os
+import base64
 from supabase import create_client, Client
 
 # ==========================================
@@ -45,6 +46,8 @@ if "capital_actual" not in st.session_state:
     st.session_state.capital_actual = 10000.0
 if "capital_meta" not in st.session_state:
     st.session_state.capital_meta = 15000.0
+if "foto_perfil_b64" not in st.session_state:
+    st.session_state.foto_perfil_b64 = None
 if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
 
@@ -229,7 +232,7 @@ def render_auth():
                     st.warning("Por favor llena todos los datos.")
 
 # ==========================================
-# 4. SIDEBAR (PERFIL Y CONFIGURACIÓN EDITABLE)
+# 4. SIDEBAR (PERFIL Y CONFIGURACIÓN CON FOTO)
 # ==========================================
 def render_sidebar():
     with st.sidebar:
@@ -237,13 +240,25 @@ def render_sidebar():
         
         user_email = st.session_state.user.email if st.session_state.user else "trader@ejemplo.com"
         
-        st.markdown(f"**{st.session_state.nombre_trader}**")
-        st.markdown(f"`{user_email}`")
-        st.caption(f"Estrategia: **{st.session_state.estrategia_trader}**")
+        # Mostrar foto de perfil o avatar por defecto
+        col_img, col_txt = st.columns([1, 2])
+        with col_img:
+            if st.session_state.foto_perfil_b64:
+                st.image(f"data:image/png;base64,{st.session_state.foto_perfil_b64}", width=70)
+            else:
+                st.markdown("👤")
+                
+        with col_txt:
+            st.markdown(f"**{st.session_state.nombre_trader}**")
+            st.caption(f"`{user_email}`")
+            st.caption(f"Estrategia: **{st.session_state.estrategia_trader}**")
 
-        # MODIFICAR PERFIL (NOMBRE, ESTRATEGIA, CAPITAL Y METAS)
+        # MODIFICAR PERFIL (NOMBRE, FOTO, ESTRATEGIA, CAPITAL Y METAS)
         with st.expander("⚙️ Modificar Perfil"):
             input_nombre = st.text_input("Nombre de Usuario", value=st.session_state.nombre_trader)
+            
+            # Cargar archivo de foto de perfil
+            foto_subida = st.file_uploader("Subir Foto de Perfil", type=["jpg", "jpeg", "png", "webp"])
             
             lista_estrategias = ["Smart Money Concepts", "Price Action", "ICT", "Indicator Based", "Wyckoff", "Scalping / Order Flow"]
             idx_est = lista_estrategias.index(st.session_state.estrategia_trader) if st.session_state.estrategia_trader in lista_estrategias else 0
@@ -257,7 +272,13 @@ def render_sidebar():
                 st.session_state.estrategia_trader = input_estrategia
                 st.session_state.capital_actual = input_cap_actual
                 st.session_state.capital_meta = input_cap_meta
-                st.toast("¡Perfil y capital actualizados!", icon="✅")
+                
+                # Si subió una foto nueva, la convertimos a Base64
+                if foto_subida is not None:
+                    bytes_data = foto_subida.getvalue()
+                    st.session_state.foto_perfil_b64 = base64.b64encode(bytes_data).decode("utf-8")
+                
+                st.toast("¡Perfil y foto actualizados!", icon="✅")
                 st.rerun()
 
         st.markdown("---")
