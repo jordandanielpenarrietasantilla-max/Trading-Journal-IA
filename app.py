@@ -231,7 +231,7 @@ def render_auth():
                     st.warning("Por favor llena todos los datos.")
 
 # ==========================================
-# 4. SIDEBAR (PERFIL, RELOJ & NAVEGACIÓN)
+# 4. SIDEBAR (PERFIL, RELOJ CHILE & NAVEGACIÓN)
 # ==========================================
 def render_sidebar():
     with st.sidebar:
@@ -308,8 +308,8 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # RELOJ DIGITAL EN VIVO
-        st.markdown("### ⏰ Hora Actual (UTC)")
+        # RELOJ DIGITAL EN VIVO - HORA DE CHILE
+        st.markdown("### ⏰ Hora Actual (Chile)")
         st.components.v1.html(
             """
             <div id="clock" style="
@@ -323,15 +323,14 @@ def render_sidebar():
                 padding: 8px;
                 text-align: center;
                 box-shadow: 0px 0px 10px rgba(0, 242, 254, 0.2);
-            ">00:00:00 UTC</div>
+            ">00:00:00 CLT</div>
 
             <script>
             function updateClock() {
                 var now = new Date();
-                var hours = String(now.getUTCHours()).padStart(2, '0');
-                var minutes = String(now.getUTCMinutes()).padStart(2, '0');
-                var seconds = String(now.getUTCSeconds()).padStart(2, '0');
-                document.getElementById('clock').innerHTML = hours + ":" + minutes + ":" + seconds + " UTC";
+                var options = { timeZone: 'America/Santiago', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                var timeString = new Intl.DateTimeFormat('es-CL', options).format(now);
+                document.getElementById('clock').innerHTML = timeString + " CLT";
             }
             setInterval(updateClock, 1000);
             updateClock();
