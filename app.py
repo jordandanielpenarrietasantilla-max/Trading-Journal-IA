@@ -387,6 +387,8 @@ def render_dashboard():
     # TAB 1: REGISTRAR TRADE
     # --------------------------------------
     with tab1:
+        st.info("💡 **¿Para qué sirve?** Registra los detalles técnicos, precio de entrada, Stop Loss, Take Profit y tu estado emocional al momento de tomar la operación. Esto servirá para auditar tus hábitos con Inteligencia Artificial.")
+        
         col_left, col_right = st.columns([1, 1])
 
         with col_left:
@@ -443,6 +445,8 @@ def render_dashboard():
     # TAB 2: CHAT DE AUDITORÍA CON IA
     # --------------------------------------
     with tab2:
+        st.info("💡 **¿Para qué sirve?** Tu asistente virtual lee todo tu historial de operaciones guardadas. Puedes preguntarle en lenguaje natural qué activos son más rentables para ti o qué emoción detona tus pérdidas.")
+        
         st.markdown("### 💬 Chat de Auditoría de Trading con IA")
         st.caption("Pregúntale a la IA sobre tus patrones de trading, errores emocionales o mejor activo.")
 
@@ -472,6 +476,8 @@ def render_dashboard():
     # TAB 3: CALCULADORA DE LOTAJE
     # --------------------------------------
     with tab3:
+        st.info("💡 **¿Para qué sirve?** Calcula el tamaño exacto de tu posición (Lotes) en base al balance de tu cuenta y la distancia de tu Stop Loss. Protege tu capital evitando sobreapalancarte.")
+        
         st.markdown("### 🧮 Calculadora de Tamaño de Posición")
         col_a, col_b = st.columns(2)
         with col_a:
@@ -489,6 +495,8 @@ def render_dashboard():
     # TAB 4: ANÁLISIS VS IA
     # --------------------------------------
     with tab4:
+        st.info("💡 **¿Para qué sirve?** Sube una captura de pantalla del gráfico de tu análisis previo a ejecutar el trade para que el modelo de Inteligencia Artificial audite la validez de tu zona de entrada, dirección y Stop Loss.")
+        
         st.markdown("### 🤖 Auditoría Visual con Inteligencia Artificial")
         st.markdown("Sube una captura de pantalla de tu gráfico para recibir feedback técnico instantáneo.")
         
@@ -503,6 +511,8 @@ def render_dashboard():
     # TAB 5: PROYECCIONES
     # --------------------------------------
     with tab5:
+        st.info("💡 **¿Para qué sirve?** Simula el crecimiento exponencial de tu cuenta en un horizonte de 12 meses usando la potencia del interés compuesto en base a tu volumen de trades y Win Rate estimado.")
+        
         st.markdown("### 📈 Proyección de Crecimiento Interés Compuesto")
         trades_mes = st.slider("Trades por Mes", 5, 50, 15)
         win_rate_est = st.slider("Win Rate Estimado (%)", 30, 90, 50)
@@ -519,6 +529,8 @@ def render_dashboard():
     # TAB 6: DIARIO EMOCIONAL
     # --------------------------------------
     with tab6:
+        st.info("💡 **¿Para qué sirve?** Espacio dedicado a la psicología operativa. Escribe reflexiones semanales, hábitos, nivel de disciplina y áreas a mejorar para dominar la mentalidad de trader profesional.")
+        
         st.markdown("### 📓 Bitácora Psicológica")
         st.text_area("Reflexión de la semana:", value="Esta semana estuvo enfocada. Respeté mi plan y mis reglas de disciplina.")
 
@@ -526,6 +538,8 @@ def render_dashboard():
     # TAB 7: DASHBOARD Y RENDIMIENTO
     # --------------------------------------
     with tab7:
+        st.info("💡 **¿Para qué sirve?** Panel estadístico central. Muestra tus métricas avanzadas (Win Rate, Profit Factor, Promedio R:R) y un mapa de rendimiento visual para ver cómo impacta cada emoción en tus resultados.")
+        
         st.markdown("### 📊 Métricas Operativas & Horas de Oro")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Win Rate Total", "60.0%", "+2.1%")
