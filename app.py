@@ -7,6 +7,7 @@ import base64
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import calendar
 from supabase import create_client, Client
 
 # ==========================================
@@ -161,7 +162,7 @@ def render_auth():
         
         st.markdown("""
         ### 🚀 ¿Por qué usar este Diario de Trading?
-        * 📅 **Track Record Calendario:** Visualiza tus días ganadores (verdes) y perdedores (rojos) en cuadritos estilo Prop Firm.
+        * 📅 **Track Record Calendario:** Visualiza tus días ganadores (verdes) y perdedores (rojos) exactos como en TradingView/Prop Firms.
         * 👁️ **Escaneo Visual con IA:** Sube tus capturas de TradingView y extrae entradas, SL, TP y Ratio Risk/Reward.
         * 💬 **Chat de Auditoría con IA:** Conversa directamente con tu historial para descubrir patrones ocultos.
         * 🧮 **Calculadora de Lotaje Incorporada:** Ajusta el tamaño de posición exacto.
@@ -428,16 +429,12 @@ def render_dashboard():
                 st.rerun()
 
     # --------------------------------------
-    # TAB 2: TRACK RECORD CALENDARIO PnL (FORMATO CUADRÍCULA GRID)
+    # TAB 2: TRACK RECORD CALENDARIO EXACTO DE 7 DÍAS (SUN - SAT)
     # --------------------------------------
     with tab2:
-        st.info("💡 **¿Para qué sirve?** Calendario mensual estilo Prop Firm que muestra de forma clara en cuadritos alineados tus días en verde (ganancias) y rojo (pérdidas).")
+        st.info("💡 **¿Para qué sirve?** Vista mensual idéntica a las plataformas de trading. Bloques de color verde sólido (ganancia) o rojo sólido (pérdida) organizados de Domingo a Sábado.")
         
-        st.markdown("### 📅 Track Record - Calendario Mensual PnL")
-
         df_calendar = pd.DataFrame(st.session_state.trades_db)
-        
-        # Calcular totales reales
         total_mes = df_calendar['Beneficio_USD'].sum() if not df_calendar.empty else 0.0
         
         if not df_calendar.empty:
@@ -448,7 +445,7 @@ def render_dashboard():
             dias_ganadores = 0
             dias_perdedores = 0
 
-        # Tarjetas Superiores de Métricas
+        # Métricas Superiores
         c_rec1, c_rec2, c_rec3 = st.columns(3)
         c_rec1.metric("Resultado Neto del Mes", f"${total_mes:,.2f}", f"{'+' if total_mes >= 0 else ''}{total_mes:,.2f}")
         c_rec2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
@@ -456,15 +453,7 @@ def render_dashboard():
 
         st.markdown("---")
 
-        # GENERACIÓN DEL CALENDARIO TIPO CUADRÍCULA (LUNES A VIERNES)
-        cols_dias = st.columns(5)
-        dias_nombre = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
-
-        for idx, col in enumerate(cols_dias):
-            with col:
-                st.markdown(f"<h4 style='text-align:center; color:#00f2fe;'>{dias_nombre[idx]}</h4>", unsafe_allow_html=True)
-
-        # Mapa de trades agrupados por fecha
+        # Mapeo de PnL por fecha
         pnl_map = {}
         trades_map = {}
         if not df_calendar.empty:
@@ -473,67 +462,85 @@ def render_dashboard():
                 pnl_map[f_str] = pnl_map.get(f_str, 0.0) + r['Beneficio_USD']
                 trades_map[f_str] = trades_map.get(f_str, 0) + r['Trades_Cant']
 
-        # Renderizar cuadritos de días del mes actual (1 al 31)
+        # Calendario Mensual Completo (Sun a Sat)
         hoy = datetime.date.today()
         año, mes = hoy.year, hoy.month
         
-        # Iterar por semanas/días laborables
-        for dia_n in range(1, 32):
-            try:
-                f_date = datetime.date(año, mes, dia_n)
-            except ValueError:
-                break
-            
-            # Solo Lunes (0) a Viernes (4)
-            weekday = f_date.weekday()
-            if weekday < 5:
-                f_key = str(f_date)
-                pnl_val = pnl_map.get(f_key, None)
-                num_trades = trades_map.get(f_key, 0)
+        # Obtener la matriz del mes con domingo como inicio
+        cal_obj = calendar.Calendar(firstweekday=6) # 6 = Domingo
+        mes_dias = cal_obj.monthdayscalendar(año, mes)
 
-                # Estilo según resultado
-                if pnl_val is None:
-                    bg_color = "rgba(20, 26, 36, 0.5)"
-                    border_color = "rgba(0, 210, 255, 0.15)"
-                    pnl_text = "--"
-                    color_texto = "#666"
-                    trades_text = ""
-                elif pnl_val > 0:
-                    bg_color = "rgba(76, 175, 80, 0.25)"
-                    border_color = "#4caf50"
-                    color_texto = "#4caf50"
-                    pnl_text = f"+${pnl_val:,.0f}"
-                    trades_text = f"{num_trades} trade{'s' if num_trades > 1 else ''}"
-                elif pnl_val < 0:
-                    bg_color = "rgba(244, 67, 54, 0.25)"
-                    border_color = "#f44336"
-                    color_texto = "#f44336"
-                    pnl_text = f"-${abs(pnl_val):,.0f}"
-                    trades_text = f"{num_trades} trade{'s' if num_trades > 1 else ''}"
-                else:
-                    bg_color = "rgba(255, 255, 255, 0.08)"
-                    border_color = "#888"
-                    color_texto = "#fff"
-                    pnl_text = "$0"
-                    trades_text = f"{num_trades} trade{'s' if num_trades > 1 else ''}"
+        # Encabezado Sun Mon Tue Wed Thu Fri Sat
+        dias_header = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        cols_header = st.columns(7)
+        for idx, col in enumerate(cols_header):
+            with col:
+                st.markdown(f"<p style='text-align:center; font-weight:bold; font-size:1.1rem; color:#f0f3fa; margin-bottom:5px;'>{dias_header[idx]}</p>", unsafe_allow_html=True)
 
-                box_html = f"""
-                <div style="
-                    background-color: {bg_color};
-                    border: 1px solid {border_color};
-                    border-radius: 8px;
-                    padding: 8px;
-                    margin-bottom: 8px;
-                    text-align: center;
-                    min-height: 70px;
-                ">
-                    <span style="font-size: 0.75rem; color: #888; display:block;">Día {dia_n}</span>
-                    <span style="font-size: 1.05rem; font-weight: bold; color: {color_texto}; display:block;">{pnl_text}</span>
-                    <span style="font-size: 0.7rem; color: #aaa; display:block;">{trades_text}</span>
-                </div>
-                """
-                with cols_dias[weekday]:
-                    st.markdown(box_html, unsafe_allow_html=True)
+        # Iterar semana a semana en una cuadrícula perfecta
+        for semana in mes_dias:
+            cols_sem = st.columns(7)
+            for day_idx, day_num in enumerate(semana):
+                with cols_sem[day_idx]:
+                    if day_num == 0:
+                        # Cuadro vacío transparente para días fuera de mes
+                        st.markdown("<div style='height:90px; background:#0b0e14; border-radius:4px; margin-bottom:6px;'></div>", unsafe_allow_html=True)
+                    else:
+                        f_date = datetime.date(año, mes, day_num)
+                        f_key = str(f_date)
+                        pnl_val = pnl_map.get(f_key, None)
+                        num_trades = trades_map.get(f_key, 0)
+
+                        if pnl_val is None:
+                            # Cuadro Oscuro sin operacion (Como la foto)
+                            bg_color = "#12161f"
+                            pnl_html = ""
+                            trades_html = ""
+                            txt_color = "#f0f3fa"
+                        elif pnl_val > 0:
+                            # Verde sólido brillante (Como la foto)
+                            bg_color = "#38d361"
+                            txt_color = "#000000"
+                            pnl_fmt = f"${pnl_val:,.0f}".replace(",", ".")
+                            if pnl_val >= 1000:
+                                pnl_fmt = f"${pnl_val/1000:.1f}K"
+                            pnl_html = f"<div style='font-weight:bold; font-size:1.15rem; color:#000;'>{pnl_fmt}</div>"
+                            trades_html = f"<div style='font-size:0.8rem; color:#111;'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
+                        elif pnl_val < 0:
+                            # Rojo sólido brillante (Como la foto)
+                            bg_color = "#ff4d4d"
+                            txt_color = "#000000"
+                            pnl_fmt = f"-${abs(pnl_val):,.0f}".replace(",", ".")
+                            if abs(pnl_val) >= 1000:
+                                pnl_fmt = f"-${abs(pnl_val)/1000:.1f}K"
+                            pnl_html = f"<div style='font-weight:bold; font-size:1.15rem; color:#000;'>{pnl_fmt}</div>"
+                            trades_html = f"<div style='font-size:0.8rem; color:#111;'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
+                        else:
+                            bg_color = "#2a3242"
+                            txt_color = "#ffffff"
+                            pnl_html = "<div style='font-weight:bold; font-size:1.15rem;'>$0</div>"
+                            trades_html = f"<div style='font-size:0.8rem;'>{num_trades} trades</div>"
+
+                        box_html = f"""
+                        <div style="
+                            background-color: {bg_color};
+                            border-radius: 4px;
+                            padding: 8px;
+                            height: 95px;
+                            margin-bottom: 6px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: space-between;
+                            font-family: sans-serif;
+                        ">
+                            <div style="font-size:0.9rem; font-weight:600; color:{txt_color};">{day_num}</div>
+                            <div style="text-align:center;">
+                                {pnl_html}
+                                {trades_html}
+                            </div>
+                        </div>
+                        """
+                        st.markdown(box_html, unsafe_allow_html=True)
 
     # --------------------------------------
     # TAB 3: CHAT DE AUDITORÍA CON IA
