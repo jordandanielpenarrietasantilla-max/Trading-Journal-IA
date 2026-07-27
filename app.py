@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 🔗 TUS ENLACES REALES
+# 🔗 ENLACES DE BINANCE PAY
 LINK_BINANCE_INSCRIPCION = "https://s.binance.com/8vSxLZRA"  # $5 USDT
 LINK_BINANCE_ANUAL = "https://s.binance.com/NvHWGF9P"        # $20 USDT
 LINK_BINANCE_RECURRENTE = "https://s.binance.com/U7v5zFVr"   # $2.50 USDT
@@ -187,6 +187,21 @@ def aplicar_estilos():
         transition: all 0.3s ease !important;
     }
 
+    section[data-testid="stSidebar"] .stButton>button {
+        background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%) !important;
+        box-shadow: 0px 4px 12px rgba(229, 57, 53, 0.3) !important;
+    }
+
+    .market-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    .open { background-color: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid #4caf50; }
+    .closed { background-color: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; }
+
     .paywall-card {
         background-color: #141a24;
         border: 1px solid #f0b90b;
@@ -207,13 +222,11 @@ aplicar_estilos()
 def evaluar_suscripcion(user):
     user_email = user.email if (user and hasattr(user, 'email')) else ""
     
-    # 👑 REEMPLAZA ESTE CORREO POR TU CORREO REAL REGISTRADO
-    if user_email.lower() == "tu_correo_aqui@gmail.com":
+    # 👑 TU CORREO REAL DE CREADOR
+    if user_email.lower() == "jordandanielpenarrietasantilla@gmail.com":
         return True, "Creador / Admin 👑", 99999
 
     metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
-    
-    # Si fue activado como VIP
     if metadata.get("es_vip", False):
         return True, "Acceso PRO 💎", 999
 
@@ -346,7 +359,7 @@ def render_auth():
                         st.error(f"Error al registrar: {e}")
 
 # ==========================================
-# 6. SIDEBAR
+# 6. SIDEBAR COMPLETO RESTAURADO
 # ==========================================
 def render_sidebar(estado_sub):
     with st.sidebar:
@@ -356,14 +369,124 @@ def render_sidebar(estado_sub):
         user_email = user.email if user else "trader@ejemplo.com"
         metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
         nombre_actual = metadata.get("username", st.session_state.get("nombre_trader", "Trader Pro"))
+        foto_b64 = metadata.get("avatar_b64", None)
 
-        st.markdown(f"**{nombre_actual}**")
-        st.caption(f"`{user_email}`")
+        col_img, col_txt = st.columns([1, 2])
+        with col_img:
+            if foto_b64:
+                st.markdown(f'<img src="data:image/png;base64,{foto_b64}" style="width:65px; height:65px; border-radius:50%; object-fit:cover; border:2px solid #00f2fe;">', unsafe_allow_html=True)
+            else:
+                st.markdown("<div style='font-size:2.5rem; text-align:center;'>👤</div>", unsafe_allow_html=True)
+                
+        with col_txt:
+            st.markdown(f"**{nombre_actual}**")
+            st.caption(f"`{user_email}`")
 
         if "PRO" in estado_sub or "Admin" in estado_sub:
             st.success(f"💎 {estado_sub}")
         else:
             st.warning(f"⏳ {estado_sub}")
+
+        # MODIFICAR PERFIL EXPANDER
+        with st.expander("⚙️ Modificar Perfil"):
+            input_nombre = st.text_input("Nombre de Usuario", value=nombre_actual)
+            foto_subida = st.file_uploader("Seleccionar nueva foto", type=["jpg", "jpeg", "png", "webp"])
+            lista_estrategias = ["Smart Money Concepts", "Price Action", "ICT", "Indicator Based", "Wyckoff", "Scalping"]
+            input_estrategia = st.selectbox("Estrategia Principal", lista_estrategias)
+            
+            input_cap_actual = st.number_input("Capital Actual ($USD)", value=float(st.session_state.capital_actual), step=500.0)
+            input_cap_meta = st.number_input("Meta de Capital ($USD)", value=float(st.session_state.capital_meta), step=1000.0)
+
+            if st.button("Guardar Cambios de Perfil"):
+                nueva_foto_b64 = foto_b64
+                if foto_subida is not None:
+                    bytes_data = foto_subida.getvalue()
+                    nueva_foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
+                
+                try:
+                    client = get_supabase_client()
+                    res = client.auth.update_user({
+                        "data": {
+                            "username": input_nombre,
+                            "avatar_b64": nueva_foto_b64,
+                            "estrategia": input_estrategia
+                        }
+                    })
+                    st.session_state.user = res.user
+                    st.session_state.nombre_trader = input_nombre
+                    st.session_state.capital_actual = input_cap_actual
+                    st.session_state.capital_meta = input_cap_meta
+                    
+                    st.toast("¡Perfil guardado con éxito!", icon="✅")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al guardar: {e}")
+
+        st.markdown("---")
+
+        # META DE CUENTA
+        st.markdown("### 🎯 Meta de Cuenta")
+        cap_act = st.session_state.capital_actual
+        cap_met = st.session_state.capital_meta
+        progreso = min(1.0, max(0.0, cap_act / cap_met)) if cap_met > 0 else 0.0
+        st.markdown(f"**Capital:** `${cap_act:,.0f}` / `${cap_met:,.0f}`")
+        st.progress(progreso)
+
+        st.markdown("---")
+
+        # RELOJ LOCAL AUTOMÁTICO
+        st.markdown("### ⏰ Hora Local")
+        st.components.v1.html(
+            """
+            <div id="clock" style="
+                font-family: 'Segoe UI', monospace;
+                font-size: 19px;
+                font-weight: bold;
+                color: #00f2fe;
+                background-color: #141a24;
+                border: 1px solid rgba(0, 210, 255, 0.4);
+                border-radius: 8px;
+                padding: 8px;
+                text-align: center;
+                box-shadow: 0px 0px 10px rgba(0, 242, 254, 0.2);
+            ">00:00:00</div>
+
+            <script>
+            function updateClock() {
+                var now = new Date();
+                var timeString = now.toLocaleTimeString([], { hour12: false });
+                document.getElementById('clock').innerHTML = timeString + " (Local)";
+            }
+            setInterval(updateClock, 1000);
+            updateClock();
+            </script>
+            """,
+            height=55
+        )
+
+        # SESIONES DE MERCADO
+        st.markdown("### 🌐 Sesiones de Mercado")
+        hora_utc = datetime.datetime.utcnow().hour
+        londres_status = '<span class="market-badge open">ABIERTO</span>' if 7 <= hora_utc <= 15 else '<span class="market-badge closed">CERRADO</span>'
+        ny_status = '<span class="market-badge open">ABIERTO</span>' if 12 <= hora_utc <= 20 else '<span class="market-badge closed">CERRADO</span>'
+        tokio_status = '<span class="market-badge open">ABIERTO</span>' if 0 <= hora_utc <= 9 else '<span class="market-badge closed">CERRADO</span>'
+
+        st.markdown(f"**GB Londres:** {londres_status}", unsafe_allow_html=True)
+        st.markdown(f"**US Nueva York:** {ny_status}", unsafe_allow_html=True)
+        st.markdown(f"**JP Tokio / Asia:** {tokio_status}", unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # REGLAS DE DISCIPLINA
+        st.markdown("### 🎯 Mis Reglas de Disciplina")
+        with st.expander("✏️ Editar Mis Reglas"):
+            input_reglas = st.text_area("Escribe tus reglas personalizadas:", value=st.session_state.reglas_disciplina, height=150)
+            if st.button("Guardar Reglas"):
+                st.session_state.reglas_disciplina = input_reglas
+                st.toast("¡Reglas actualizadas!", icon="✅")
+                st.rerun()
+
+        st.markdown(st.session_state.reglas_disciplina)
 
         st.markdown("---")
 
