@@ -277,13 +277,13 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # Reloj Chile
-        st.markdown("### ⏰ Hora Actual (Chile)")
+        # RELOJ DIGITAL EN VIVO - AUTOMÁTICO SEGÚN EL PAÍS DEL USUARIO
+        st.markdown("### ⏰ Hora Local")
         st.components.v1.html(
             """
             <div id="clock" style="
                 font-family: 'Segoe UI', monospace;
-                font-size: 20px;
+                font-size: 19px;
                 font-weight: bold;
                 color: #00f2fe;
                 background-color: #141a24;
@@ -292,14 +292,14 @@ def render_sidebar():
                 padding: 8px;
                 text-align: center;
                 box-shadow: 0px 0px 10px rgba(0, 242, 254, 0.2);
-            ">00:00:00 CLT</div>
+            ">00:00:00</div>
 
             <script>
             function updateClock() {
                 var now = new Date();
-                var options = { timeZone: 'America/Santiago', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
-                var timeString = new Intl.DateTimeFormat('es-CL', options).format(now);
-                document.getElementById('clock').innerHTML = timeString + " CLT";
+                // Obtener automáticamente la zona horaria del usuario (Chile, Colombia, México, etc.)
+                var timeString = now.toLocaleTimeString([], { hour12: false });
+                document.getElementById('clock').innerHTML = timeString + " (Local)";
             }
             setInterval(updateClock, 1000);
             updateClock();
@@ -422,7 +422,7 @@ def render_dashboard():
                 st.rerun()
 
     # --------------------------------------
-    # TAB 2: TRACK RECORD CALENDARIO LIMPIO
+    # TAB 2: TRACK RECORD CALENDARIO
     # --------------------------------------
     with tab2:
         st.info("💡 **¿Para qué sirve?** Vista mensual con cuadrícula de 7 días (Sun a Sat). Las ganancias/pérdidas se actualizan **automáticamente** al guardar trades.")
@@ -459,7 +459,6 @@ def render_dashboard():
         hoy = datetime.date.today()
         año, mes = hoy.year, hoy.month
         
-        # 6 = Domingo como primer día
         cal_obj = calendar.Calendar(firstweekday=6)
         mes_dias = cal_obj.monthdayscalendar(año, mes)
 
