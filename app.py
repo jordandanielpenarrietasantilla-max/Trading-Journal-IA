@@ -50,7 +50,7 @@ if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
 
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS (PERFECTO Y LEGIBLE)
+# 2. ESTILOS CSS PERSONALIZADOS
 # ==========================================
 def aplicar_estilos():
     css = """
@@ -81,7 +81,7 @@ def aplicar_estilos():
         border-right: 1px solid rgba(0, 210, 255, 0.2) !important;
     }
 
-    /* Expanders (Modificar Perfil) */
+    /* Expanders */
     div[data-testid="stExpander"] {
         background: rgba(15, 20, 30, 0.9) !important;
         border: 1px solid rgba(0, 210, 255, 0.3) !important;
@@ -89,7 +89,7 @@ def aplicar_estilos():
         margin-bottom: 12px !important;
     }
 
-    /* ESTILO CORREGIDO PARA EL SUBIDOR DE FOTOS */
+    /* Estilo para el Subidor de Fotos */
     div[data-testid="stFileUploader"] {
         background-color: #141a24 !important;
         border: 1px dashed #00f2fe !important;
@@ -107,7 +107,7 @@ def aplicar_estilos():
         color: #00f2fe !important;
     }
 
-    /* FIX DE CORRECCIÓN PARA DESPLEGABLES (SELECTBOX) */
+    /* Selectbox Fix */
     div[data-baseweb="select"] > div {
         background-color: #141a24 !important;
         border: 1px solid rgba(0, 210, 255, 0.5) !important;
@@ -137,7 +137,7 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
-    /* Botones Neón Cyberpunk */
+    /* Botones Neón */
     .stButton>button {
         background: linear-gradient(135deg, #00d2ff 0%, #2962ff 100%) !important;
         color: #ffffff !important;
@@ -231,7 +231,7 @@ def render_auth():
                     st.warning("Por favor llena todos los datos.")
 
 # ==========================================
-# 4. SIDEBAR (PERFIL Y FOTO DE USUARIO)
+# 4. SIDEBAR (PERFIL, RELOJ & NAVEGACIÓN)
 # ==========================================
 def render_sidebar():
     with st.sidebar:
@@ -240,7 +240,7 @@ def render_sidebar():
         user = st.session_state.user
         user_email = user.email if user else "trader@ejemplo.com"
         
-        # Obtener metadatos guardados del usuario en Supabase
+        # Cargar metadatos guardados del usuario
         metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
         
         nombre_actual = metadata.get("username", st.session_state.get("nombre_trader", "Trader Pro"))
@@ -262,7 +262,6 @@ def render_sidebar():
         with st.expander("⚙️ Modificar Perfil"):
             input_nombre = st.text_input("Nombre de Usuario", value=nombre_actual)
             
-            # Subir foto de perfil
             foto_subida = st.file_uploader("Seleccionar nueva foto", type=["jpg", "jpeg", "png", "webp"])
             
             lista_estrategias = ["Smart Money Concepts", "Price Action", "ICT", "Indicator Based", "Wyckoff", "Scalping"]
@@ -274,12 +273,10 @@ def render_sidebar():
             if st.button("Guardar Cambios de Perfil"):
                 nueva_foto_b64 = foto_b64
                 
-                # Convertir la nueva imagen si se sube una
                 if foto_subida is not None:
                     bytes_data = foto_subida.getvalue()
                     nueva_foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
                 
-                # Guardar foto y datos en Supabase Auth
                 try:
                     res = supabase.auth.update_user({
                         "data": {
@@ -310,6 +307,38 @@ def render_sidebar():
         st.progress(progreso)
 
         st.markdown("---")
+
+        # RELOJ DIGITAL EN VIVO
+        st.markdown("### ⏰ Hora Actual (UTC)")
+        st.components.v1.html(
+            """
+            <div id="clock" style="
+                font-family: 'Segoe UI', monospace;
+                font-size: 20px;
+                font-weight: bold;
+                color: #00f2fe;
+                background-color: #141a24;
+                border: 1px solid rgba(0, 210, 255, 0.4);
+                border-radius: 8px;
+                padding: 8px;
+                text-align: center;
+                box-shadow: 0px 0px 10px rgba(0, 242, 254, 0.2);
+            ">00:00:00 UTC</div>
+
+            <script>
+            function updateClock() {
+                var now = new Date();
+                var hours = String(now.getUTCHours()).padStart(2, '0');
+                var minutes = String(now.getUTCMinutes()).padStart(2, '0');
+                var seconds = String(now.getUTCSeconds()).padStart(2, '0');
+                document.getElementById('clock').innerHTML = hours + ":" + minutes + ":" + seconds + " UTC";
+            }
+            setInterval(updateClock, 1000);
+            updateClock();
+            </script>
+            """,
+            height=55
+        )
 
         # Sesiones de Mercado
         st.markdown("### 🌐 Sesiones de Mercado")
