@@ -36,29 +36,29 @@ if "authenticated" not in st.session_state:
 if "user" not in st.session_state:
     st.session_state.user = None
 
+# Variables editables de perfil en session_state
+if "nombre_trader" not in st.session_state:
+    st.session_state.nombre_trader = "Trader Pro"
+if "estrategia_trader" not in st.session_state:
+    st.session_state.estrategia_trader = "Smart Money Concepts"
+if "capital_actual" not in st.session_state:
+    st.session_state.capital_actual = 10000.0
+if "capital_meta" not in st.session_state:
+    st.session_state.capital_meta = 15000.0
+if "reglas_disciplina" not in st.session_state:
+    st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
+
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS (CORREGIDO)
+# 2. ESTILOS CSS PERSONALIZADOS (CORREGIDO Y LEGIBLE)
 # ==========================================
 def aplicar_estilos():
     css = """
     <style>
-    /* Animación Neón Suave */
-    @keyframes neonGlow {
-        0% { border-color: rgba(0, 242, 254, 0.4); box-shadow: 0 0 8px rgba(0, 242, 254, 0.15); }
-        50% { border-color: rgba(41, 98, 255, 0.7); box-shadow: 0 0 16px rgba(41, 98, 255, 0.3); }
-        100% { border-color: rgba(0, 242, 254, 0.4); box-shadow: 0 0 8px rgba(0, 242, 254, 0.15); }
-    }
-
     /* Fondo de la Aplicación */
     .stApp {
         background-color: #0b0e14 !important;
         color: #f0f3fa !important;
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-    }
-
-    /* Ocultar elementos rotos de íconos de Streamlit en expanders */
-    button[data-testid="stExpanderToggleIconButton"] {
-        color: #00f2fe !important;
     }
 
     /* Tipografía Global Legible */
@@ -80,10 +80,6 @@ def aplicar_estilos():
         border-right: 1px solid rgba(0, 210, 255, 0.2) !important;
     }
 
-    section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] {
-        padding-top: 1rem;
-    }
-
     /* Badges de Código / Textos Destacados */
     code, .stCodeBlock {
         background-color: rgba(0, 242, 254, 0.1) !important;
@@ -95,25 +91,44 @@ def aplicar_estilos():
         font-size: 0.88rem !important;
     }
 
-    /* Expanders (Acordeones como Modificar Perfil) */
+    /* Expanders (Modificar Perfil) */
     div[data-testid="stExpander"] {
-        background: rgba(15, 20, 30, 0.6) !important;
-        border: 1px solid rgba(0, 210, 255, 0.25) !important;
+        background: rgba(15, 20, 30, 0.8) !important;
+        border: 1px solid rgba(0, 210, 255, 0.3) !important;
         border-radius: 10px !important;
         margin-bottom: 12px !important;
     }
 
-    /* Tarjetas Neón Solo para Bloques Principales */
-    div[data-testid="stColumn"] > div {
-        background: rgba(15, 20, 28, 0.8) !important;
-        border: 1px solid rgba(0, 210, 255, 0.3) !important;
-        border-radius: 12px !important;
-        padding: 16px !important;
-        margin-bottom: 10px !important;
+    /* FIX CORRECCIÓN DE LEGIBILIDAD EN SELECTBOX / DROPDOWN */
+    div[data-baseweb="select"] > div {
+        background-color: #141a24 !important;
+        border: 1px solid rgba(0, 210, 255, 0.5) !important;
+        border-radius: 8px !important;
+    }
+    
+    div[data-baseweb="select"] span, div[data-baseweb="select"] div {
+        color: #00f2fe !important;
+        font-weight: 600 !important;
     }
 
-    /* Entradas de Texto, Números y Selects */
-    .stTextInput input, .stNumberInput input, .stTextArea textarea, div[data-baseweb="select"] > div {
+    /* Opciones flotantes del menú desplegable */
+    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
+        background-color: #141a24 !important;
+        border: 1px solid #00f2fe !important;
+    }
+
+    li[role="option"], div[role="option"] {
+        background-color: #141a24 !important;
+        color: #ffffff !important;
+    }
+
+    li[role="option"]:hover, div[role="option"]:hover {
+        background-color: #00d2ff !important;
+        color: #000000 !important;
+    }
+
+    /* Entradas de Texto y Números */
+    .stTextInput input, .stNumberInput input, .stTextArea textarea {
         background-color: #141a24 !important;
         color: #00f2fe !important;
         border: 1px solid rgba(0, 210, 255, 0.4) !important;
@@ -194,11 +209,7 @@ def render_auth():
                         st.session_state.user = res.user
                         st.rerun()
                     except Exception as e:
-                        err_msg = str(e)
-                        if "Email not confirmed" in err_msg:
-                            st.error("Error al iniciar sesión: Email no confirmado. Revisa tu bandeja de entrada o confirma el correo en Supabase.")
-                        else:
-                            st.error(f"Error al iniciar sesión: {err_msg}")
+                        st.error(f"Error al iniciar sesión: {e}")
                 else:
                     st.warning("Por favor completa todos los campos.")
 
@@ -211,14 +222,14 @@ def render_auth():
                 if reg_email and reg_pass:
                     try:
                         res = supabase.auth.sign_up({"email": reg_email, "password": reg_pass})
-                        st.success("¡Registro exitoso! Revisa tu correo electrónico para confirmar la cuenta antes de iniciar sesión.")
+                        st.success("¡Registro exitoso! Revisa tu correo o inicia sesión.")
                     except Exception as e:
                         st.error(f"Error al registrar: {e}")
                 else:
                     st.warning("Por favor llena todos los datos.")
 
 # ==========================================
-# 4. SIDEBAR (PERFIL Y NAVEGACIÓN)
+# 4. SIDEBAR (PERFIL Y CONFIGURACIÓN EDITABLE)
 # ==========================================
 def render_sidebar():
     with st.sidebar:
@@ -226,30 +237,43 @@ def render_sidebar():
         
         user_email = st.session_state.user.email if st.session_state.user else "trader@ejemplo.com"
         
-        st.markdown(f"""
-        **Trader Pro** `{user_email}`
-        """, unsafe_allow_html=True)
+        st.markdown(f"**{st.session_state.nombre_trader}**")
+        st.markdown(f"`{user_email}`")
+        st.caption(f"Estrategia: **{st.session_state.estrategia_trader}**")
 
+        # MODIFICAR PERFIL (NOMBRE, ESTRATEGIA, CAPITAL Y METAS)
         with st.expander("⚙️ Modificar Perfil"):
-            st.text_input("Nombre de Usuario", value="Trader Pro")
-            st.selectbox("Estrategia Principal", ["Smart Money Concepts", "Price Action", "ICT", "Indicator Based"])
-            if st.button("Guardar Cambios"):
-                st.toast("Perfil actualizado correctamente", icon="✅")
+            input_nombre = st.text_input("Nombre de Usuario", value=st.session_state.nombre_trader)
+            
+            lista_estrategias = ["Smart Money Concepts", "Price Action", "ICT", "Indicator Based", "Wyckoff", "Scalping / Order Flow"]
+            idx_est = lista_estrategias.index(st.session_state.estrategia_trader) if st.session_state.estrategia_trader in lista_estrategias else 0
+            input_estrategia = st.selectbox("Estrategia Principal", lista_estrategias, index=idx_est)
+            
+            input_cap_actual = st.number_input("Capital Actual ($USD)", value=float(st.session_state.capital_actual), step=500.0)
+            input_cap_meta = st.number_input("Meta de Capital ($USD)", value=float(st.session_state.capital_meta), step=1000.0)
+
+            if st.button("Guardar Perfil"):
+                st.session_state.nombre_trader = input_nombre
+                st.session_state.estrategia_trader = input_estrategia
+                st.session_state.capital_actual = input_cap_actual
+                st.session_state.capital_meta = input_cap_meta
+                st.toast("¡Perfil y capital actualizados!", icon="✅")
+                st.rerun()
 
         st.markdown("---")
         
-        # Meta de Cuenta
+        # Meta de Cuenta Dinámica
         st.markdown("### 🎯 Meta de Cuenta")
-        meta_actual = 10000
-        meta_objetivo = 15000
-        progreso = (meta_actual / meta_objetivo)
+        cap_act = st.session_state.capital_actual
+        cap_met = st.session_state.capital_meta
+        progreso = min(1.0, max(0.0, cap_act / cap_met)) if cap_met > 0 else 0.0
         
-        st.markdown(f"**Capital:** `${meta_actual:,.0f}` / `${meta_objetivo:,.0f}`")
+        st.markdown(f"**Capital:** `${cap_act:,.0f}` / `${cap_met:,.0f}`")
         st.progress(progreso)
 
         st.markdown("---")
 
-        # Sesiones de Mercado (Simuladas en tiempo real)
+        # Sesiones de Mercado
         st.markdown("### 🌐 Sesiones de Mercado")
         hora_utc = datetime.datetime.utcnow().hour
         
@@ -263,14 +287,17 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # Reglas de Disciplina
-        st.markdown("### 🎯 Reglas de Disciplina")
-        st.markdown("""
-        * 🛑 Acepta la pérdida antes de entrar.
-        * ✂️ Corta pérdidas rápido.
-        * 📈 Deja correr los ganadores.
-        * 🚫 Máximo 2 operaciones perdedoras por día.
-        """)
+        # REGLAS DE DISCIPLINA EDITABLES
+        st.markdown("### 🎯 Mis Reglas de Disciplina")
+        
+        with st.expander("✏️ Editar Mis Reglas"):
+            input_reglas = st.text_area("Escribe tus reglas personalizadas:", value=st.session_state.reglas_disciplina, height=150)
+            if st.button("Guardar Reglas"):
+                st.session_state.reglas_disciplina = input_reglas
+                st.toast("¡Reglas actualizadas!", icon="✅")
+                st.rerun()
+
+        st.markdown(st.session_state.reglas_disciplina)
 
         st.markdown("---")
 
@@ -285,7 +312,7 @@ def render_sidebar():
 def render_dashboard():
     render_sidebar()
 
-    st.markdown("## 🩵 Journaling & AI Trading Audit")
+    st.markdown("## ⚡ Journaling & AI Trading Audit")
     st.markdown("Bienvenido de nuevo. Mide tu progreso y disciplina en tiempo real.")
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -317,7 +344,6 @@ def render_dashboard():
             with sub_c2:
                 take_profit = st.number_input("Take Profit", value=0.0, format="%.5f")
                 
-                # Cálculo automático de Risk Reward
                 if precio_entrada > 0 and stop_loss > 0 and take_profit > 0:
                     riesgo = abs(precio_entrada - stop_loss)
                     beneficio = abs(take_profit - precio_entrada)
@@ -347,7 +373,7 @@ def render_dashboard():
                 st.image(before_img, caption="Setup Antes de Ejecutar", use_container_width=True)
 
             if st.button("💾 Guardar Trade en Diario"):
-                st.success("Trade guardado exitosamente en tu base de datos.")
+                st.success("Trade guardado exitosamente.")
 
     # --------------------------------------
     # TAB 2: CALCULADORA DE LOTAJE
@@ -356,7 +382,7 @@ def render_dashboard():
         st.markdown("### 🧮 Calculadora de Tamaño de Posición")
         col_a, col_b = st.columns(2)
         with col_a:
-            balance = st.number_input("Balance de Cuenta ($)", value=10000.0)
+            balance = st.number_input("Balance de Cuenta ($)", value=float(st.session_state.capital_actual))
             porcentaje_riesgo = st.number_input("Riesgo por Trade (%)", value=1.0)
             pips_sl = st.number_input("Distancia de Stop Loss (Pips / Puntos)", value=20.0)
         with col_b:
@@ -377,8 +403,8 @@ def render_dashboard():
         if chart_audit:
             st.image(chart_audit, caption="Análisis en proceso...", use_container_width=True)
             if st.button("🔍 Auditar Entrada con IA"):
-                with st.spinner("Analizando estructura de mercado, zonas de oferta/demanda y gestión de riesgo..."):
-                    st.info("💡 **Feedback de la IA:** La estructura muestra una tendencia alcista clara en H1. Tu entrada en la zona de demanda tiene sentido técnico, pero el Stop Loss se encuentra demasiado ajustado por debajo del mínimo anterior.")
+                with st.spinner("Analizando estructura de mercado..."):
+                    st.info("💡 **Feedback de la IA:** Tendencia alcista clara. Entrada en zona de demanda válida.")
 
     # --------------------------------------
     # TAB 4: PROYECCIONES
@@ -388,8 +414,7 @@ def render_dashboard():
         trades_mes = st.slider("Trades por Mes", 5, 50, 15)
         win_rate_est = st.slider("Win Rate Estimado (%)", 30, 90, 50)
         
-        # Simulación
-        capital_proyectado = 10000
+        capital_proyectado = st.session_state.capital_actual
         for _ in range(12):
             ganadores = trades_mes * (win_rate_est / 100.0)
             perdedores = trades_mes - ganadores
@@ -402,8 +427,7 @@ def render_dashboard():
     # --------------------------------------
     with tab5:
         st.markdown("### 📓 Bitácora Psicológica")
-        st.info("El 80% del éxito en el trading depende del control emocional. Mantén un registro diario de tus estados mentales.")
-        st.text_area("Reflexión de la semana:", value="Esta semana estuve enfocado. Respeté el stop loss en el trade de Oro y evité el Overtrading.")
+        st.text_area("Reflexión de la semana:", value="Esta semana estuvo enfocada. Respeté mi plan y mis reglas de disciplina.")
 
     # --------------------------------------
     # TAB 6: DASHBOARD & METRICAS
