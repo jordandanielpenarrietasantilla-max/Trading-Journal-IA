@@ -202,11 +202,18 @@ def aplicar_estilos():
 aplicar_estilos()
 
 # ==========================================
-# 3. VERIFICACIÓN DE DÍAS DE PRUEBA / PRO
+# 3. VERIFICACIÓN DE DÍAS DE PRUEBA / PRO / ADMIN
 # ==========================================
 def evaluar_suscripcion(user):
+    user_email = user.email if (user and hasattr(user, 'email')) else ""
+    
+    # 👑 REEMPLAZA ESTE CORREO POR TU CORREO REAL REGISTRADO
+    if user_email.lower() == "tu_correo_aqui@gmail.com":
+        return True, "Creador / Admin 👑", 99999
+
     metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
     
+    # Si fue activado como VIP
     if metadata.get("es_vip", False):
         return True, "Acceso PRO 💎", 999
 
@@ -353,7 +360,7 @@ def render_sidebar(estado_sub):
         st.markdown(f"**{nombre_actual}**")
         st.caption(f"`{user_email}`")
 
-        if "PRO" in estado_sub:
+        if "PRO" in estado_sub or "Admin" in estado_sub:
             st.success(f"💎 {estado_sub}")
         else:
             st.warning(f"⏳ {estado_sub}")
@@ -408,7 +415,6 @@ def render_dashboard():
             if before_img:
                 st.image(before_img, caption="Setup Antes de Ejecutar", use_container_width=True)
                 
-                # Botón para activar el escáner IA
                 if st.button("🧠 Escanear Gráfico y Autocompletar Campos"):
                     with st.spinner("Leyendo valores numéricos del gráfico con IA..."):
                         extracted = analizar_captura_tradingview(before_img.getvalue())
@@ -468,7 +474,6 @@ def render_dashboard():
                     "trades_cant": 1
                 }
                 if guardar_trade_supabase(user_id, nuevo_trade):
-                    # Resetear autocompletado
                     st.session_state.auto_entry = 0.0
                     st.session_state.auto_sl = 0.0
                     st.session_state.auto_tp = 0.0
@@ -505,7 +510,6 @@ def render_dashboard():
             for _, r in df_calendar.iterrows():
                 f_str = r['fecha']
                 pnl_map[f_str] = pnl_map.get(f_str, 0.0) + r['beneficio_usd']
-                # Contar exactamente 1 trade por cada registro real
                 trades_map[f_str] = trades_map.get(f_str, 0) + 1
 
         hoy = datetime.date.today()
@@ -569,7 +573,7 @@ def render_dashboard():
                         st.markdown(box_html, unsafe_allow_html=True)
 
     # --------------------------------------
-    # TAB 3 A TAB 8 (RESTO DE HERRAMIENTAS)
+    # TAB 3 A TAB 8
     # --------------------------------------
     with tab3:
         st.markdown("### 💬 Chat de Auditoría de Trading con IA")
