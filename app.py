@@ -5,7 +5,9 @@ import json
 import os
 import base64
 import pandas as pd
+import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 from supabase import create_client, Client
 
 # ==========================================
@@ -44,14 +46,19 @@ if "capital_meta" not in st.session_state:
 if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
 
-# Datos simulados/locales para analítica
+# Datos de prueba para el Track Record Calendario (PnL Diario)
 if "trades_db" not in st.session_state:
     st.session_state.trades_db = [
-        {"Fecha": "2026-07-20", "Hora": "09:00", "Par": "XAU/USD (Oro)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 250},
-        {"Fecha": "2026-07-21", "Hora": "10:30", "Par": "EUR/USD", "Resultado": "LOSS 🔴", "Emoción": "Ansioso ⚡", "Beneficio_USD": -100},
-        {"Fecha": "2026-07-22", "Hora": "09:30", "Par": "XAU/USD (Oro)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 300},
-        {"Fecha": "2026-07-23", "Hora": "14:00", "Par": "BTC/USD", "Resultado": "LOSS 🔴", "Emoción": "FOMO 🚀", "Beneficio_USD": -150},
-        {"Fecha": "2026-07-24", "Hora": "08:30", "Par": "US100 (Nasdaq)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 400},
+        {"Fecha": "2026-07-01", "Hora": "09:00", "Par": "XAU/USD (Oro)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 171, "Trades_Cant": 9},
+        {"Fecha": "2026-07-04", "Hora": "10:30", "Par": "EUR/USD", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 1600, "Trades_Cant": 8},
+        {"Fecha": "2026-07-05", "Hora": "09:30", "Par": "XAU/USD (Oro)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 2700, "Trades_Cant": 8},
+        {"Fecha": "2026-07-06", "Hora": "14:00", "Par": "BTC/USD", "Resultado": "LOSS 🔴", "Emoción": "Ansioso ⚡", "Beneficio_USD": -875, "Trades_Cant": 5},
+        {"Fecha": "2026-07-07", "Hora": "08:30", "Par": "US100 (Nasdaq)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 2700, "Trades_Cant": 4},
+        {"Fecha": "2026-07-08", "Hora": "09:00", "Par": "XAU/USD (Oro)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 4300, "Trades_Cant": 5},
+        {"Fecha": "2026-07-11", "Hora": "10:00", "Par": "GBP/USD", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 2700, "Trades_Cant": 8},
+        {"Fecha": "2026-07-12", "Hora": "11:00", "Par": "US100 (Nasdaq)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 5000, "Trades_Cant": 7},
+        {"Fecha": "2026-07-25", "Hora": "09:00", "Par": "XAU/USD (Oro)", "Resultado": "LOSS 🔴", "Emoción": "FOMO 🚀", "Beneficio_USD": -703, "Trades_Cant": 6},
+        {"Fecha": "2026-07-28", "Hora": "10:00", "Par": "EUR/USD", "Resultado": "LOSS 🔴", "Emoción": "Venganza 🛑", "Beneficio_USD": -5200, "Trades_Cant": 4},
     ]
 
 # ==========================================
@@ -100,12 +107,6 @@ def aplicar_estilos():
         background-color: #141a24 !important;
     }
 
-    div[data-testid="stFileUploader"] span, 
-    div[data-testid="stFileUploader"] button,
-    div[data-testid="stFileUploader"] small {
-        color: #00f2fe !important;
-    }
-
     div[data-baseweb="select"] > div {
         background-color: #141a24 !important;
         border: 1px solid rgba(0, 210, 255, 0.5) !important;
@@ -115,16 +116,6 @@ def aplicar_estilos():
     div[data-baseweb="select"] span, div[data-baseweb="select"] div {
         color: #00f2fe !important;
         font-weight: 600 !important;
-    }
-
-    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
-        background-color: #141a24 !important;
-        border: 1px solid #00f2fe !important;
-    }
-
-    li[role="option"], div[role="option"] {
-        background-color: #141a24 !important;
-        color: #ffffff !important;
     }
 
     .stTextInput input, .stNumberInput input, .stTextArea textarea {
@@ -182,10 +173,10 @@ def render_auth():
         
         st.markdown("""
         ### 🚀 ¿Por qué usar este Diario de Trading?
+        * 📅 **Track Record Calendario:** Visualiza tus días ganadores (verdes) y perdedores (rojos) como un profesional.
         * 👁️ **Escaneo Visual con IA:** Sube tus capturas de TradingView y extrae entradas, SL, TP y Ratio Risk/Reward.
         * 💬 **Chat de Auditoría con IA:** Conversa directamente con tu historial para descubrir patrones ocultos.
-        * 🧠 **Psicotrading y Bitácora Emocional:** Detecta qué estados de ánimo afectan tu rentabilidad.
-        * 🧮 **Calculadora de Lotaje Incorporada:** Ajusta el tamaño de posición exacto para Forex, Oro, Criptos e Índices.
+        * 🧮 **Calculadora de Lotaje Incorporada:** Ajusta el tamaño de posición exacto.
         """)
 
     with col2:
@@ -373,8 +364,9 @@ def render_dashboard():
     st.markdown("## ⚡ Journaling & AI Trading Audit")
     st.markdown("Bienvenido de nuevo. Mide tu progreso y analiza tus resultados en tiempo real.")
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "➕ Registrar Trade", 
+        "📅 Track Record PnL",
         "💬 Chat IA & Auditoría",
         "🧮 Calc. Lotaje", 
         "🧠 Análisis vs IA", 
@@ -387,8 +379,7 @@ def render_dashboard():
     # TAB 1: REGISTRAR TRADE
     # --------------------------------------
     with tab1:
-        st.info("💡 **¿Para qué sirve?** Registra los detalles técnicos, precio de entrada, Stop Loss, Take Profit y tu estado emocional al momento de tomar la operación. Esto servirá para auditar tus hábitos con Inteligencia Artificial.")
-        
+        st.info("💡 **¿Para qué sirve?** Registra tus entradas técnicas, precio, Stop Loss, Take Profit y tu estado emocional para auditar tus hábitos con la IA.")
         col_left, col_right = st.columns([1, 1])
 
         with col_left:
@@ -423,12 +414,12 @@ def render_dashboard():
                 "Venganza / Frustrado 🛑", 
                 "Eufórico / Sobre-confiado 😎"
             ])
-            notas_emocionales = st.text_area("Notas emocionales de la sesión:", placeholder="Escribe aquí si respetaste tu plan o qué detonó tu entrada...")
+            notas_emocionales = st.text_area("Notas emocionales de la sesión:", placeholder="Escribe aquí si respetaste tu plan...")
 
         with col_right:
             st.markdown("### 🖼️ Capturas del Gráfico (Antes & Después)")
-            before_img = st.file_uploader("1️⃣ Screenshot ANTES (Entrada / Setup)", type=["png", "jpg", "jpeg"])
-            after_img = st.file_uploader("2️⃣ Screenshot DESPUÉS (Cierre / Resultado)", type=["png", "jpg", "jpeg"])
+            before_img = st.file_uploader("1️⃣ Screenshot ANTES", type=["png", "jpg", "jpeg"])
+            after_img = st.file_uploader("2️⃣ Screenshot DESPUÉS", type=["png", "jpg", "jpeg"])
 
             if before_img:
                 st.image(before_img, caption="Setup Antes de Ejecutar", use_container_width=True)
@@ -437,24 +428,90 @@ def render_dashboard():
                 pnl = 200 if "WIN" in resultado else (-100 if "LOSS" in resultado else 0)
                 st.session_state.trades_db.append({
                     "Fecha": str(fecha_op), "Hora": datetime.datetime.now().strftime("%H:%M"), 
-                    "Par": par, "Resultado": resultado, "Emoción": emocion, "Beneficio_USD": pnl
+                    "Par": par, "Resultado": resultado, "Emoción": emoción, "Beneficio_USD": pnl, "Trades_Cant": 1
                 })
                 st.success("¡Trade guardado exitosamente!")
 
     # --------------------------------------
-    # TAB 2: CHAT DE AUDITORÍA CON IA
+    # TAB 2: TRACK RECORD CALENDARIO PnL (NUEVO)
     # --------------------------------------
     with tab2:
-        st.info("💡 **¿Para qué sirve?** Tu asistente virtual lee todo tu historial de operaciones guardadas. Puedes preguntarle en lenguaje natural qué activos son más rentables para ti o qué emoción detona tus pérdidas.")
+        st.info("💡 **¿Para qué sirve?** Calendario visual estilo Prop Firm que muestra de forma clara los días en verde (ganancias) y rojo (pérdidas), con el monto en $USD y la cantidad de operaciones ejecutadas por día.")
         
+        st.markdown("### 📅 Track Record - Calendario Mensual PnL")
+
+        # Procesar datos acumulados por fecha
+        df_calendar = pd.DataFrame(st.session_state.trades_db)
+        if not df_calendar.empty:
+            df_calendar['Fecha_dt'] = pd.to_datetime(df_calendar['Fecha'])
+            
+            # Agrupar por día
+            daily_pnl = df_calendar.groupby('Fecha_dt').agg(
+                Pnl=('Beneficio_USD', 'sum'),
+                Trades=('Trades_Cant', 'sum')
+            ).reset_index()
+
+            # Resumen del Mes
+            total_mes = daily_pnl['Pnl'].sum()
+            dias_ganadores = len(daily_pnl[daily_pnl['Pnl'] > 0])
+            dias_perdedores = len(daily_pnl[daily_pnl['Pnl'] < 0])
+
+            c_rec1, c_rec2, c_rec3 = st.columns(3)
+            c_rec1.metric("Resultado Neto del Mes", f"${total_mes:,.2f}", f"{'+' if total_mes >= 0 else ''}{total_mes:,.2f}")
+            c_rec2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
+            c_rec3.metric("Días Rojos 🟥", f"{dias_perdedores} días")
+
+            st.markdown("---")
+
+            # Matriz visual estilo calendario de tarjetas
+            cols_cal = st.columns(5) # Lunes a Viernes
+            dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
+
+            for i, col in enumerate(cols_cal):
+                with col:
+                    st.markdown(f"#### {dias_semana[i]}")
+
+            for idx, row in daily_pnl.iterrows():
+                dt = row['Fecha_dt']
+                pnl = row['Pnl']
+                trades_c = row['Trades']
+                dia_num = dt.day
+
+                bg_color = "rgba(76, 175, 80, 0.2)" if pnl > 0 else "rgba(244, 67, 54, 0.2)"
+                border_color = "#4caf50" if pnl > 0 else "#f44336"
+                color_texto = "#4caf50" if pnl > 0 else "#f44336"
+                pnl_str = f"+${pnl:,.0f}" if pnl > 0 else f"-${abs(pnl):,.0f}"
+
+                card_html = f"""
+                <div style="
+                    background-color: {bg_color};
+                    border: 1px solid {border_color};
+                    border-radius: 10px;
+                    padding: 12px;
+                    margin-bottom: 12px;
+                    text-align: center;
+                ">
+                    <span style="font-size: 0.8rem; color: #888;">Día {dia_num}</span><br>
+                    <span style="font-size: 1.3rem; font-weight: bold; color: {color_texto};">{pnl_str}</span><br>
+                    <span style="font-size: 0.85rem; color: #aaa;">{trades_c} trades</span>
+                </div>
+                """
+                st.markdown(card_html, unsafe_allow_html=True)
+        else:
+            st.warning("No hay operaciones registradas este mes.")
+
+    # --------------------------------------
+    # TAB 3: CHAT DE AUDITORÍA CON IA
+    # --------------------------------------
+    with tab3:
+        st.info("💡 **¿Para qué sirve?** Asistente virtual conectado a tu historial. Pregúntale en español sobre tus hábitos, activos más rentables o sesgos psicológicos.")
         st.markdown("### 💬 Chat de Auditoría de Trading con IA")
-        st.caption("Pregúntale a la IA sobre tus patrones de trading, errores emocionales o mejor activo.")
 
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        if prompt := st.chat_input("Escribe tu duda (ej. ¿Por qué estoy perdiendo en el Oro?)..."):
+        if prompt := st.chat_input("Escribe tu duda (ej. ¿Cuáles son mis días más perdedores?)..."):
             st.session_state.chat_history.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
@@ -463,21 +520,20 @@ def render_dashboard():
                 with st.spinner("Analizando tu historial de operaciones... 🧠"):
                     respuesta_ia = "Basándome en tus datos recientes:\n\n"
                     if "oro" in prompt.lower() or "xau" in prompt.lower():
-                        respuesta_ia += "🎯 **Análisis de XAU/USD:** Tienes un Win Rate alto cuando entras relajado (Disciplinado/Neutro), pero tus pérdidas ocurren en horarios cercanos a aperturas de sesión con volatilidad impulsiva."
-                    elif "emocion" in prompt.lower() or "perder" in prompt.lower():
-                        respuesta_ia += "⚠️ **Patrón Emocional Detectado:** Las operaciones asociadas a 'Ansioso' o 'FOMO' representan el 80% de tus pérdidas. Te sugiero reducir el riesgo al 0.5% cuando sientas aceleración cardíaca antes de entrar."
+                        respuesta_ia += "🎯 **Análisis de XAU/USD:** Tienes un Win Rate alto cuando entras relajado, pero tus pérdidas ocurren en aperturas de sesión con alta volatilidad."
+                    elif "perder" in prompt.lower() or "dia" in prompt.lower():
+                        respuesta_ia += "⚠️ **Patrón Detectado:** Los días con más de 6 trades concentran el 90% de tus pérdidas. Te sugiero limitar tu operativa a máximo 3 trades diarios."
                     else:
-                        respuesta_ia += f"Has registrado {len(st.session_state.trades_db)} operaciones. Tu tasa de acierto es sólida, pero mantén la atención en registrar siempre la nota emocional de cierre."
+                        respuesta_ia += f"Has registrado {len(st.session_state.trades_db)} operaciones en total. Tu rendimiento global muestra buena gestión de riesgo."
 
                     st.markdown(respuesta_ia)
                     st.session_state.chat_history.append({"role": "assistant", "content": respuesta_ia})
 
     # --------------------------------------
-    # TAB 3: CALCULADORA DE LOTAJE
+    # TAB 4: CALCULADORA DE LOTAJE
     # --------------------------------------
-    with tab3:
-        st.info("💡 **¿Para qué sirve?** Calcula el tamaño exacto de tu posición (Lotes) en base al balance de tu cuenta y la distancia de tu Stop Loss. Protege tu capital evitando sobreapalancarte.")
-        
+    with tab4:
+        st.info("💡 **¿Para qué sirve?** Calcula los Lotes exactos en base a tu Stop Loss para no arriesgar más del % deseado por operación.")
         st.markdown("### 🧮 Calculadora de Tamaño de Posición")
         col_a, col_b = st.columns(2)
         with col_a:
@@ -492,13 +548,11 @@ def render_dashboard():
             st.metric("Lotes Sugeridos (Forex Standard)", f"{lotaje_estimado:.2f} Lotes")
 
     # --------------------------------------
-    # TAB 4: ANÁLISIS VS IA
+    # TAB 5: ANÁLISIS VS IA
     # --------------------------------------
-    with tab4:
-        st.info("💡 **¿Para qué sirve?** Sube una captura de pantalla del gráfico de tu análisis previo a ejecutar el trade para que el modelo de Inteligencia Artificial audite la validez de tu zona de entrada, dirección y Stop Loss.")
-        
+    with tab5:
+        st.info("💡 **¿Para qué sirve?** Sube la captura de tu setup previo para que la IA escanee la estructura de mercado y valide tu hipótesis.")
         st.markdown("### 🤖 Auditoría Visual con Inteligencia Artificial")
-        st.markdown("Sube una captura de pantalla de tu gráfico para recibir feedback técnico instantáneo.")
         
         chart_audit = st.file_uploader("Subir Gráfico para Auditoría", type=["png", "jpg", "jpeg"], key="audit_upload")
         if chart_audit:
@@ -508,11 +562,10 @@ def render_dashboard():
                     st.info("💡 **Feedback de la IA:** Tendencia alcista clara. Entrada en zona de demanda válida.")
 
     # --------------------------------------
-    # TAB 5: PROYECCIONES
+    # TAB 6: PROYECCIONES
     # --------------------------------------
-    with tab5:
-        st.info("💡 **¿Para qué sirve?** Simula el crecimiento exponencial de tu cuenta en un horizonte de 12 meses usando la potencia del interés compuesto en base a tu volumen de trades y Win Rate estimado.")
-        
+    with tab6:
+        st.info("💡 **¿Para qué sirve?** Simula el crecimiento de tu capital a 12 meses vista usando interés compuesto.")
         st.markdown("### 📈 Proyección de Crecimiento Interés Compuesto")
         trades_mes = st.slider("Trades por Mes", 5, 50, 15)
         win_rate_est = st.slider("Win Rate Estimado (%)", 30, 90, 50)
@@ -526,20 +579,18 @@ def render_dashboard():
         st.metric("Capital Estimado a 12 Meses", f"${capital_proyectado:,.2f}")
 
     # --------------------------------------
-    # TAB 6: DIARIO EMOCIONAL
+    # TAB 7: DIARIO EMOCIONAL
     # --------------------------------------
-    with tab6:
-        st.info("💡 **¿Para qué sirve?** Espacio dedicado a la psicología operativa. Escribe reflexiones semanales, hábitos, nivel de disciplina y áreas a mejorar para dominar la mentalidad de trader profesional.")
-        
+    with tab7:
+        st.info("💡 **¿Para qué sirve?** Espacio de introspección semanal para escribir sobre hábitos, foco mental y control emocional.")
         st.markdown("### 📓 Bitácora Psicológica")
         st.text_area("Reflexión de la semana:", value="Esta semana estuvo enfocada. Respeté mi plan y mis reglas de disciplina.")
 
     # --------------------------------------
-    # TAB 7: DASHBOARD Y RENDIMIENTO
+    # TAB 8: DASHBOARD Y RENDIMIENTO
     # --------------------------------------
-    with tab7:
-        st.info("💡 **¿Para qué sirve?** Panel estadístico central. Muestra tus métricas avanzadas (Win Rate, Profit Factor, Promedio R:R) y un mapa de rendimiento visual para ver cómo impacta cada emoción en tus resultados.")
-        
+    with tab8:
+        st.info("💡 **¿Para qué sirve?** Métricas operativas globales y gráfico visual del comportamiento del capital.")
         st.markdown("### 📊 Métricas Operativas & Horas de Oro")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Win Rate Total", "60.0%", "+2.1%")
