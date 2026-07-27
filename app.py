@@ -122,7 +122,7 @@ def analizar_captura_tradingview(image_bytes):
         return None
 
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS
+# 2. ESTILOS CSS PERSONALIZADOS (FIX CHAT INPUT)
 # ==========================================
 def aplicar_estilos():
     css = """
@@ -174,6 +174,24 @@ def aplicar_estilos():
         color: #00f2fe !important;
         border: 1px solid rgba(0, 210, 255, 0.4) !important;
         border-radius: 8px !important;
+    }
+
+    /* FIX DEFINITIVO PARA EL CAMPO DEL CHAT */
+    div[data-testid="stChatInput"] {
+        background-color: #141a24 !important;
+        border-radius: 12px !important;
+    }
+    
+    div[data-testid="stChatInput"] textarea {
+        background-color: #141a24 !important;
+        color: #00f2fe !important;
+        -webkit-text-fill-color: #00f2fe !important;
+        font-size: 1rem !important;
+    }
+
+    div[data-testid="stChatInput"] textarea::placeholder {
+        color: #8899a6 !important;
+        -webkit-text-fill-color: #8899a6 !important;
     }
 
     .stButton>button {
