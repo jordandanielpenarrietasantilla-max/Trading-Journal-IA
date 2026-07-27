@@ -46,13 +46,11 @@ if "capital_actual" not in st.session_state:
     st.session_state.capital_actual = 10000.0
 if "capital_meta" not in st.session_state:
     st.session_state.capital_meta = 15000.0
-if "foto_perfil_b64" not in st.session_state:
-    st.session_state.foto_perfil_b64 = None
 if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
 
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS (CORREGIDO Y LEGIBLE)
+# 2. ESTILOS CSS PERSONALIZADOS (PERFECTO Y LEGIBLE)
 # ==========================================
 def aplicar_estilos():
     css = """
@@ -83,26 +81,33 @@ def aplicar_estilos():
         border-right: 1px solid rgba(0, 210, 255, 0.2) !important;
     }
 
-    /* Badges de Código / Textos Destacados */
-    code, .stCodeBlock {
-        background-color: rgba(0, 242, 254, 0.1) !important;
-        color: #00f2fe !important;
-        border: 1px solid rgba(0, 242, 254, 0.3) !important;
-        border-radius: 6px !important;
-        padding: 3px 8px !important;
-        font-weight: 600 !important;
-        font-size: 0.88rem !important;
-    }
-
     /* Expanders (Modificar Perfil) */
     div[data-testid="stExpander"] {
-        background: rgba(15, 20, 30, 0.8) !important;
+        background: rgba(15, 20, 30, 0.9) !important;
         border: 1px solid rgba(0, 210, 255, 0.3) !important;
         border-radius: 10px !important;
         margin-bottom: 12px !important;
     }
 
-    /* FIX CORRECCIÓN DE LEGIBILIDAD EN SELECTBOX / DROPDOWN */
+    /* ESTILO CORREGIDO PARA EL SUBIDOR DE FOTOS */
+    div[data-testid="stFileUploader"] {
+        background-color: #141a24 !important;
+        border: 1px dashed #00f2fe !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+    }
+
+    div[data-testid="stFileUploader"] section {
+        background-color: #141a24 !important;
+    }
+
+    div[data-testid="stFileUploader"] span, 
+    div[data-testid="stFileUploader"] button,
+    div[data-testid="stFileUploader"] small {
+        color: #00f2fe !important;
+    }
+
+    /* FIX DE CORRECCIÓN PARA DESPLEGABLES (SELECTBOX) */
     div[data-baseweb="select"] > div {
         background-color: #141a24 !important;
         border: 1px solid rgba(0, 210, 255, 0.5) !important;
@@ -114,7 +119,6 @@ def aplicar_estilos():
         font-weight: 600 !important;
     }
 
-    /* Opciones flotantes del menú desplegable */
     div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
         background-color: #141a24 !important;
         border: 1px solid #00f2fe !important;
@@ -125,11 +129,6 @@ def aplicar_estilos():
         color: #ffffff !important;
     }
 
-    li[role="option"]:hover, div[role="option"]:hover {
-        background-color: #00d2ff !important;
-        color: #000000 !important;
-    }
-
     /* Entradas de Texto y Números */
     .stTextInput input, .stNumberInput input, .stTextArea textarea {
         background-color: #141a24 !important;
@@ -138,7 +137,7 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
-    /* Botones Estilo Cyberpunk/Neon */
+    /* Botones Neón Cyberpunk */
     .stButton>button {
         background: linear-gradient(135deg, #00d2ff 0%, #2962ff 100%) !important;
         color: #ffffff !important;
@@ -232,58 +231,76 @@ def render_auth():
                     st.warning("Por favor llena todos los datos.")
 
 # ==========================================
-# 4. SIDEBAR (PERFIL Y CONFIGURACIÓN CON FOTO)
+# 4. SIDEBAR (PERFIL Y FOTO DE USUARIO)
 # ==========================================
 def render_sidebar():
     with st.sidebar:
         st.markdown("### 👤 Perfil Trader")
         
-        user_email = st.session_state.user.email if st.session_state.user else "trader@ejemplo.com"
+        user = st.session_state.user
+        user_email = user.email if user else "trader@ejemplo.com"
         
-        # Mostrar foto de perfil o avatar por defecto
+        # Obtener metadatos guardados del usuario en Supabase
+        metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
+        
+        nombre_actual = metadata.get("username", st.session_state.get("nombre_trader", "Trader Pro"))
+        foto_b64 = metadata.get("avatar_b64", None)
+        
+        # Mostrar Foto o Avatar
         col_img, col_txt = st.columns([1, 2])
         with col_img:
-            if st.session_state.foto_perfil_b64:
-                st.image(f"data:image/png;base64,{st.session_state.foto_perfil_b64}", width=70)
+            if foto_b64:
+                st.markdown(f'<img src="data:image/png;base64,{foto_b64}" style="width:65px; height:65px; border-radius:50%; object-fit:cover; border:2px solid #00f2fe;">', unsafe_allow_html=True)
             else:
                 st.markdown("👤")
                 
         with col_txt:
-            st.markdown(f"**{st.session_state.nombre_trader}**")
+            st.markdown(f"**{nombre_actual}**")
             st.caption(f"`{user_email}`")
-            st.caption(f"Estrategia: **{st.session_state.estrategia_trader}**")
 
-        # MODIFICAR PERFIL (NOMBRE, FOTO, ESTRATEGIA, CAPITAL Y METAS)
+        # FORMULARIO EDITAR PERFIL
         with st.expander("⚙️ Modificar Perfil"):
-            input_nombre = st.text_input("Nombre de Usuario", value=st.session_state.nombre_trader)
+            input_nombre = st.text_input("Nombre de Usuario", value=nombre_actual)
             
-            # Cargar archivo de foto de perfil
-            foto_subida = st.file_uploader("Subir Foto de Perfil", type=["jpg", "jpeg", "png", "webp"])
+            # Subir foto de perfil
+            foto_subida = st.file_uploader("Seleccionar nueva foto", type=["jpg", "jpeg", "png", "webp"])
             
-            lista_estrategias = ["Smart Money Concepts", "Price Action", "ICT", "Indicator Based", "Wyckoff", "Scalping / Order Flow"]
-            idx_est = lista_estrategias.index(st.session_state.estrategia_trader) if st.session_state.estrategia_trader in lista_estrategias else 0
-            input_estrategia = st.selectbox("Estrategia Principal", lista_estrategias, index=idx_est)
+            lista_estrategias = ["Smart Money Concepts", "Price Action", "ICT", "Indicator Based", "Wyckoff", "Scalping"]
+            input_estrategia = st.selectbox("Estrategia Principal", lista_estrategias)
             
             input_cap_actual = st.number_input("Capital Actual ($USD)", value=float(st.session_state.capital_actual), step=500.0)
             input_cap_meta = st.number_input("Meta de Capital ($USD)", value=float(st.session_state.capital_meta), step=1000.0)
 
-            if st.button("Guardar Perfil"):
-                st.session_state.nombre_trader = input_nombre
-                st.session_state.estrategia_trader = input_estrategia
-                st.session_state.capital_actual = input_cap_actual
-                st.session_state.capital_meta = input_cap_meta
+            if st.button("Guardar Cambios de Perfil"):
+                nueva_foto_b64 = foto_b64
                 
-                # Si subió una foto nueva, la convertimos a Base64
+                # Convertir la nueva imagen si se sube una
                 if foto_subida is not None:
                     bytes_data = foto_subida.getvalue()
-                    st.session_state.foto_perfil_b64 = base64.b64encode(bytes_data).decode("utf-8")
+                    nueva_foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
                 
-                st.toast("¡Perfil y foto actualizados!", icon="✅")
-                st.rerun()
+                # Guardar foto y datos en Supabase Auth
+                try:
+                    res = supabase.auth.update_user({
+                        "data": {
+                            "username": input_nombre,
+                            "avatar_b64": nueva_foto_b64,
+                            "estrategia": input_estrategia
+                        }
+                    })
+                    st.session_state.user = res.user
+                    st.session_state.nombre_trader = input_nombre
+                    st.session_state.capital_actual = input_cap_actual
+                    st.session_state.capital_meta = input_cap_meta
+                    
+                    st.toast("¡Foto y Perfil guardados con éxito!", icon="✅")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al guardar: {e}")
 
         st.markdown("---")
-        
-        # Meta de Cuenta Dinámica
+
+        # Meta de Cuenta
         st.markdown("### 🎯 Meta de Cuenta")
         cap_act = st.session_state.capital_actual
         cap_met = st.session_state.capital_meta
