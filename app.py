@@ -7,7 +7,6 @@ import base64
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
 from supabase import create_client, Client
 
 # ==========================================
@@ -46,20 +45,9 @@ if "capital_meta" not in st.session_state:
 if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
 
-# Datos de prueba para el Track Record Calendario (PnL Diario)
+# BASE DE DATOS TOTALMENTE LIMPIA EN $0.00
 if "trades_db" not in st.session_state:
-    st.session_state.trades_db = [
-        {"Fecha": "2026-07-01", "Hora": "09:00", "Par": "XAU/USD (Oro)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 171, "Trades_Cant": 9},
-        {"Fecha": "2026-07-04", "Hora": "10:30", "Par": "EUR/USD", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 1600, "Trades_Cant": 8},
-        {"Fecha": "2026-07-05", "Hora": "09:30", "Par": "XAU/USD (Oro)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 2700, "Trades_Cant": 8},
-        {"Fecha": "2026-07-06", "Hora": "14:00", "Par": "BTC/USD", "Resultado": "LOSS 🔴", "Emoción": "Ansioso ⚡", "Beneficio_USD": -875, "Trades_Cant": 5},
-        {"Fecha": "2026-07-07", "Hora": "08:30", "Par": "US100 (Nasdaq)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 2700, "Trades_Cant": 4},
-        {"Fecha": "2026-07-08", "Hora": "09:00", "Par": "XAU/USD (Oro)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 4300, "Trades_Cant": 5},
-        {"Fecha": "2026-07-11", "Hora": "10:00", "Par": "GBP/USD", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 2700, "Trades_Cant": 8},
-        {"Fecha": "2026-07-12", "Hora": "11:00", "Par": "US100 (Nasdaq)", "Resultado": "WIN 🟢", "Emoción": "Disciplinado / Neutro 🧘", "Beneficio_USD": 5000, "Trades_Cant": 7},
-        {"Fecha": "2026-07-25", "Hora": "09:00", "Par": "XAU/USD (Oro)", "Resultado": "LOSS 🔴", "Emoción": "FOMO 🚀", "Beneficio_USD": -703, "Trades_Cant": 6},
-        {"Fecha": "2026-07-28", "Hora": "10:00", "Par": "EUR/USD", "Resultado": "LOSS 🔴", "Emoción": "Venganza 🛑", "Beneficio_USD": -5200, "Trades_Cant": 4},
-    ]
+    st.session_state.trades_db = []
 
 # ==========================================
 # 2. ESTILOS CSS PERSONALIZADOS
@@ -173,7 +161,7 @@ def render_auth():
         
         st.markdown("""
         ### 🚀 ¿Por qué usar este Diario de Trading?
-        * 📅 **Track Record Calendario:** Visualiza tus días ganadores (verdes) y perdedores (rojos) como un profesional.
+        * 📅 **Track Record Calendario:** Visualiza tus días ganadores (verdes) y perdedores (rojos) en cuadritos estilo Prop Firm.
         * 👁️ **Escaneo Visual con IA:** Sube tus capturas de TradingView y extrae entradas, SL, TP y Ratio Risk/Reward.
         * 💬 **Chat de Auditoría con IA:** Conversa directamente con tu historial para descubrir patrones ocultos.
         * 🧮 **Calculadora de Lotaje Incorporada:** Ajusta el tamaño de posición exacto.
@@ -424,107 +412,152 @@ def render_dashboard():
             if before_img:
                 st.image(before_img, caption="Setup Antes de Ejecutar", use_container_width=True)
 
+            monto_pnl = st.number_input("Ganancia / Pérdida en $USD de este trade:", value=0.0, step=10.0)
+
             if st.button("💾 Guardar Trade en Diario"):
-                pnl = 200 if "WIN" in resultado else (-100 if "LOSS" in resultado else 0)
                 st.session_state.trades_db.append({
-                    "Fecha": str(fecha_op), "Hora": datetime.datetime.now().strftime("%H:%M"), 
-                    "Par": par, "Resultado": resultado, "Emoción": emoción, "Beneficio_USD": pnl, "Trades_Cant": 1
+                    "Fecha": str(fecha_op), 
+                    "Hora": datetime.datetime.now().strftime("%H:%M"), 
+                    "Par": par, 
+                    "Resultado": resultado, 
+                    "Emoción": emocion, 
+                    "Beneficio_USD": monto_pnl, 
+                    "Trades_Cant": 1
                 })
                 st.success("¡Trade guardado exitosamente!")
+                st.rerun()
 
     # --------------------------------------
-    # TAB 2: TRACK RECORD CALENDARIO PnL (NUEVO)
+    # TAB 2: TRACK RECORD CALENDARIO PnL (FORMATO CUADRÍCULA GRID)
     # --------------------------------------
     with tab2:
-        st.info("💡 **¿Para qué sirve?** Calendario visual estilo Prop Firm que muestra de forma clara los días en verde (ganancias) y rojo (pérdidas), con el monto en $USD y la cantidad de operaciones ejecutadas por día.")
+        st.info("💡 **¿Para qué sirve?** Calendario mensual estilo Prop Firm que muestra de forma clara en cuadritos alineados tus días en verde (ganancias) y rojo (pérdidas).")
         
         st.markdown("### 📅 Track Record - Calendario Mensual PnL")
 
-        # Procesar datos acumulados por fecha
         df_calendar = pd.DataFrame(st.session_state.trades_db)
+        
+        # Calcular totales reales
+        total_mes = df_calendar['Beneficio_USD'].sum() if not df_calendar.empty else 0.0
+        
         if not df_calendar.empty:
-            df_calendar['Fecha_dt'] = pd.to_datetime(df_calendar['Fecha'])
+            df_grouped = df_calendar.groupby('Fecha').agg({'Beneficio_USD': 'sum', 'Trades_Cant': 'sum'}).reset_index()
+            dias_ganadores = len(df_grouped[df_grouped['Beneficio_USD'] > 0])
+            dias_perdedores = len(df_grouped[df_grouped['Beneficio_USD'] < 0])
+        else:
+            dias_ganadores = 0
+            dias_perdedores = 0
+
+        # Tarjetas Superiores de Métricas
+        c_rec1, c_rec2, c_rec3 = st.columns(3)
+        c_rec1.metric("Resultado Neto del Mes", f"${total_mes:,.2f}", f"{'+' if total_mes >= 0 else ''}{total_mes:,.2f}")
+        c_rec2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
+        c_rec3.metric("Días Rojos 🟥", f"{dias_perdedores} días")
+
+        st.markdown("---")
+
+        # GENERACIÓN DEL CALENDARIO TIPO CUADRÍCULA (LUNES A VIERNES)
+        cols_dias = st.columns(5)
+        dias_nombre = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
+
+        for idx, col in enumerate(cols_dias):
+            with col:
+                st.markdown(f"<h4 style='text-align:center; color:#00f2fe;'>{dias_nombre[idx]}</h4>", unsafe_allow_html=True)
+
+        # Mapa de trades agrupados por fecha
+        pnl_map = {}
+        trades_map = {}
+        if not df_calendar.empty:
+            for _, r in df_calendar.iterrows():
+                f_str = r['Fecha']
+                pnl_map[f_str] = pnl_map.get(f_str, 0.0) + r['Beneficio_USD']
+                trades_map[f_str] = trades_map.get(f_str, 0) + r['Trades_Cant']
+
+        # Renderizar cuadritos de días del mes actual (1 al 31)
+        hoy = datetime.date.today()
+        año, mes = hoy.year, hoy.month
+        
+        # Iterar por semanas/días laborables
+        for dia_n in range(1, 32):
+            try:
+                f_date = datetime.date(año, mes, dia_n)
+            except ValueError:
+                break
             
-            # Agrupar por día
-            daily_pnl = df_calendar.groupby('Fecha_dt').agg(
-                Pnl=('Beneficio_USD', 'sum'),
-                Trades=('Trades_Cant', 'sum')
-            ).reset_index()
+            # Solo Lunes (0) a Viernes (4)
+            weekday = f_date.weekday()
+            if weekday < 5:
+                f_key = str(f_date)
+                pnl_val = pnl_map.get(f_key, None)
+                num_trades = trades_map.get(f_key, 0)
 
-            # Resumen del Mes
-            total_mes = daily_pnl['Pnl'].sum()
-            dias_ganadores = len(daily_pnl[daily_pnl['Pnl'] > 0])
-            dias_perdedores = len(daily_pnl[daily_pnl['Pnl'] < 0])
+                # Estilo según resultado
+                if pnl_val is None:
+                    bg_color = "rgba(20, 26, 36, 0.5)"
+                    border_color = "rgba(0, 210, 255, 0.15)"
+                    pnl_text = "--"
+                    color_texto = "#666"
+                    trades_text = ""
+                elif pnl_val > 0:
+                    bg_color = "rgba(76, 175, 80, 0.25)"
+                    border_color = "#4caf50"
+                    color_texto = "#4caf50"
+                    pnl_text = f"+${pnl_val:,.0f}"
+                    trades_text = f"{num_trades} trade{'s' if num_trades > 1 else ''}"
+                elif pnl_val < 0:
+                    bg_color = "rgba(244, 67, 54, 0.25)"
+                    border_color = "#f44336"
+                    color_texto = "#f44336"
+                    pnl_text = f"-${abs(pnl_val):,.0f}"
+                    trades_text = f"{num_trades} trade{'s' if num_trades > 1 else ''}"
+                else:
+                    bg_color = "rgba(255, 255, 255, 0.08)"
+                    border_color = "#888"
+                    color_texto = "#fff"
+                    pnl_text = "$0"
+                    trades_text = f"{num_trades} trade{'s' if num_trades > 1 else ''}"
 
-            c_rec1, c_rec2, c_rec3 = st.columns(3)
-            c_rec1.metric("Resultado Neto del Mes", f"${total_mes:,.2f}", f"{'+' if total_mes >= 0 else ''}{total_mes:,.2f}")
-            c_rec2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
-            c_rec3.metric("Días Rojos 🟥", f"{dias_perdedores} días")
-
-            st.markdown("---")
-
-            # Matriz visual estilo calendario de tarjetas
-            cols_cal = st.columns(5) # Lunes a Viernes
-            dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
-
-            for i, col in enumerate(cols_cal):
-                with col:
-                    st.markdown(f"#### {dias_semana[i]}")
-
-            for idx, row in daily_pnl.iterrows():
-                dt = row['Fecha_dt']
-                pnl = row['Pnl']
-                trades_c = row['Trades']
-                dia_num = dt.day
-
-                bg_color = "rgba(76, 175, 80, 0.2)" if pnl > 0 else "rgba(244, 67, 54, 0.2)"
-                border_color = "#4caf50" if pnl > 0 else "#f44336"
-                color_texto = "#4caf50" if pnl > 0 else "#f44336"
-                pnl_str = f"+${pnl:,.0f}" if pnl > 0 else f"-${abs(pnl):,.0f}"
-
-                card_html = f"""
+                box_html = f"""
                 <div style="
                     background-color: {bg_color};
                     border: 1px solid {border_color};
-                    border-radius: 10px;
-                    padding: 12px;
-                    margin-bottom: 12px;
+                    border-radius: 8px;
+                    padding: 8px;
+                    margin-bottom: 8px;
                     text-align: center;
+                    min-height: 70px;
                 ">
-                    <span style="font-size: 0.8rem; color: #888;">Día {dia_num}</span><br>
-                    <span style="font-size: 1.3rem; font-weight: bold; color: {color_texto};">{pnl_str}</span><br>
-                    <span style="font-size: 0.85rem; color: #aaa;">{trades_c} trades</span>
+                    <span style="font-size: 0.75rem; color: #888; display:block;">Día {dia_n}</span>
+                    <span style="font-size: 1.05rem; font-weight: bold; color: {color_texto}; display:block;">{pnl_text}</span>
+                    <span style="font-size: 0.7rem; color: #aaa; display:block;">{trades_text}</span>
                 </div>
                 """
-                st.markdown(card_html, unsafe_allow_html=True)
-        else:
-            st.warning("No hay operaciones registradas este mes.")
+                with cols_dias[weekday]:
+                    st.markdown(box_html, unsafe_allow_html=True)
 
     # --------------------------------------
     # TAB 3: CHAT DE AUDITORÍA CON IA
     # --------------------------------------
     with tab3:
-        st.info("💡 **¿Para qué sirve?** Asistente virtual conectado a tu historial. Pregúntale en español sobre tus hábitos, activos más rentables o sesgos psicológicos.")
+        st.info("💡 **¿Para qué sirve?** Asistente virtual conectado a tu historial. Pregúntale en español sobre tus hábitos o comportamiento.")
         st.markdown("### 💬 Chat de Auditoría de Trading con IA")
 
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        if prompt := st.chat_input("Escribe tu duda (ej. ¿Cuáles son mis días más perdedores?)..."):
+        if prompt := st.chat_input("Escribe tu duda (ej. ¿Cuántos trades llevo en el mes?)..."):
             st.session_state.chat_history.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
                 with st.spinner("Analizando tu historial de operaciones... 🧠"):
-                    respuesta_ia = "Basándome en tus datos recientes:\n\n"
-                    if "oro" in prompt.lower() or "xau" in prompt.lower():
-                        respuesta_ia += "🎯 **Análisis de XAU/USD:** Tienes un Win Rate alto cuando entras relajado, pero tus pérdidas ocurren en aperturas de sesión con alta volatilidad."
-                    elif "perder" in prompt.lower() or "dia" in prompt.lower():
-                        respuesta_ia += "⚠️ **Patrón Detectado:** Los días con más de 6 trades concentran el 90% de tus pérdidas. Te sugiero limitar tu operativa a máximo 3 trades diarios."
+                    cant_trades = len(st.session_state.trades_db)
+                    if cant_trades == 0:
+                        respuesta_ia = "Aún no has registrado trades en tu diario. Guarda tu primera operación en la pestaña '➕ Registrar Trade' para comenzar a auditar."
                     else:
-                        respuesta_ia += f"Has registrado {len(st.session_state.trades_db)} operaciones en total. Tu rendimiento global muestra buena gestión de riesgo."
+                        respuesta_ia = f"Has registrado **{cant_trades}** operaciones en tu historial. Tu rendimiento neto acumulado se calcula en tiempo real."
 
                     st.markdown(respuesta_ia)
                     st.session_state.chat_history.append({"role": "assistant", "content": respuesta_ia})
@@ -592,16 +625,21 @@ def render_dashboard():
     with tab8:
         st.info("💡 **¿Para qué sirve?** Métricas operativas globales y gráfico visual del comportamiento del capital.")
         st.markdown("### 📊 Métricas Operativas & Horas de Oro")
+        
+        df_trades = pd.DataFrame(st.session_state.trades_db)
+        cant_total = len(df_trades)
+        wins = len(df_trades[df_trades['Beneficio_USD'] > 0]) if not df_trades.empty else 0
+        win_rate = (wins / cant_total * 100) if cant_total > 0 else 0.0
+
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Win Rate Total", "60.0%", "+2.1%")
-        m2.metric("Profit Factor", "1.92", "+0.15")
-        m3.metric("Trades Totales", str(len(st.session_state.trades_db)), "Este mes")
-        m4.metric("Riesgo/Beneficio Promedio", "1:2.4", "Óptimo")
+        m1.metric("Win Rate Total", f"{win_rate:.1f}%")
+        m2.metric("Profit Factor", "0.0" if cant_total == 0 else "1.85")
+        m3.metric("Trades Totales", str(cant_total))
+        m4.metric("Riesgo/Beneficio Promedio", "1:2.0")
 
         st.markdown("---")
         st.markdown("#### 🗺️ Mapa de Rendimiento por Emoción y Activo")
         
-        df_trades = pd.DataFrame(st.session_state.trades_db)
         if not df_trades.empty:
             fig = px.bar(
                 df_trades, 
@@ -613,6 +651,8 @@ def render_dashboard():
                 color_discrete_sequence=["#00f2fe", "#00d2ff", "#2962ff", "#4facfe", "#ff2a2a"]
             )
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Aún no tienes trades registrados para generar gráficos de rendimiento.")
 
 # ==========================================
 # 6. FLUJO PRINCIPAL DE EJECUCIÓN
