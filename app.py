@@ -46,7 +46,7 @@ if "capital_meta" not in st.session_state:
 if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
 
-# BASE DE DATOS TOTALMENTE LIMPIA EN $0.00
+# Base de datos sin datos ficticios
 if "trades_db" not in st.session_state:
     st.session_state.trades_db = []
 
@@ -184,15 +184,8 @@ def render_auth():
                         st.session_state.authenticated = True
                         st.session_state.user = res.user
                         st.rerun()
-                    except Exception:
-                        try:
-                            client = get_supabase_client()
-                            res = client.auth.sign_in_with_password({"email": login_email, "password": login_pass})
-                            st.session_state.authenticated = True
-                            st.session_state.user = res.user
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Error al iniciar sesión: {err}")
+                    except Exception as err:
+                        st.error(f"Error al iniciar sesión: {err}")
                 else:
                     st.warning("Por favor completa todos los campos.")
 
@@ -429,10 +422,10 @@ def render_dashboard():
                 st.rerun()
 
     # --------------------------------------
-    # TAB 2: TRACK RECORD CALENDARIO EXACTO DE 7 DÍAS (SUN - SAT)
+    # TAB 2: TRACK RECORD CALENDARIO LIMPIO
     # --------------------------------------
     with tab2:
-        st.info("💡 **¿Para qué sirve?** Vista mensual idéntica a las plataformas de trading. Bloques de color verde sólido (ganancia) o rojo sólido (pérdida) organizados de Domingo a Sábado.")
+        st.info("💡 **¿Para qué sirve?** Vista mensual con cuadrícula de 7 días (Sun a Sat). Las ganancias/pérdidas se actualizan **automáticamente** al guardar trades.")
         
         df_calendar = pd.DataFrame(st.session_state.trades_db)
         total_mes = df_calendar['Beneficio_USD'].sum() if not df_calendar.empty else 0.0
@@ -466,48 +459,45 @@ def render_dashboard():
         hoy = datetime.date.today()
         año, mes = hoy.year, hoy.month
         
-        # Obtener la matriz del mes con domingo como inicio
-        cal_obj = calendar.Calendar(firstweekday=6) # 6 = Domingo
+        # 6 = Domingo como primer día
+        cal_obj = calendar.Calendar(firstweekday=6)
         mes_dias = cal_obj.monthdayscalendar(año, mes)
 
-        # Encabezado Sun Mon Tue Wed Thu Fri Sat
         dias_header = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         cols_header = st.columns(7)
         for idx, col in enumerate(cols_header):
             with col:
-                st.markdown(f"<p style='text-align:center; font-weight:bold; font-size:1.1rem; color:#f0f3fa; margin-bottom:5px;'>{dias_header[idx]}</p>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:center; font-weight:bold; font-size:1.1rem; color:#f0f3fa; margin-bottom:8px;'>{dias_header[idx]}</div>", unsafe_allow_html=True)
 
-        # Iterar semana a semana en una cuadrícula perfecta
         for semana in mes_dias:
             cols_sem = st.columns(7)
             for day_idx, day_num in enumerate(semana):
                 with cols_sem[day_idx]:
                     if day_num == 0:
-                        # Cuadro vacío transparente para días fuera de mes
-                        st.markdown("<div style='height:90px; background:#0b0e14; border-radius:4px; margin-bottom:6px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:90px; background:transparent;'></div>", unsafe_allow_html=True)
                     else:
                         f_date = datetime.date(año, mes, day_num)
                         f_key = str(f_date)
                         pnl_val = pnl_map.get(f_key, None)
                         num_trades = trades_map.get(f_key, 0)
 
+                        is_today = (f_date == hoy)
+                        border_css = "border: 2px solid #00f2fe; box-shadow: 0px 0px 10px rgba(0,242,254,0.4);" if is_today else "border: 1px solid #1f2937;"
+
                         if pnl_val is None:
-                            # Cuadro Oscuro sin operacion (Como la foto)
                             bg_color = "#12161f"
+                            txt_color = "#f0f3fa"
                             pnl_html = ""
                             trades_html = ""
-                            txt_color = "#f0f3fa"
                         elif pnl_val > 0:
-                            # Verde sólido brillante (Como la foto)
                             bg_color = "#38d361"
                             txt_color = "#000000"
                             pnl_fmt = f"${pnl_val:,.0f}".replace(",", ".")
                             if pnl_val >= 1000:
                                 pnl_fmt = f"${pnl_val/1000:.1f}K"
-                            pnl_html = f"<div style='font-weight:bold; font-size:1.15rem; color:#000;'>{pnl_fmt}</div>"
+                            pnl_html = f"<div style='font-weight:bold; font-size:1.15rem; color:#000;'>+{pnl_fmt}</div>"
                             trades_html = f"<div style='font-size:0.8rem; color:#111;'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
                         elif pnl_val < 0:
-                            # Rojo sólido brillante (Como la foto)
                             bg_color = "#ff4d4d"
                             txt_color = "#000000"
                             pnl_fmt = f"-${abs(pnl_val):,.0f}".replace(",", ".")
@@ -521,25 +511,10 @@ def render_dashboard():
                             pnl_html = "<div style='font-weight:bold; font-size:1.15rem;'>$0</div>"
                             trades_html = f"<div style='font-size:0.8rem;'>{num_trades} trades</div>"
 
-                        box_html = f"""
-                        <div style="
-                            background-color: {bg_color};
-                            border-radius: 4px;
-                            padding: 8px;
-                            height: 95px;
-                            margin-bottom: 6px;
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: space-between;
-                            font-family: sans-serif;
-                        ">
-                            <div style="font-size:0.9rem; font-weight:600; color:{txt_color};">{day_num}</div>
-                            <div style="text-align:center;">
-                                {pnl_html}
-                                {trades_html}
-                            </div>
-                        </div>
-                        """
+                        today_tag = " <span style='font-size:0.7rem; color:#00f2fe;'>(HOY)</span>" if is_today else ""
+
+                        box_html = f"""<div style="background-color: {bg_color}; {border_css} border-radius: 6px; padding: 6px 8px; height: 95px; margin-bottom: 8px; display: flex; flex-direction: column; justify-content: space-between;"><div style="font-size:0.85rem; font-weight:700; color:{txt_color};">{day_num}{today_tag}</div><div style="text-align:center;">{pnl_html}{trades_html}</div></div>"""
+                        
                         st.markdown(box_html, unsafe_allow_html=True)
 
     # --------------------------------------
