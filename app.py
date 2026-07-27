@@ -21,15 +21,9 @@ SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://lyzvcbjpoydeckxtbcq.supab
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "sb_publishable_HIo0YXn-kJUr7HuNZFNfjQ_JBncowE0")
 OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY", "")
 
-# Inicializar cliente de Supabase
-@st.cache_resource
-def init_supabase() -> Client:
+# Inicializar cliente de Supabase con reconexión automática
+def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-try:
-    supabase = init_supabase()
-except Exception as e:
-    supabase = None
 
 # Manejo de Estado de Sesión
 if "authenticated" not in st.session_state:
@@ -206,12 +200,21 @@ def render_auth():
             if st.button("Ingresar", key="btn_login"):
                 if login_email and login_pass:
                     try:
-                        res = supabase.auth.sign_in_with_password({"email": login_email, "password": login_pass})
+                        client = get_supabase_client()
+                        res = client.auth.sign_in_with_password({"email": login_email, "password": login_pass})
                         st.session_state.authenticated = True
                         st.session_state.user = res.user
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error al iniciar sesión: {e}")
+                        # Intento secundario si ocurre Broken Pipe
+                        try:
+                            client = get_supabase_client()
+                            res = client.auth.sign_in_with_password({"email": login_email, "password": login_pass})
+                            st.session_state.authenticated = True
+                            st.session_state.user = res.user
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Error al iniciar sesión: {err}")
                 else:
                     st.warning("Por favor completa todos los campos.")
 
@@ -223,7 +226,8 @@ def render_auth():
             if st.button("Crear Cuenta", key="btn_reg"):
                 if reg_email and reg_pass:
                     try:
-                        res = supabase.auth.sign_up({"email": reg_email, "password": reg_pass})
+                        client = get_supabase_client()
+                        res = client.auth.sign_up({"email": reg_email, "password": reg_pass})
                         st.success("¡Registro exitoso! Revisa tu correo o inicia sesión.")
                     except Exception as e:
                         st.error(f"Error al registrar: {e}")
@@ -278,7 +282,8 @@ def render_sidebar():
                     nueva_foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
                 
                 try:
-                    res = supabase.auth.update_user({
+                    client = get_supabase_client()
+                    res = client.auth.update_user({
                         "data": {
                             "username": input_nombre,
                             "avatar_b64": nueva_foto_b64,
