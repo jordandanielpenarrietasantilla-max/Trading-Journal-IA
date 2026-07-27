@@ -53,8 +53,28 @@ if "capital_meta" not in st.session_state:
 if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
 
-if "trades_db" not in st.session_state:
-    st.session_state.trades_db = []
+# ==========================================
+# FUNCIONES DE BASE DE DATOS SUPABASE
+# ==========================================
+def cargar_trades_usuario(user_id):
+    """Carga los trades persistentes del usuario desde Supabase."""
+    try:
+        client = get_supabase_client()
+        res = client.table("trades").select("*").eq("user_id", user_id).execute()
+        return res.data if res.data else []
+    except Exception:
+        return []
+
+def guardar_trade_supabase(user_id, trade_data):
+    """Guarda un nuevo trade en la base de datos de Supabase."""
+    try:
+        client = get_supabase_client()
+        trade_data["user_id"] = user_id
+        client.table("trades").insert(trade_data).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error guardando en base de datos: {e}")
+        return False
 
 # ==========================================
 # 2. ESTILOS CSS PERSONALIZADOS
@@ -461,6 +481,10 @@ def render_dashboard():
         render_paywall()
         return
 
+    # Cargar Trades Persistentes desde Supabase
+    user_id = st.session_state.user.id
+    trades_db = cargar_trades_usuario(user_id)
+
     st.markdown("## ⚡ Journaling & AI Trading Audit")
     st.markdown("Bienvenido de nuevo. Mide tu progreso y analiza tus resultados en tiempo real.")
 
@@ -527,17 +551,18 @@ def render_dashboard():
             monto_pnl = st.number_input("Ganancia / Pérdida en $USD de este trade:", value=0.0, step=10.0)
 
             if st.button("💾 Guardar Trade en Diario"):
-                st.session_state.trades_db.append({
-                    "Fecha": str(fecha_op), 
-                    "Hora": datetime.datetime.now().strftime("%H:%M"), 
-                    "Par": par, 
-                    "Resultado": resultado, 
-                    "Emoción": emocion, 
-                    "Beneficio_USD": monto_pnl, 
-                    "Trades_Cant": 1
-                })
-                st.success("¡Trade guardado exitosamente!")
-                st.rerun()
+                nuevo_trade = {
+                    "fecha": str(fecha_op), 
+                    "hora": datetime.datetime.now().strftime("%H:%M"), 
+                    "par": par, 
+                    "resultado": resultado, 
+                    "emocion": emocion, 
+                    "beneficio_usd": float(monto_pnl), 
+                    "trades_cant": 1
+                }
+                if guardar_trade_supabase(user_id, nuevo_trade):
+                    st.success("¡Trade guardado exitosamente en tu base de datos!")
+                    st.rerun()
 
     # --------------------------------------
     # TAB 2: TRACK RECORD CALENDARIO
@@ -545,13 +570,13 @@ def render_dashboard():
     with tab2:
         st.info("💡 **¿Para qué sirve?** Vista mensual con cuadrícula de 7 días (Sun a Sat). Las ganancias/pérdidas se actualizan **automáticamente** al guardar trades.")
         
-        df_calendar = pd.DataFrame(st.session_state.trades_db)
-        total_mes = df_calendar['Beneficio_USD'].sum() if not df_calendar.empty else 0.0
+        df_calendar = pd.DataFrame(trades_db)
+        total_mes = df_calendar['beneficio_usd'].sum() if not df_calendar.empty else 0.0
         
         if not df_calendar.empty:
-            df_grouped = df_calendar.groupby('Fecha').agg({'Beneficio_USD': 'sum', 'Trades_Cant': 'sum'}).reset_index()
-            dias_ganadores = len(df_grouped[df_grouped['Beneficio_USD'] > 0])
-            dias_perdedores = len(df_grouped[df_grouped['Beneficio_USD'] < 0])
+            df_grouped = df_calendar.groupby('fecha').agg({'beneficio_usd': 'sum', 'trades_cant': 'sum'}).reset_index()
+            dias_ganadores = len(df_grouped[df_grouped['beneficio_usd'] > 0])
+            dias_perdedores = len(df_grouped[df_grouped['beneficio_usd'] < 0])
         else:
             dias_ganadores = 0
             dias_perdedores = 0
@@ -567,9 +592,9 @@ def render_dashboard():
         trades_map = {}
         if not df_calendar.empty:
             for _, r in df_calendar.iterrows():
-                f_str = r['Fecha']
-                pnl_map[f_str] = pnl_map.get(f_str, 0.0) + r['Beneficio_USD']
-                trades_map[f_str] = trades_map.get(f_str, 0) + r['Trades_Cant']
+                f_str = r['fecha']
+                pnl_map[f_str] = pnl_map.get(f_str, 0.0) + r['beneficio_usd']
+                trades_map[f_str] = trades_map.get(f_str, 0) + r['trades_cant']
 
         hoy = datetime.date.today()
         año, mes = hoy.year, hoy.month
@@ -649,7 +674,7 @@ def render_dashboard():
 
             with st.chat_message("assistant"):
                 with st.spinner("Analizando tu historial de operaciones... 🧠"):
-                    cant_trades = len(st.session_state.trades_db)
+                    cant_trades = len(trades_db)
                     if cant_trades == 0:
                         respuesta_ia = "Aún no has registrado trades en tu diario. Guarda tu primera operación en la pestaña '➕ Registrar Trade' para comenzar a auditar."
                     else:
@@ -722,9 +747,9 @@ def render_dashboard():
         st.info("💡 **¿Para qué sirve?** Métricas operativas globales y gráfico visual del comportamiento del capital.")
         st.markdown("### 📊 Métricas Operativas & Horas de Oro")
         
-        df_trades = pd.DataFrame(st.session_state.trades_db)
+        df_trades = pd.DataFrame(trades_db)
         cant_total = len(df_trades)
-        wins = len(df_trades[df_trades['Beneficio_USD'] > 0]) if not df_trades.empty else 0
+        wins = len(df_trades[df_trades['beneficio_usd'] > 0]) if not df_trades.empty else 0
         win_rate = (wins / cant_total * 100) if cant_total > 0 else 0.0
 
         m1, m2, m3, m4 = st.columns(4)
@@ -739,9 +764,9 @@ def render_dashboard():
         if not df_trades.empty:
             fig = px.bar(
                 df_trades, 
-                x="Par", 
-                y="Beneficio_USD", 
-                color="Emoción", 
+                x="par", 
+                y="beneficio_usd", 
+                color="emocion", 
                 title="Ganancia/Pérdida por Activo según Estado Emocional",
                 template="plotly_dark",
                 color_discrete_sequence=["#00f2fe", "#00d2ff", "#2962ff", "#4facfe", "#ff2a2a"]
