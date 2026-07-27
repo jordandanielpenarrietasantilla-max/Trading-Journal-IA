@@ -11,7 +11,7 @@ import calendar
 from supabase import create_client, Client
 
 # ==========================================
-# 1. CONFIGURACIÓN INICIAL DE STREAMLIT
+# 1. CONFIGURACIÓN Y ENLACES REALES DE BINANCE PAY
 # ==========================================
 st.set_page_config(
     page_title="AI Trading Journal & Auditor",
@@ -20,9 +20,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# 🔗 TUS 3 ENLACES REALES INTEGRADOS DE BINANCE PAY
+LINK_BINANCE_INSCRIPCION = "https://s.binance.com/8vSxLZRA"  # $5 USDT (Inscripción + 1er Mes)
+LINK_BINANCE_ANUAL = "https://s.binance.com/NvHWGF9P"        # $20 USDT (1 Año Completo)
+LINK_BINANCE_RECURRENTE = "https://s.binance.com/U7v5zFVr"   # $2.50 USDT (Renovación Mensual)
+
+BINANCE_PAY_ID = "JORDAN_SANTI9"                            # Tu Binance Pay ID
+LINK_TELEGRAM_SOPORTE = "https://t.me/tu_usuario_telegram"  # Reemplaza con tu link de Telegram o WhatsApp
+
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://lyzvcbjpoydeckxtbcq.supabase.co")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "sb_publishable_HIo0YXn-kJUr7HuNZFNfjQ_JBncowE0")
-OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY", "")
 
 def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -46,7 +53,6 @@ if "capital_meta" not in st.session_state:
 if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
 
-# Base de datos sin datos ficticios
 if "trades_db" not in st.session_state:
     st.session_state.trades_db = []
 
@@ -144,6 +150,15 @@ def aplicar_estilos():
     }
     .open { background-color: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid #4caf50; }
     .closed { background-color: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; }
+    
+    .paywall-card {
+        background-color: #141a24;
+        border: 1px solid #f0b90b;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        box-shadow: 0px 0px 20px rgba(240, 185, 11, 0.2);
+    }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -151,7 +166,103 @@ def aplicar_estilos():
 aplicar_estilos()
 
 # ==========================================
-# 3. AUTENTICACIÓN
+# 3. VERIFICACIÓN DE DÍAS DE PRUEBA / PRO
+# ==========================================
+def evaluar_suscripcion(user):
+    metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
+    
+    if metadata.get("es_vip", False):
+        return True, "Acceso PRO 💎", 999
+
+    created_at_str = str(user.created_at) if hasattr(user, 'created_at') else None
+    if created_at_str:
+        fecha_registro = datetime.datetime.strptime(created_at_str[:10], "%Y-%m-%d").date()
+    else:
+        fecha_registro = datetime.date.today()
+
+    dias_usados = (datetime.date.today() - fecha_registro).days
+    dias_restantes = max(0, 3 - dias_usados)
+
+    if dias_usados <= 3:
+        return True, f"Prueba Gratis ({dias_restantes} días rest.)", dias_restantes
+    else:
+        return False, "Prueba Expirada 🛑", 0
+
+# ==========================================
+# 4. PANTALLA DE BLOQUEO / PAYWALL (BINANCE PAY)
+# ==========================================
+def render_paywall():
+    st.markdown("## 🔒 Tu Período de Prueba Gratis de 3 Días ha Expirado")
+    st.markdown("Para continuar auditando tus operaciones con IA, calculando lotajes y registrando tu Track Record, activa tu acceso mediante **Binance Pay**:")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"""
+        <div class="paywall-card">
+            <h3 style="color:#f0b90b;">🟡 Suscripción Mensual</h3>
+            <h2 style="color:#ffffff;">$5 USD <span style="font-size:1rem; color:#aaa;">Inscripción</span></h2>
+            <p style="color:#00f2fe; font-weight:bold;">luego solo $2.50 USD / mes</p>
+            <hr style="border-color:#333;">
+            <ul style="text-align:left; color:#b0b8c4; font-size:0.95rem; line-height: 1.8;">
+                <li>✔️ Acceso a todas las herramientas</li>
+                <li>✔️ Track Record Calendario PnL</li>
+                <li>✔️ Chat & Auditoría Visual con IA</li>
+                <li>✔️ Sin contratos ni permanencia</li>
+            </ul>
+            <br>
+            <a href="{LINK_BINANCE_INSCRIPCION}" target="_blank">
+                <button style="background:linear-gradient(135deg, #f0b90b 0%, #f39c12 100%); color:black; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%; cursor:pointer;">
+                    🟡 Pagar $5 USD (Inscripción + 1er Mes)
+                </button>
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="paywall-card" style="border: 2px solid #38d361;">
+            <h3 style="color:#38d361;">🚀 Acceso Anual (Pago Único)</h3>
+            <h2 style="color:#ffffff;">$20 USD <span style="font-size:1rem; color:#aaa;">/ 1 Año Completo</span></h2>
+            <p style="color:#38d361; font-weight:bold;">¡Ahorra más del 50% sin mensualidades!</p>
+            <hr style="border-color:#333;">
+            <ul style="text-align:left; color:#b0b8c4; font-size:0.95rem; line-height: 1.8;">
+                <li>🌟 <b>Acceso ilimitado por 365 días</b></li>
+                <li>🔒 Pago único sin cobros automáticos</li>
+                <li>🎁 Actualizaciones futuras incluidas</li>
+                <li>🧠 Respuestas de IA prioritarias</li>
+            </ul>
+            <br>
+            <a href="{LINK_BINANCE_ANUAL}" target="_blank">
+                <button style="background:linear-gradient(135deg, #38d361 0%, #1b8a3e 100%); color:white; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%; cursor:pointer;">
+                    💎 Pagar $20 USD (1 Año Completo)
+                </button>
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    
+    col_info1, col_info2 = st.columns([1.2, 1])
+    with col_info1:
+        st.markdown("### 📲 Pago Directo / Renovaciones")
+        st.markdown("Si deseas renovar tu mes posterior ($2.50 USDT) o pagar manualmente por Pay ID:")
+        st.code(f"Binance Pay ID: {BINANCE_PAY_ID}", language="text")
+        st.markdown(f"👉 [Enlace directo de Renovación Mensual ($2.50 USDT)]({LINK_BINANCE_RECURRENTE})")
+
+    with col_info2:
+        st.markdown("### ✈️ Confirmar Pago y Activar Cuenta")
+        st.markdown("Una vez realizado tu pago, envíanos la captura o tu correo registrado para activar tu acceso PRO al instante:")
+        st.markdown(f"""
+        <a href="{LINK_TELEGRAM_SOPORTE}" target="_blank">
+            <button style="background:linear-gradient(135deg, #0088cc 0%, #005580 100%); color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; width:100%; cursor:pointer;">
+                💬 Enviar Comprobante / Contactar Soporte
+            </button>
+        </a>
+        """, unsafe_allow_html=True)
+
+# ==========================================
+# 5. AUTENTICACIÓN
 # ==========================================
 def render_auth():
     col1, col2 = st.columns([1.2, 1])
@@ -162,10 +273,10 @@ def render_auth():
         
         st.markdown("""
         ### 🚀 ¿Por qué usar este Diario de Trading?
-        * 📅 **Track Record Calendario:** Visualiza tus días ganadores (verdes) y perdedores (rojos) exactos como en TradingView/Prop Firms.
-        * 👁️ **Escaneo Visual con IA:** Sube tus capturas de TradingView y extrae entradas, SL, TP y Ratio Risk/Reward.
-        * 💬 **Chat de Auditoría con IA:** Conversa directamente con tu historial para descubrir patrones ocultos.
-        * 🧮 **Calculadora de Lotaje Incorporada:** Ajusta el tamaño de posición exacto.
+        * 🎁 **¡3 Días Gratis de Prueba Total!** Sin tarjetas de crédito ni compromisos.
+        * 📅 **Track Record Calendario:** Visualiza tus días ganadores (verdes) y perdedores (rojos).
+        * 👁️ **Escaneo Visual con IA:** Sube tus capturas de TradingView y extrae entradas, SL, TP y RR.
+        * 💬 **Chat de Auditoría con IA:** Conversa con tu historial para corregir errores.
         """)
 
     with col2:
@@ -190,25 +301,25 @@ def render_auth():
                     st.warning("Por favor completa todos los campos.")
 
         with tab_register:
-            st.markdown("### Crea tu Cuenta Gratis")
+            st.markdown("### Crea tu Cuenta (3 Días Gratis)")
             reg_email = st.text_input("Correo Electrónico", key="reg_email")
             reg_pass = st.text_input("Crea tu Contraseña", type="password", key="reg_pass")
             
-            if st.button("Crear Cuenta", key="btn_reg"):
+            if st.button("Crear Cuenta y Probar", key="btn_reg"):
                 if reg_email and reg_pass:
                     try:
                         client = get_supabase_client()
                         res = client.auth.sign_up({"email": reg_email, "password": reg_pass})
-                        st.success("¡Registro exitoso! Revisa tu correo o inicia sesión.")
+                        st.success("¡Registro exitoso! Revisa tu correo o inicia sesión para disfrutar tus 3 días de prueba.")
                     except Exception as e:
                         st.error(f"Error al registrar: {e}")
                 else:
                     st.warning("Por favor llena todos los datos.")
 
 # ==========================================
-# 4. SIDEBAR
+# 6. SIDEBAR
 # ==========================================
-def render_sidebar():
+def render_sidebar(estado_sub):
     with st.sidebar:
         st.markdown("### 👤 Perfil Trader")
         
@@ -229,6 +340,11 @@ def render_sidebar():
         with col_txt:
             st.markdown(f"**{nombre_actual}**")
             st.caption(f"`{user_email}`")
+
+        if "PRO" in estado_sub:
+            st.success(f"💎 {estado_sub}")
+        else:
+            st.warning(f"⏳ {estado_sub}")
 
         with st.expander("⚙️ Modificar Perfil"):
             input_nombre = st.text_input("Nombre de Usuario", value=nombre_actual)
@@ -266,7 +382,6 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # Meta de Cuenta
         st.markdown("### 🎯 Meta de Cuenta")
         cap_act = st.session_state.capital_actual
         cap_met = st.session_state.capital_meta
@@ -277,7 +392,6 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # RELOJ DIGITAL EN VIVO - AUTOMÁTICO SEGÚN EL PAÍS DEL USUARIO
         st.markdown("### ⏰ Hora Local")
         st.components.v1.html(
             """
@@ -297,7 +411,6 @@ def render_sidebar():
             <script>
             function updateClock() {
                 var now = new Date();
-                // Obtener automáticamente la zona horaria del usuario (Chile, Colombia, México, etc.)
                 var timeString = now.toLocaleTimeString([], { hour12: false });
                 document.getElementById('clock').innerHTML = timeString + " (Local)";
             }
@@ -338,10 +451,15 @@ def render_sidebar():
             st.rerun()
 
 # ==========================================
-# 5. DASHBOARD PRINCIPAL
+# 7. DASHBOARD PRINCIPAL
 # ==========================================
 def render_dashboard():
-    render_sidebar()
+    tiene_acceso, estado_sub, dias_restantes = evaluar_suscripcion(st.session_state.user)
+    render_sidebar(estado_sub)
+
+    if not tiene_acceso:
+        render_paywall()
+        return
 
     st.markdown("## ⚡ Journaling & AI Trading Audit")
     st.markdown("Bienvenido de nuevo. Mide tu progreso y analiza tus resultados en tiempo real.")
@@ -438,7 +556,6 @@ def render_dashboard():
             dias_ganadores = 0
             dias_perdedores = 0
 
-        # Métricas Superiores
         c_rec1, c_rec2, c_rec3 = st.columns(3)
         c_rec1.metric("Resultado Neto del Mes", f"${total_mes:,.2f}", f"{'+' if total_mes >= 0 else ''}{total_mes:,.2f}")
         c_rec2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
@@ -446,7 +563,6 @@ def render_dashboard():
 
         st.markdown("---")
 
-        # Mapeo de PnL por fecha
         pnl_map = {}
         trades_map = {}
         if not df_calendar.empty:
@@ -455,7 +571,6 @@ def render_dashboard():
                 pnl_map[f_str] = pnl_map.get(f_str, 0.0) + r['Beneficio_USD']
                 trades_map[f_str] = trades_map.get(f_str, 0) + r['Trades_Cant']
 
-        # Calendario Mensual Completo (Sun a Sat)
         hoy = datetime.date.today()
         año, mes = hoy.year, hoy.month
         
@@ -636,7 +751,7 @@ def render_dashboard():
             st.info("Aún no tienes trades registrados para generar gráficos de rendimiento.")
 
 # ==========================================
-# 6. FLUJO PRINCIPAL DE EJECUCIÓN
+# 8. FLUJO PRINCIPAL DE EJECUCIÓN
 # ==========================================
 if not st.session_state.authenticated:
     render_auth()
