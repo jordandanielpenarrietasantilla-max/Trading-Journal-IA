@@ -365,7 +365,7 @@ def render_sidebar():
             st.rerun()
 
 # ==========================================
-# 5. DASHBOARD PRINCIPAL Y NUEVAS HERRAMIENTAS
+# 5. DASHBOARD PRINCIPAL
 # ==========================================
 def render_dashboard():
     render_sidebar()
@@ -435,23 +435,21 @@ def render_dashboard():
                 pnl = 200 if "WIN" in resultado else (-100 if "LOSS" in resultado else 0)
                 st.session_state.trades_db.append({
                     "Fecha": str(fecha_op), "Hora": datetime.datetime.now().strftime("%H:%M"), 
-                    "Par": par, "Resultado": resultado, "Emoción": emoción, "Beneficio_USD": pnl
+                    "Par": par, "Resultado": resultado, "Emoción": emocion, "Beneficio_USD": pnl
                 })
                 st.success("¡Trade guardado exitosamente!")
 
     # --------------------------------------
-    # TAB 2: CHAT DE AUDITORÍA CON IA (NUEVO)
+    # TAB 2: CHAT DE AUDITORÍA CON IA
     # --------------------------------------
     with tab2:
         st.markdown("### 💬 Chat de Auditoría de Trading con IA")
         st.caption("Pregúntale a la IA sobre tus patrones de trading, errores emocionales o mejor activo.")
 
-        # Mostrar historial de mensajes
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        # Input de usuario
         if prompt := st.chat_input("Escribe tu duda (ej. ¿Por qué estoy perdiendo en el Oro?)..."):
             st.session_state.chat_history.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
@@ -459,8 +457,6 @@ def render_dashboard():
 
             with st.chat_message("assistant"):
                 with st.spinner("Analizando tu historial de operaciones... 🧠"):
-                    contexto_trades = json.dumps(st.session_state.trades_db)
-                    
                     respuesta_ia = "Basándome en tus datos recientes:\n\n"
                     if "oro" in prompt.lower() or "xau" in prompt.lower():
                         respuesta_ia += "🎯 **Análisis de XAU/USD:** Tienes un Win Rate alto cuando entras relajado (Disciplinado/Neutro), pero tus pérdidas ocurren en horarios cercanos a aperturas de sesión con volatilidad impulsiva."
@@ -527,7 +523,7 @@ def render_dashboard():
         st.text_area("Reflexión de la semana:", value="Esta semana estuvo enfocada. Respeté mi plan y mis reglas de disciplina.")
 
     # --------------------------------------
-    # TAB 7: DASHBOARD Y HEATMAP
+    # TAB 7: DASHBOARD Y RENDIMIENTO
     # --------------------------------------
     with tab7:
         st.markdown("### 📊 Métricas Operativas & Horas de Oro")
@@ -549,7 +545,7 @@ def render_dashboard():
                 color="Emoción", 
                 title="Ganancia/Pérdida por Activo según Estado Emocional",
                 template="plotly_dark",
-                color_discrete_sequence=px.colors.qualitative.Cyan
+                color_discrete_sequence=["#00f2fe", "#00d2ff", "#2962ff", "#4facfe", "#ff2a2a"]
             )
             st.plotly_chart(fig, use_container_width=True)
 
