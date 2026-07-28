@@ -122,11 +122,12 @@ def analizar_captura_tradingview(image_bytes):
         return None
 
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS (FIX CHAT INPUT)
+# 2. ESTILOS CSS PERSONALIZADOS (SELECTBOX Y CONTRASTE)
 # ==========================================
 def aplicar_estilos():
     css = """
     <style>
+    /* Fondo principal */
     .stApp {
         background-color: #0b0e14 !important;
         color: #f0f3fa !important;
@@ -144,31 +145,40 @@ def aplicar_estilos():
         font-weight: 800 !important;
     }
 
-    section[data-testid="stSidebar"] {
-        background-color: #0f141e !important;
-        border-right: 1px solid rgba(0, 210, 255, 0.2) !important;
-    }
-
-    div[data-testid="stExpander"] {
-        background: rgba(15, 20, 30, 0.9) !important;
-        border: 1px solid rgba(0, 210, 255, 0.3) !important;
-        border-radius: 10px !important;
-        margin-bottom: 12px !important;
-    }
-
-    div[data-testid="stFileUploader"] {
-        background-color: #141a24 !important;
-        border: 1px dashed #00f2fe !important;
-        border-radius: 8px !important;
-        padding: 10px !important;
-    }
-
+    /* === CORRECCIÓN DEFINITIVA DE DESPLEGABLES (SELECTBOX) Y BUSCADORES === */
     div[data-baseweb="select"] > div {
         background-color: #141a24 !important;
+        color: #00f2fe !important;
         border: 1px solid rgba(0, 210, 255, 0.5) !important;
         border-radius: 8px !important;
     }
 
+    div[data-baseweb="select"] input, 
+    div[data-baseweb="select"] span,
+    div[data-baseweb="select"] div {
+        color: #00f2fe !important;
+        -webkit-text-fill-color: #00f2fe !important;
+    }
+
+    /* LISTA DESPLEGADA (MENÚ FLOTANTE) */
+    ul[data-baseweb="menu"], div[data-baseweb="popover"] {
+        background-color: #141a24 !important;
+        border: 1px solid #00f2fe !important;
+        border-radius: 8px !important;
+    }
+
+    li[data-baseweb="option"] {
+        background-color: #141a24 !important;
+        color: #ffffff !important;
+    }
+
+    li[data-baseweb="option"]:hover,
+    li[aria-selected="true"] {
+        background-color: #1e293b !important;
+        color: #00f2fe !important;
+    }
+
+    /* Entradas de texto y números */
     .stTextInput input, .stNumberInput input, .stTextArea textarea {
         background-color: #141a24 !important;
         color: #00f2fe !important;
@@ -176,7 +186,6 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
-    /* FIX DEFINITIVO PARA EL CAMPO DEL CHAT */
     div[data-testid="stChatInput"] {
         background-color: #141a24 !important;
         border-radius: 12px !important;
@@ -203,6 +212,11 @@ def aplicar_estilos():
         width: 100%;
         box-shadow: 0px 4px 15px rgba(0, 210, 255, 0.3) !important;
         transition: all 0.3s ease !important;
+    }
+
+    section[data-testid="stSidebar"] {
+        background-color: #0f141e !important;
+        border-right: 1px solid rgba(0, 210, 255, 0.2) !important;
     }
 
     section[data-testid="stSidebar"] .stButton>button {
@@ -240,7 +254,6 @@ aplicar_estilos()
 def evaluar_suscripcion(user):
     user_email = user.email if (user and hasattr(user, 'email')) else ""
     
-    # 👑 TU CORREO REAL DE CREADOR
     if user_email.lower() == "jordandanielpenarrietasantilla@gmail.com":
         return True, "Creador / Admin 👑", 99999
 
@@ -422,7 +435,6 @@ def render_sidebar(estado_sub):
         else:
             st.warning(f"⏳ {estado_sub}")
 
-        # MODIFICAR PERFIL EXPANDER
         with st.expander("⚙️ Modificar Perfil"):
             input_nombre = st.text_input("Nombre de Usuario", value=nombre_actual)
             foto_subida = st.file_uploader("Seleccionar nueva foto", type=["jpg", "jpeg", "png", "webp"])
@@ -459,7 +471,6 @@ def render_sidebar(estado_sub):
 
         st.markdown("---")
 
-        # META DE CUENTA
         st.markdown("### 🎯 Meta de Cuenta")
         cap_act = st.session_state.capital_actual
         cap_met = st.session_state.capital_meta
@@ -469,7 +480,6 @@ def render_sidebar(estado_sub):
 
         st.markdown("---")
 
-        # RELOJ LOCAL AUTOMÁTICO
         st.markdown("### ⏰ Hora Local")
         st.components.v1.html(
             """
@@ -499,7 +509,6 @@ def render_sidebar(estado_sub):
             height=55
         )
 
-        # SESIONES DE MERCADO
         st.markdown("### 🌐 Sesiones de Mercado")
         hora_utc = datetime.datetime.utcnow().hour
         londres_status = '<span class="market-badge open">ABIERTO</span>' if 7 <= hora_utc <= 15 else '<span class="market-badge closed">CERRADO</span>'
@@ -512,7 +521,6 @@ def render_sidebar(estado_sub):
 
         st.markdown("---")
 
-        # REGLAS DE DISCIPLINA
         st.markdown("### 🎯 Mis Reglas de Disciplina")
         with st.expander("✏️ Editar Mis Reglas"):
             input_reglas = st.text_area("Escribe tus reglas personalizadas:", value=st.session_state.reglas_disciplina, height=150)
