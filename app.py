@@ -180,20 +180,20 @@ def analizar_captura_tradingview(image_bytes):
         return None
 
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS (CORRECCIÓN TOTAL DE POPOVERS Y DESPLEGABLES)
+# 2. ESTILOS CSS PERSONALIZADOS (SOLUCIÓN DEFINITIVA A CAJAS BLANCAS)
 # ==========================================
 def aplicar_estilos():
     css = """
     <style>
-    /* Fondo principal */
+    /* Fondo principal de la app */
     .stApp {
         background-color: #0b0e14 !important;
-        color: #f0f3fa !important;
+        color: #ffffff !important;
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
     }
 
     p, label, h1, h2, h3, h4, span, div, .stMarkdown {
-        color: #f0f3fa !important;
+        color: #ffffff !important;
     }
 
     h1, h2 {
@@ -203,75 +203,79 @@ def aplicar_estilos():
         font-weight: 800 !important;
     }
 
-    /* === CORRECCIÓN TOTAL Y ABSOLUTA DEL MENÚ DESPLEGABLE (SELECTBOX) === */
-    /* Caja del selector cerrado */
-    div[data-baseweb="select"] > div {
-        background-color: #141a24 !important;
+    /* === FORZAR FONDO OSCURO EN TODAS LAS CAJAS DE ENTRADA Y DESPLEGABLES === */
+    /* Cajas de texto, números, fecha y selectores */
+    .stTextInput input, 
+    .stNumberInput input, 
+    .stDateInput input,
+    .stSelectbox div[data-baseweb="select"] > div,
+    div[data-baseweb="input"] > div,
+    div[data-baseweb="base-input"] {
+        background-color: #161b22 !important;
         color: #00f2fe !important;
-        border: 1px solid rgba(0, 210, 255, 0.5) !important;
+        -webkit-text-fill-color: #00f2fe !important;
+        border: 1px solid #00f2fe !important;
         border-radius: 8px !important;
     }
 
-    div[data-baseweb="select"] input, 
-    div[data-baseweb="select"] span,
-    div[data-baseweb="select"] div {
+    /* Asegurar texto blanco/cian dentro de los inputs */
+    input {
         color: #00f2fe !important;
         -webkit-text-fill-color: #00f2fe !important;
     }
 
-    /* FORZAR FONDO OSCURO EN EL MENÚ FLOTANTE Y TODAS SUS OPCIONES */
-    div[data-baseweb="popover"], 
-    div[data-baseweb="popover"] *,
-    div[data-baseweb="menu"], 
-    div[data-baseweb="menu"] *,
-    ul[role="listbox"],
-    ul[role="listbox"] * {
-        background-color: #141a24 !important;
-        color: #ffffff !important;
+    /* === LISTA DESPLEGABLE Y MENÚ FLOTANTE (POPOVER / SELECT) === */
+    [data-baseweb="popover"],
+    [data-baseweb="menu"],
+    div[role="listbox"],
+    ul[role="listbox"] {
+        background-color: #161b22 !important;
+        border: 1px solid #00f2fe !important;
+        border-radius: 8px !important;
     }
 
-    /* Elementos individuales dentro del menú */
+    /* Opciones dentro de la lista de activos */
+    [data-baseweb="menu"] li,
+    div[role="listbox"] li,
     li[role="option"],
     li[data-baseweb="option"] {
-        background-color: #141a24 !important;
+        background-color: #161b22 !important;
         color: #ffffff !important;
-        padding: 10px 14px !important;
+        font-size: 14px !important;
+        padding: 10px !important;
     }
 
-    /* Hover o elemento resaltado */
+    /* Opción seleccionada o con el cursor encima */
     li[role="option"]:hover,
     li[data-baseweb="option"]:hover,
     li[aria-selected="true"] {
-        background-color: #1e293b !important;
-        color: #00f2fe !important;
+        background-color: #00f2fe !important;
+        color: #000000 !important;
+        font-weight: bold !important;
     }
 
-    /* Entradas de texto y números */
-    .stTextInput input, .stNumberInput input, .stTextArea textarea {
-        background-color: #141a24 !important;
-        color: #00f2fe !important;
-        border: 1px solid rgba(0, 210, 255, 0.4) !important;
+    /* Cajas de Texto Grande (Notas y Reflexiones) */
+    textarea {
+        background-color: #161b22 !important;
+        color: #ffffff !important;
+        border: 1px solid #00f2fe !important;
         border-radius: 8px !important;
     }
 
     /* Campo de Chat */
     div[data-testid="stChatInput"] {
-        background-color: #141a24 !important;
+        background-color: #161b22 !important;
         border-radius: 12px !important;
+        border: 1px solid #00f2fe !important;
     }
     
     div[data-testid="stChatInput"] textarea {
-        background-color: #141a24 !important;
+        background-color: #161b22 !important;
         color: #00f2fe !important;
         -webkit-text-fill-color: #00f2fe !important;
-        font-size: 1rem !important;
     }
 
-    div[data-testid="stChatInput"] textarea::placeholder {
-        color: #8899a6 !important;
-        -webkit-text-fill-color: #8899a6 !important;
-    }
-
+    /* Botones generales */
     .stButton>button {
         background: linear-gradient(135deg, #00d2ff 0%, #2962ff 100%) !important;
         color: #ffffff !important;
@@ -280,7 +284,6 @@ def aplicar_estilos():
         font-weight: bold !important;
         width: 100%;
         box-shadow: 0px 4px 15px rgba(0, 210, 255, 0.3) !important;
-        transition: all 0.3s ease !important;
     }
 
     section[data-testid="stSidebar"] {
@@ -304,7 +307,7 @@ def aplicar_estilos():
     .closed { background-color: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; }
 
     .paywall-card {
-        background-color: #141a24;
+        background-color: #161b22;
         border: 1px solid #f0b90b;
         border-radius: 12px;
         padding: 24px;
