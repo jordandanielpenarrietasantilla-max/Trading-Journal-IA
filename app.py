@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. CSS Personalizado: Alto Contraste, Textos Claros y Botón Neón
+# 2. CSS Personalizado: Alto Contraste, Textos Nítidos y Botón Neón
 st.markdown("""
 <style>
     /* Fondo General Dark Mode */
@@ -32,7 +32,7 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* CAMPOS DE ENTRADA Y DESPLEGABLES (Fondo Oscuro + Texto Blanco Nítido) */
+    /* CAMPOS DE ENTRADA Y DESPLEGABLES (Alto Contraste) */
     .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
         background-color: #161b22 !important;
         color: #ffffff !important;
@@ -100,10 +100,30 @@ st.markdown("""
         color: #00f2fe !important;
     }
 
-    /* INSIGNIA VIP */
+    /* INSIGNIAS DINÁMICAS (VIP, PRUEBA, EXPIRADO) */
     .vip-badge {
         background: linear-gradient(90deg, #f59e0b, #fbbf24);
         color: #000000 !important;
+        font-weight: bold;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        display: inline-block;
+        margin-top: 8px;
+    }
+    .trial-badge {
+        background: linear-gradient(90deg, #10b981, #34d399);
+        color: #000000 !important;
+        font-weight: bold;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        display: inline-block;
+        margin-top: 8px;
+    }
+    .expired-badge {
+        background: #ef4444;
+        color: #ffffff !important;
         font-weight: bold;
         padding: 6px 14px;
         border-radius: 20px;
@@ -134,11 +154,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 3. Inicializar Estado de Sesión (Simulación / Supabase Metadata)
-if "user_email" not in st.session_state:
-    st.session_state["user_email"] = "rey.david_daniel@hotmail.com"
-if "is_vip" not in st.session_state:
-    st.session_state["is_vip"] = True
+# 3. MANTENIMIENTO DE ESTADO & USUARIO DINÁMICO DE SUPABASE
 if "trades_db" not in st.session_state:
     st.session_state["trades_db"] = [
         {"fecha": "2026-07-27", "par": "XAU/USD", "tipo": "LONG", "pnl": 2500.00, "resultado": "WIN", "estado": "Disciplinado / Neutro"},
@@ -146,17 +162,47 @@ if "trades_db" not in st.session_state:
         {"fecha": "2026-07-20", "par": "BTC/USD", "tipo": "LONG", "pnl": 300.00, "resultado": "WIN", "estado": "Confiado"}
     ]
 
-# ------------------- SIDEBAR / PERFIL Y SESIONES DE MERCADO -------------------
+# Obtener usuario logueado en Supabase (si existe en la sesión)
+user = st.session_state.get("user", None)
+
+if user and hasattr(user, "email"):
+    user_email = user.email
+    # Cálculo dinámico de días desde el registro
+    try:
+        created_at = datetime.datetime.strptime(user.created_at[:10], "%Y-%m-%d")
+        dias_registro = (datetime.datetime.now() - created_at).days
+    except Exception:
+        dias_registro = 0
+        
+    # Lógica de suscripción: 3 días de prueba o VIP si pagó
+    is_vip_db = st.session_state.get("is_vip_paid", False)
+    
+    if is_vip_db:
+        estado_plan = "⚡ VIP / PLAN PRO ACTIVO"
+        badge_class = "vip-badge"
+    elif dias_registro <= 3:
+        dias_restantes = max(0, 3 - dias_registro)
+        estado_plan = f"🎁 PRUEBA GRATUITA ({dias_restantes} DÍAS RESTANTES)"
+        badge_class = "trial-badge"
+    else:
+        estado_plan = "🔴 PRUEBA EXPIRADA ($5/mes)"
+        badge_class = "expired-badge"
+else:
+    # Fallback temporal si la sesión se reinicia o está en modo local
+    user_email = st.session_state.get("user_email", "usuario@trading.com")
+    estado_plan = "🎁 PRUEBA GRATUITA (3 DÍAS)"
+    badge_class = "trial-badge"
+
+# ------------------- SIDEBAR / PERFIL REAL Y SESIONES -------------------
 with st.sidebar:
-    # Foto de Perfil de Usuario
     st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=80)
     st.markdown("### 👤 Perfil de Usuario")
-    st.write(f"**Email:** `{st.session_state['user_email']}`")
     
-    if st.session_state["is_vip"]:
-        st.markdown('<span class="vip-badge">⚡ VIP / PLAN PRO ACTIVO</span>', unsafe_allow_html=True)
-    else:
-        st.markdown('🔴 **Plan Gratuito**')
+    # Muestra el correo dinámico del usuario real
+    st.write(f"**Email:** `{user_email}`")
+    
+    # Muestra el estado del plan real (Prueba, VIP o Expirado)
+    st.markdown(f'<span class="{badge_class}">{estado_plan}</span>', unsafe_allow_html=True)
 
     st.markdown("---")
     
@@ -169,7 +215,8 @@ with st.sidebar:
 
     st.markdown("---")
     if st.button("🚪 Cerrar Sesión", use_container_width=True):
-        st.success("Sesión cerrada correctamente")
+        st.session_state.clear()
+        st.rerun()
 
 # ------------------- ENCABEZADO PRINCIPAL -------------------
 st.title("⚡ Journaling & AI Trading Audit")
