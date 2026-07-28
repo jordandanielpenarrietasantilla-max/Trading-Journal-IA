@@ -61,6 +61,64 @@ if "auto_tp" not in st.session_state:
     st.session_state.auto_tp = 0.0
 
 # ==========================================
+# LISTA COMPLETA DE ACTIVOS FINANCIEROS
+# ==========================================
+LISTA_ACTIVOS = [
+    # --- MATERIAS PRIMAS ---
+    "🥇 XAU/USD (Oro)",
+    "🥈 XAG/USD (Plata)",
+    "🛢️ USOIL (Petróleo WTI)",
+    "🛢️ UKOIL (Petróleo Brent)",
+    "🌾 NGAS (Gas Natural)",
+    
+    # --- CRIPTOMONEDAS ---
+    "🪙 BTC/USD (Bitcoin)",
+    "🪙 ETH/USD (Ethereum)",
+    "🪙 SOL/USD (Solana)",
+    "🪙 XRP/USD (Ripple)",
+    "🪙 BNB/USD (Binance Coin)",
+    "🪙 ADA/USD (Cardano)",
+    "🪙 DOGE/USD (Dogecoin)",
+    "🪙 AVAX/USD (Avalanche)",
+    
+    # --- ÍNDICES ---
+    "📊 US100 (Nasdaq 100)",
+    "📊 US30 (Dow Jones)",
+    "📊 US500 (S&P 500)",
+    "📊 GER40 (Dax Alemán)",
+    "📊 UK100 (FTSE 100)",
+    "📊 JP225 (Nikkei 225)",
+    
+    # --- FOREX (DIVISAS MAJORS Y MINORS) ---
+    "💱 EUR/USD",
+    "💱 GBP/USD",
+    "💱 USD/JPY",
+    "💱 AUD/USD",
+    "💱 USD/CAD",
+    "💱 USD/CHF",
+    "💱 NZD/USD",
+    "💱 EUR/GBP",
+    "💱 EUR/JPY",
+    "💱 GBP/JPY",
+    "💱 AUD/JPY",
+    "💱 CAD/JPY",
+    "💱 EUR/AUD",
+    "💱 GBP/AUD",
+    
+    # --- ACCIONES ---
+    "📈 NVDA (Nvidia)",
+    "📈 TSLA (Tesla)",
+    "📈 AAPL (Apple)",
+    "📈 AMZN (Amazon)",
+    "📈 MSFT (Microsoft)",
+    "📈 GOOGL (Google)",
+    "📈 META (Meta / Facebook)",
+    "📈 AMD (Advanced Micro Devices)",
+    "📈 NFLX (Netflix)",
+    "📈 COIN (Coinbase)"
+]
+
+# ==========================================
 # FUNCIONES DE BASE DE DATOS Y VISION IA
 # ==========================================
 def cargar_trades_usuario(user_id):
@@ -122,7 +180,7 @@ def analizar_captura_tradingview(image_bytes):
         return None
 
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS (SELECTBOX Y CONTRASTE)
+# 2. ESTILOS CSS PERSONALIZADOS (CORRECCIÓN TOTAL DE POPOVERS Y DESPLEGABLES)
 # ==========================================
 def aplicar_estilos():
     css = """
@@ -145,7 +203,8 @@ def aplicar_estilos():
         font-weight: 800 !important;
     }
 
-    /* === CORRECCIÓN DEFINITIVA DE DESPLEGABLES (SELECTBOX) Y BUSCADORES === */
+    /* === CORRECCIÓN TOTAL Y ABSOLUTA DEL MENÚ DESPLEGABLE (SELECTBOX) === */
+    /* Caja del selector cerrado */
     div[data-baseweb="select"] > div {
         background-color: #141a24 !important;
         color: #00f2fe !important;
@@ -160,18 +219,27 @@ def aplicar_estilos():
         -webkit-text-fill-color: #00f2fe !important;
     }
 
-    /* LISTA DESPLEGADA (MENÚ FLOTANTE) */
-    ul[data-baseweb="menu"], div[data-baseweb="popover"] {
-        background-color: #141a24 !important;
-        border: 1px solid #00f2fe !important;
-        border-radius: 8px !important;
-    }
-
-    li[data-baseweb="option"] {
+    /* FORZAR FONDO OSCURO EN EL MENÚ FLOTANTE Y TODAS SUS OPCIONES */
+    div[data-baseweb="popover"], 
+    div[data-baseweb="popover"] *,
+    div[data-baseweb="menu"], 
+    div[data-baseweb="menu"] *,
+    ul[role="listbox"],
+    ul[role="listbox"] * {
         background-color: #141a24 !important;
         color: #ffffff !important;
     }
 
+    /* Elementos individuales dentro del menú */
+    li[role="option"],
+    li[data-baseweb="option"] {
+        background-color: #141a24 !important;
+        color: #ffffff !important;
+        padding: 10px 14px !important;
+    }
+
+    /* Hover o elemento resaltado */
+    li[role="option"]:hover,
     li[data-baseweb="option"]:hover,
     li[aria-selected="true"] {
         background-color: #1e293b !important;
@@ -186,6 +254,7 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
+    /* Campo de Chat */
     div[data-testid="stChatInput"] {
         background-color: #141a24 !important;
         border-radius: 12px !important;
@@ -601,7 +670,7 @@ def render_dashboard():
             
             sub_c1, sub_c2 = st.columns(2)
             with sub_c1:
-                par = st.selectbox("Seleccionar Activo / Par", ["XAU/USD (Oro)", "EUR/USD", "GBP/USD", "BTC/USD", "US100 (Nasdaq)"])
+                par = st.selectbox("Seleccionar Activo / Par", LISTA_ACTIVOS)
                 direccion = st.radio("Dirección", ["LONG 🟢", "SHORT 🔴"], horizontal=True)
                 precio_entrada = st.number_input("Precio Entrada", value=st.session_state.auto_entry, format="%.5f")
                 stop_loss = st.number_input("Stop Loss", value=st.session_state.auto_sl, format="%.5f")
