@@ -100,8 +100,8 @@ LISTA_ACTIVOS = [
     "💱 EUR/GBP",
     "💱 EUR/JPY",
     "💱 GBP/JPY",
-    "🛢️ AUD/JPY",
-    "🛢️ CAD/JPY",
+    "💱 AUD/JPY",
+    "💱 CAD/JPY",
     "💱 EUR/AUD",
     "💱 GBP/AUD",
     
@@ -228,7 +228,7 @@ def aplicar_estilos():
     div[data-baseweb="menu"], 
     div[role="listbox"],
     ul[role="listbox"] {
-        background-color: #121721 !important; /* Fondo azul oscuro nítido */
+        background-color: #121721 !important;
         border: 1px solid #00f2fe !important;
         border-radius: 8px !important;
     }
@@ -237,8 +237,8 @@ def aplicar_estilos():
     div[role="option"],
     li[role="option"],
     li[data-baseweb="option"] {
-        background-color: #121721 !important; /* Fondo oscuro */
-        color: #ffffff !important; /* Letras blancas para lectura */
+        background-color: #121721 !important;
+        color: #ffffff !important;
         font-family: 'Segoe UI', sans-serif !important;
         font-size: 14px !important;
         padding: 10px 14px !important;
@@ -249,8 +249,8 @@ def aplicar_estilos():
     div[role="option"]:hover,
     li[role="option"]:hover,
     li[aria-selected="true"] {
-        background-color: #00f2fe !important; /* Fondo cian brillante */
-        color: #000000 !important; /* Texto negro para contraste máximo */
+        background-color: #00f2fe !important;
+        color: #000000 !important;
         font-weight: bold !important;
     }
 
@@ -258,8 +258,6 @@ def aplicar_estilos():
     div[data-baseweb="select"] svg {
         fill: #00f2fe !important;
     }
-
-    /* === FIN SOLUCIÓN DESPLEGABLES === */
 
     /* Entradas de texto y números normales */
     .stTextInput input, .stNumberInput input, .stTextArea textarea {
@@ -358,7 +356,7 @@ def evaluar_suscripcion(user):
 # ==========================================
 def render_paywall():
     st.markdown("## 🔒 Tu Período de Prueba Gratis de 3 Días ha Expirado")
-    st.markdown("Para continuar auditando tus operaciones con IA y registrando tu Track Record Pro, activa tu acceso Pro mediante **Binance Pay**:")
+    st.markdown("Para continuar auditando tus operaciones con IA y registrando tu Track Record, activa tu acceso mediante **Binance Pay**:")
 
     col1, col2 = st.columns(2)
 
@@ -476,9 +474,7 @@ def render_auth():
                 if reset_email:
                     try:
                         client = get_supabase_client()
-                        # URL de tu app en Streamlit Cloud
                         app_url = "https://trading-journal-ia-7lvamxtjspcbclwcda2zxg.streamlit.app/"
-                        # Esta función envía un correo de Supabase con un link que redirige a tu app
                         client.auth.reset_password_for_email(reset_email, {"redirectTo": app_url})
                         st.success("📩 Se ha enviado un enlace de recuperación a tu correo electrónico. Revisa tu bandeja de entrada o Spam.")
                     except Exception as e:
@@ -491,14 +487,11 @@ def render_auth():
 # ==========================================
 def render_sidebar(estado_sub):
     with st.sidebar:
-        st.markdown("### 👤 Perfil Trader Pro")
+        st.markdown("### 👤 Perfil Trader")
         
-        # Recuperamos datos del usuario autenticado
         user = st.session_state.user
         user_email = user.email if user else "trader@ejemplo.com"
-        # Supabase guarda metadatos en user_metadata
         metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
-        # Nombre y avatar_b64 (foto) guardados previamente
         nombre_actual = metadata.get("username", st.session_state.get("nombre_trader", "Trader Pro"))
         foto_b64 = metadata.get("avatar_b64", None)
 
@@ -513,61 +506,52 @@ def render_sidebar(estado_sub):
             st.markdown(f"**{nombre_actual}**")
             st.caption(f"`{user_email}`")
 
-        # Estado de suscripción llamativo
         if "PRO" in estado_sub or "Admin" in estado_sub:
             st.success(f"💎 {estado_sub}")
         else:
             st.warning(f"⏳ {estado_sub}")
 
-        # Botón desplegable para editar perfil dentro de Supabase
-        with st.expander("⚙️ Modificar Perfil Pro"):
-            input_nombre = st.text_input("Nombre de Usuario Pro", value=nombre_actual)
-            foto_subida = st.file_uploader("Seleccionar nueva foto Pro", type=["jpg", "jpeg", "png", "webp"])
+        with st.expander("⚙️ Modificar Perfil"):
+            input_nombre = st.text_input("Nombre de Usuario", value=nombre_actual)
+            foto_subida = st.file_uploader("Seleccionar nueva foto", type=["jpg", "jpeg", "png", "webp"])
             
-            if st.button("Guardar Cambios Pro"):
+            if st.button("Guardar Cambios"):
                 nueva_foto_b64 = foto_b64
                 if foto_subida is not None:
-                    # Leemos los bytes y los convertimos a Base64 para guardarlo en Supabase
                     bytes_data = foto_subida.getvalue()
                     nueva_foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
                 
                 try:
                     client = get_supabase_client()
-                    # Actualizamos user_metadata en la autenticación de Supabase
                     res = client.auth.update_user({
                         "data": {
                             "username": input_nombre,
                             "avatar_b64": nueva_foto_b64
                         }
                     })
-                    # Actualizamos el estado de sesión y mostramos éxito
                     st.session_state.user = res.user
-                    st.session_state.nombre_trader = input_nombre # Mantenemos retrocompatibilidad
-                    st.toast("¡Perfil Pro guardado exitosamente!", icon="✅")
-                    st.rerun() # Recargamos para ver los cambios
+                    st.session_state.nombre_trader = input_nombre
+                    st.toast("¡Perfil guardado exitosamente!", icon="✅")
+                    st.rerun()
                 except Exception as e:
-                    st.error(f"Error al guardar perfil Pro: {e}")
+                    st.error(f"Error al guardar perfil: {e}")
 
         st.markdown("---")
 
-        # Meta de Cuenta (Widget llamativo Pro)
-        st.markdown("### 🎯 Meta de Cuenta Pro")
+        st.markdown("### 🎯 Meta de Cuenta")
         cap_act = st.session_state.capital_actual
         cap_met = st.session_state.capital_meta
         progreso = min(1.0, max(0.0, cap_act / cap_met)) if cap_met > 0 else 0.0
-        st.markdown(f"**Capital Pro:** `${cap_act:,.0f}` / `${cap_met:,.0f}`")
+        st.markdown(f"**Capital:** `${cap_act:,.0f}` / `${cap_met:,.0f}`")
         st.progress(progreso)
 
-        # Configuraciones adicionales (Expander Pro)
-        with st.expander("🔧 Configuración Meta Pro"):
-            st.session_state.capital_actual = st.number_input("Capital Actual Pro ($)", value=float(cap_act), step=500.0)
-            st.session_state.capital_meta = st.number_input("Meta Capital Pro ($)", value=float(cap_met), step=1000.0)
+        with st.expander("🔧 Configuración Meta"):
+            st.session_state.capital_actual = st.number_input("Capital Actual ($)", value=float(cap_act), step=500.0)
+            st.session_state.capital_meta = st.number_input("Meta de Capital ($)", value=float(cap_met), step=1000.0)
 
         st.markdown("---")
 
-        # Sesiones de Mercado (Mejorado con Hora Local Pro)
-        st.markdown("### ⏰ Hora Local Pro & Sesiones Pro")
-        # Widget HTML/JS para reloj local en vivo
+        st.markdown("### ⏰ Hora Local & Sesiones")
         st.components.v1.html(
             """
             <div id="clock" style="
@@ -586,41 +570,37 @@ def render_sidebar(estado_sub):
             function updateClock() {
                 var now = new Date();
                 var timeString = now.toLocaleTimeString();
-                document.getElementById('clock').innerHTML = timeString + " (Local Pro)";
+                document.getElementById('clock').innerHTML = timeString + " (Local)";
             }
             setInterval(updateClock, 1000);
-            updateClock(); // Carga inicial
+            updateClock();
             </script>
             """,
             height=50
         )
 
-        # Sesiones (Comparación UTC básica Pro)
         hora_utc = datetime.datetime.utcnow().hour
         londres_status = '<span class="market-badge open">ABIERTO</span>' if 7 <= hora_utc <= 15 else '<span class="market-badge closed">CERRADO</span>'
         ny_status = '<span class="market-badge open">ABIERTO</span>' if 12 <= hora_utc <= 20 else '<span class="market-badge closed">CERRADO</span>'
 
-        st.markdown(f"**Londres Pro:** {londres_status}", unsafe_allow_html=True)
-        st.markdown(f"**N. York Pro:** {ny_status}", unsafe_allow_html=True)
+        st.markdown(f"**Londres:** {londres_status}", unsafe_allow_html=True)
+        st.markdown(f"**N. York:** {ny_status}", unsafe_allow_html=True)
 
         st.markdown("---")
 
-        # Reglas de Disciplina (Expandible Pro)
-        st.markdown("### 🎯 Mis Reglas Pro")
-        with st.expander("✏️ Editar Reglas Pro"):
-            input_reglas = st.text_area("Reglas Pro personalizadas:", value=st.session_state.reglas_disciplina, height=150)
-            if st.button("Guardar Reglas Pro"):
+        st.markdown("### 🎯 Mis Reglas")
+        with st.expander("✏️ Editar Reglas"):
+            input_reglas = st.text_area("Reglas personalizadas:", value=st.session_state.reglas_disciplina, height=150)
+            if st.button("Guardar Reglas"):
                 st.session_state.reglas_disciplina = input_reglas
-                st.toast("¡Reglas Pro actualizadas!", icon="✅")
+                st.toast("¡Reglas actualizadas!", icon="✅")
                 st.rerun()
 
-        # Mostramos las reglas actuales Pro
         st.markdown(st.session_state.reglas_disciplina)
 
         st.markdown("---")
 
-        # Botón de Cerrar Sesión Pro (Supabase Pro)
-        if st.button("🚪 Cerrar Sesión Pro", secondary="true"):
+        if st.button("🚪 Cerrar Sesión"):
             client = get_supabase_client()
             client.auth.sign_out()
             st.session_state.authenticated = False
@@ -631,116 +611,105 @@ def render_sidebar(estado_sub):
 # 7. DASHBOARD PRINCIPAL Y TODAS LAS PESTAÑAS INTERACTIVAS
 # ==========================================
 def render_dashboard():
-    # Evaluamos suscripción del usuario autenticado Pro
     tiene_acceso, estado_sub, dias_restantes = evaluar_suscripcion(st.session_state.user)
-    
-    # Mostramos Sidebar Pro siempre
     render_sidebar(estado_sub)
 
     if not tiene_acceso:
-        # Si no tiene acceso Pro (prueba expirada), mostramos Paywall y bloqueamos Pro
         render_paywall()
         return
 
-    # Si tiene acceso Pro, mostramos todo el Dashboard Pro
-    st.markdown("## ⚡ Diario Pro y Auditoría Pro")
-
-    # Recuperamos los trades guardados del usuario en Supabase Pro
     user_id = st.session_state.user.id
     trades_db = cargar_trades_usuario(user_id)
-    # Convertimos a DataFrame para métricas y gráficos Pro
     df_trades = pd.DataFrame(trades_db)
 
-    # Definimos las pestañas principales Pro
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["➕ Registrar Pro", "📅 Record PnL Pro", "💬 Chat IA Pro", "🧮 Calc. Lotaje Pro", "🧠 Análisis Pro vs IA", "📈 Proyecciones Pro", "📓 Diario Pro", "📊 Dashboard Pro"])
+    st.markdown("## ⚡ Journaling & AI Trading Audit")
 
-    # --- PESTAÑA 1: REGISTRAR TRADE PRO ---
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+        "➕ Registrar Trade", 
+        "📅 Track Record PnL", 
+        "💬 Chat IA & Auditoría",
+        "🧮 Calc. Lotaje", 
+        "🧠 Análisis vs IA", 
+        "📈 Proyecciones", 
+        "📓 Diario & Psicotrading", 
+        "📊 Dashboard & Progreso"
+    ])
+
+    # --- TAB 1: REGISTRAR TRADE ---
     with tab1:
-        st.info("💡 **Consejo Pro:** Al subir una captura de TradingView con la herramienta de Posición, la IA escaneará la imagen y **autocompletará** tus precios Pro.")
+        st.info("💡 **Tip con IA:** Al subir una captura de TradingView con la herramienta de Posición, la IA escaneará la imagen y **autocompletará** tus precios.")
         
         col1, col2 = st.columns([1.2, 1])
 
         with col2:
-            st.markdown("### 🖼️ Capturas Pro")
-            upload_before = st.file_uploader("Screenshot ANTES Pro (IA Escaneo Pro)", type=["png", "jpg", "jpeg"])
-            upload_after = st.file_uploader("Screenshot DESPUÉS Pro", type=["png", "jpg", "jpeg"])
+            st.markdown("### 🖼️ Capturas del Gráfico")
+            upload_before = st.file_uploader("1️⃣ Screenshot ANTES (Escaneo IA)", type=["png", "jpg", "jpeg"])
+            upload_after = st.file_uploader("2️⃣ Screenshot DESPUÉS", type=["png", "jpg", "jpeg"])
 
             if upload_before:
-                st.image(upload_before, caption="Trade SETUP Pro (Antes)", use_container_width=True)
+                st.image(upload_before, caption="Trade SETUP (Antes)", use_container_width=True)
                 
-                # Botón de escaneo Pro con IA Pro
-                if st.button("🧠 Escanear SETUP Pro con IA Pro"):
-                    with st.spinner("La IA Pro está leyendo los valores numéricos Pro del gráfico Pro..."):
+                if st.button("🧠 Escanear SETUP con IA"):
+                    with st.spinner("La IA está leyendo los valores numéricos del gráfico..."):
                         extracted = analizar_captura_tradingview(upload_before.getvalue())
                         if extracted:
-                            # Actualizamos variables en session_state Pro
                             st.session_state.auto_entry = extracted.get("entry", 0.0)
                             st.session_state.auto_sl = extracted.get("sl", 0.0)
                             st.session_state.auto_tp = extracted.get("tp", 0.0)
-                            st.toast("¡Valores Pro extraídos con éxito!", icon="✨")
+                            st.toast("¡Valores extraídos con éxito!", icon="✨")
                             st.rerun()
                         else:
-                            st.warning("La IA Pro no pudo extraer los números Pro. Inténtalo Pro manualmente.")
+                            st.warning("La IA no pudo extraer los números. Inténtalo manualmente.")
 
-            monto_pnl = st.number_input("Ganancia Pro / Pérdida Pro Pro USD:", value=0.0, step=10.0)
+            monto_pnl = st.number_input("Ganancia / Pérdida en $USD de este trade:", value=0.0, step=10.0)
 
         with col1:
-            st.markdown("### 📝 Parámetros Pro")
-            # Autocompletado Pro
-            fecha_op = st.date_input("Fecha Pro Operación", datetime.date.today())
+            st.markdown("### 📝 Parámetros & Fecha")
+            fecha_op = st.date_input("Fecha de la Operación", datetime.date.today())
             
             sub_col1, sub_col2 = st.columns(2)
             with sub_col1:
-                par = st.selectbox("Activo / Par Pro", ["XAU/USD (Oro)", "EUR/USD", "GBP/USD", "BTC/USD", "US100 (Nasdaq)"])
-                direccion = st.radio("Dirección Pro", ["LONG Pro", "SHORT Pro"], horizontal=True)
-                precio_entrada = st.number_input("Precio Entrada Pro", value=st.session_state.auto_entry, format="%.5f")
-                stop_loss = st.number_input("Stop Loss Pro", value=st.session_state.auto_sl, format="%.5f")
+                par = st.selectbox("Seleccionar Activo / Par", LISTA_ACTIVOS)
+                direccion = st.radio("Dirección", ["LONG 🟢", "SHORT 🔴"], horizontal=True)
+                precio_entrada = st.number_input("Precio Entrada", value=st.session_state.auto_entry, format="%.5f")
+                stop_loss = st.number_input("Stop Loss", value=st.session_state.auto_sl, format="%.5f")
             
             with sub_col2:
-                # Basic check, Basic check 基本 Basic check Basic Basic Basic Check check basic Check Basic basic basic basic basic Basic Basic check basic check basic Check Basic Basic basic
-                # Ratio Pro Risk:Reward basic calculation basic check Pro
-                precio_entrada_rr = st.session_state.auto_entry if st.session_state.auto_entry > 0 else (precio_entrada if precio_entrada > 0 else 0.00000000001)
-                take_profit = st.number_input("Take Profit Pro", value=st.session_state.auto_tp, format="%.5f")
+                take_profit = st.number_input("Take Profit", value=st.session_state.auto_tp, format="%.5f")
                 riesgo = abs(precio_entrada - stop_loss)
                 beneficio = abs(take_profit - precio_entrada)
                 rr = beneficio / riesgo if riesgo > 0 else 0
                 
-                st.markdown(f"**Ratio Pro Risk:Reward:** 1 : {rr:.1f}")
-                resultado = st.selectbox("Resultado Pro", ["WIN Pro", "LOSS Pro", "BE Pro"])
+                st.markdown(f"**Ratio Risk:Reward:** 1 : {rr:.1f}")
+                resultado = st.selectbox("Resultado", ["WIN 🟢", "LOSS 🔴", "BE ⚪"])
 
-            # Sección de Psicotrading Pro
-            st.markdown("### 🧠 Psicotrading Pro")
-            emocion = st.selectbox("Emoción Pro Pro:", ["Disciplinado Pro", "Ansioso Pro", "FOMO Pro", "Venganza Pro", "Sobre-confiado Pro"])
-            notas_emocionales = st.text_area("Notas emocionales Pro Pro Pro:", placeholder="Escribe Pro Pro si Pro respetaste Pro Pro...")
+            st.markdown("### 🧠 Psicotrading & Estado Emocional")
+            emocion = st.selectbox("¿Cómo te sentías?", [
+                "Disciplinado / Neutro 🧘", "Ansioso ⚡", "FOMO / Miedo a perderse el movimiento 🚀", 
+                "Venganza / Frustrado 🛑", "Eufórico / Sobre-confiado 😎"
+            ])
+            notas_emocionales = st.text_area("Notas emocionales de la sesión:", placeholder="Escribe aquí si respetaste tu plan...")
 
-            # Botón de guardar Pro en Supabase Pro
-            if st.button("💾 Guardar Pro en Diario Pro Pro"):
-                # Preparamos Pro Pro JSON para Pro
+            if st.button("💾 Guardar Trade en Diario"):
                 nuevo_trade = {
-                    "fecha": str(fecha_op), # Convertimos Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro
-                    "par": par, "resultado": resultado, "emocion": emocion, "beneficio_usd": monto_pnl, "trades_cant": 1 # Basic count
+                    "fecha": str(fecha_op),
+                    "par": par, "resultado": resultado, "emocion": emocion, "beneficio_usd": monto_pnl, "trades_cant": 1
                 }
                 
-                # Llamada a la Pro Pro Pro Pro Pro Pro trades Pro table Pro
                 if guardar_trade_supabase(user_id, nuevo_trade):
-                    # Limpiamos Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro
                     st.session_state.auto_entry = 0.0
                     st.session_state.auto_sl = 0.0
                     st.session_state.auto_tp = 0.0
-                    st.success("¡Operación Pro guardada Pro exitosamente Pro Pro Pro Pro!")
-                    st.rerun() # Recargamos Pro Pro
+                    st.success("¡Operación guardada exitosamente!")
+                    st.rerun()
 
-    # --- PESTAÑA 2: TRACK RECORD PRO PRO PNL (Calendario Pro Pro Pro) ---
+    # --- TAB 2: TRACK RECORD PNL ---
     with tab2:
-        st.markdown("### 📅 Record PnL Pro Calendario Pro Pro Pro")
-        st.info("💡 **Consejo Pro:** Visualiza Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro.")
+        st.markdown("### 📅 Track Record & Calendario de PnL")
+        st.info("💡 Vista mensual estilo Prop Firm. Los días verdes son ganancias, rojos son pérdidas.")
         
         if not df_trades.empty:
-            # Agrupamos Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro
-            # Sumamos Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro
             df_grouped = df_trades.groupby('fecha').agg({'beneficio_usd': 'sum', 'trades_cant': 'count'}).reset_index()
-            # trades_cant Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro
-            # count trades Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro
             dias_ganadores = len(df_grouped[df_grouped['beneficio_usd'] > 0])
             dias_perdedores = len(df_grouped[df_grouped['beneficio_usd'] < 0])
         else:
@@ -748,31 +717,215 @@ def render_dashboard():
             dias_ganadores = 0
             dias_perdedores = 0
 
-        # Métricas principales Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro
         total_pnl = df_trades['beneficio_usd'].sum() if not df_trades.empty else 0.0
         
         c1, c2, c3 = st.columns(3)
-        c1.metric("Resultado Neto Pro Pro Pro", f"${total_pnl:,.2f}", f"{'+' if total_pnl >= 0 else ''}{total_pnl:,.2f}")
-        c2.metric("Días Verdes Pro Pro Pro", f"{dias_ganadores} días", Basic Basic Basic Basic Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro For Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pro Pr. Pro in de context in which it operates.
+        c1.metric("Resultado Neto Total", f"${total_pnl:,.2f}", f"{'+' if total_pnl >= 0 else ''}{total_pnl:,.2f}")
+        c2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
+        c3.metric("Días Rojos 🟥", f"{dias_perdedores} días")
 
-Pro Pro with Pro Pro 3. Pro Pro is available to all Pro users and can generate up Pro directly within the Gemini user interface. To use it, simply type "@Pro Pro" within the input field.
+        st.markdown("---")
+        
+        pnl_map = df_grouped.set_index('fecha')['beneficio_usd'].to_dict() if not df_grouped.empty else {}
+        trades_map = df_grouped.set_index('fecha')['trades_cant'].to_dict() if not df_grouped.empty else {}
 
-Pro Pro on Pro has a set rate limit. You can use it within the Pro platform for as long as it's available. If you reach the limit, the conversation will transition back to other models on Pro to ensure you can continue chatting without interruption.
+        hoy = datetime.date.today()
+        mes_dias = calendar.Calendar(firstweekday=6).monthdayscalendar(hoy.year, hoy.month)
+        
+        dias_header = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+        cols_header = st.columns(7)
+        for idx, col in enumerate(cols_header):
+            with col:
+                st.markdown(f"<div style='text-align:center; font-weight:bold; color:#f0f3fa;'>{dias_header[idx]}</div>", unsafe_allow_html=True)
 
-This new tool will be very easy for existing users, as Pro Pro can generate code directly in the Pro user interface. Simply mention `@pro` and enter your coding prompt.
+        for semana in mes_dias:
+            cols_sem = st.columns(7)
+            for day_idx, day_num in enumerate(semana):
+                with cols_sem[day_idx]:
+                    if day_num == 0:
+                        st.markdown("<div style='height:80px;'></div>", unsafe_allow_html=True)
+                    else:
+                        f_date = datetime.date(hoy.year, hoy.month, day_num)
+                        f_key = str(f_date)
+                        pnl_val = pnl_map.get(f_key, None)
+                        num_trades = trades_map.get(f_key, 0)
 
-No, you do not. Pro Pro on Pro operates with a very high context window, so you can easily paste large amounts of code into the chat. You can also upload files. We also offer tools to help upload full codebases.
+                        border_css = "border: 2px solid #00f2fe; box-shadow: 0px 0px 10px rgba(0,242,254,0.4);" if f_date == hoy else "border: 1px solid #161b22;"
 
-Yes, it handles any complex, logic-driven coding task and can work across multiple files, languages, and contexts to solve end-to-end coding problems. From refactoring code to writing complex data analysis scripts, Pro Pro is fully up to the task.
+                        if pnl_val is None:
+                            bg_color = "#161b22"
+                            txt_color = "#f0f3fa"
+                            pnl_html = ""
+                            trades_html = ""
+                        elif pnl_val > 0:
+                            bg_color = "#34d399"
+                            txt_color = "#000000"
+                            pnl_fmt = f"${pnl_val:,.0f}" if pnl_val < 1000 else f"${pnl_val/1000:.1f}k"
+                            pnl_html = f"<div style='font-weight:bold; font-size:1.1rem; color:{txt_color};'>+{pnl_fmt}</div>"
+                            trades_html = f"<div style='font-size:0.7rem; color:{txt_color};'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
+                        elif pnl_val < 0:
+                            bg_color = "#f87171"
+                            txt_color = "#000000"
+                            pnl_fmt = f"-${abs(pnl_val):,.0f}" if abs(pnl_val) < 1000 else f"-${abs(pnl_val)/1000:.1f}k"
+                            pnl_html = f"<div style='font-weight:bold; font-size:1.1rem; color:{txt_color};'>{pnl_fmt}</div>"
+                            trades_html = f"<div style='font-size:0.7rem; color:{txt_color};'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
+                        else:
+                            bg_color = "#161b22"
+                            txt_color = "#ffffff"
+                            pnl_html = "<div style='font-weight:bold; font-size:1.1rem;'>$0</div>"
+                            trades_html = f"<div style='font-size:0.7rem;'>{num_trades} trades</div>"
 
-Yes, this powerful new coding agent is included with every Pro plan.
+                        today_tag = " <span style='font-size:0.6rem; color:#00f2fe;'>(HOY)</span>" if f_date == hoy else ""
 
-Yes, you can easily upload entire files or large chunks of code directly to the chat interface. Pro Pro's massive context window enables it to easily handle comprehensive code review or analysis tasks.
+                        box_html = f"""<div style="background-color: {bg_color}; {border_css} border-radius: 6px; padding: 6px; height: 80px; display: flex; flex-direction: column; justify-content: space-between;"><div style="font-size:0.75rem; font-weight:bold; color:{txt_color};">{day_num}{today_tag}</div><div style="text-align:center;">{pnl_html}{trades_html}</div></div>"""
+                        
+                        st.markdown(box_html, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        if not df_grouped.empty:
+            df_grouped['color_pnl'] = np.where(df_grouped['beneficio_usd'] >= 0, 'GANANCIA', 'PÉRDIDA')
+            fig_pnl = px.bar(df_grouped, x='fecha', y='beneficio_usd', color='color_pnl', title="PnL Monetario Diario", template="plotly_dark", color_discrete_map={'GANANCIA': '#00f2fe', 'PÉRDIDA': '#f44336'})
+            fig_pnl.update_layout(plot_bgcolor='#0b0e14', paper_bgcolor='#0b0e14', xaxis_title="Fecha", yaxis_title="Beneficio USD")
+            st.plotly_chart(fig_pnl, use_container_width=True)
 
-Pro Pro is integrated directly into the Pro interface. For new projects, we generally recommend beginning with a chat. For modifying existing projects, we recommend starting with a chat to formulate your strategy before moving to the Code Editor for deeper, multi-file edits and terminal access.
+    # --- TAB 3: CHAT DE AUDITORÍA CON IA ---
+    with tab3:
+        st.markdown("### 💬 Chat de Auditoría de Trading con IA")
+        st.caption("Pregúntale a tu asistente sobre tus hábitos, estadísticas o reglas operativas.")
 
-For heavy coding workflows, we recommend working with a smaller model to brainstorm and refine, then switching to Pro Pro for complex, multi-file implementations.
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-Absolutely, Pro Pro is capable of generating and analyzing code in multiple programming languages and frameworks.
+        if prompt := st.chat_input("Escribe tu duda (ej. ¿Cómo puedo mejorar mi Win Rate este mes?)..."):
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-You just need to be on a Pro plan. The free Pro trial is available for all new users.
+            with st.chat_message("assistant"):
+                with st.spinner("Analizando tu historial de operaciones con IA... 🧠"):
+                    cant_trades = len(trades_db)
+                    if cant_trades == 0:
+                        respuesta_ia = "Aún no has registrado trades en tu diario. Ve a la pestaña **'➕ Registrar Trade'** para comenzar a auditar tu operativa."
+                    else:
+                        pnl_tot = df_trades['beneficio_usd'].sum()
+                        wins = len(df_trades[df_trades['beneficio_usd'] > 0])
+                        win_rate = (wins / cant_trades * 100) if cant_trades > 0 else 0
+                        respuesta_ia = f"Has registrado **{cant_trades}** operaciones con un resultado neto acumulado de **${pnl_tot:,.2f} USD** y una tasa de acierto del **{win_rate:.1f}%**. Te sugiero seguir manteniendo la disciplina emocional."
+
+                    st.markdown(respuesta_ia)
+                    st.session_state.chat_history.append({"role": "assistant", "content": respuesta_ia})
+
+    # --- TAB 4: CALCULADORA DE LOTAJE ---
+    with tab4:
+        st.markdown("### 🧮 Calculadora de Tamaño de Posición")
+        st.caption("Calcula el lotaje ideal para no sobrepasar el riesgo permitido por operación.")
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            balance = st.number_input("Balance de Cuenta ($USD)", value=float(st.session_state.capital_actual), step=500.0)
+            porcentaje_riesgo = st.number_input("Riesgo por Trade (%)", value=1.0, step=0.25)
+            pips_sl = st.number_input("Distancia de Stop Loss (Pips / Puntos)", value=20.0, step=1.0)
+
+        with col_b:
+            monto_riesgo = balance * (porcentaje_riesgo / 100.0)
+            lotaje_estimado = (monto_riesgo / (pips_sl * 10.0)) if pips_sl > 0 else 0.0
+
+            st.metric("Riesgo Monetario Máximo", f"${monto_riesgo:,.2f} USD")
+            st.metric("Lotes Sugeridos (Forex Estándar)", f"{lotaje_estimado:.2f} Lotes")
+            st.info("💡 **Nota:** Para índices como US100 / US30 o Criptos, ajusta la equivalencia según el contrato de tu broker.")
+
+    # --- TAB 5: ANÁLISIS VS IA ---
+    with tab5:
+        st.markdown("### 🤖 Auditoría Visual de Estructura de Mercado")
+        st.caption("Sube la captura de tu setup previo a la entrada para recibir una segunda opinión basada en IA.")
+
+        chart_audit = st.file_uploader("Subir Gráfico para Auditoría Visual", type=["png", "jpg", "jpeg"], key="audit_upload_visual")
+        if chart_audit:
+            st.image(chart_audit, caption="Análisis en proceso...", use_container_width=True)
+            if st.button("🔍 Auditar Entrada con IA"):
+                with st.spinner("Escaneando zonas de oferta, demanda y estructura..."):
+                    st.success("✅ **Análisis completado:** El gráfico muestra una estructura clara. Recuerda confirmar la confluencia en temporalidades menores antes de ejecutar.")
+
+    # --- TAB 6: PROYECCIONES DE CAPITAL ---
+    with tab6:
+        st.markdown("### 📈 Proyección de Crecimiento por Interés Compuesto")
+        st.caption("Simula cómo crecería tu cuenta a 12 meses manteniendo tu porcentaje de efectividad.")
+
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            trades_mes = st.slider("Trades por Mes", 5, 50, 15)
+            win_rate_est = st.slider("Win Rate Estimado (%)", 30, 90, 55)
+        with col_p2:
+            ganancia_prom = st.number_input("Ganancia Promedio por WIN ($)", value=200.0, step=25.0)
+            perdida_prom = st.number_input("Pérdida Promedio por LOSS ($)", value=100.0, step=25.0)
+
+        capital_proyectado = st.session_state.capital_actual
+        proyeccion_meses = []
+
+        for m in range(1, 13):
+            ganadores = trades_mes * (win_rate_est / 100.0)
+            perdedores = trades_mes - ganadores
+            pnl_mes = (ganadores * ganancia_prom) - (perdedores * perdida_prom)
+            capital_proyectado += pnl_mes
+            proyeccion_meses.append({"Mes": f"Mes {m}", "Capital": capital_proyectado})
+
+        df_proy = pd.DataFrame(proyeccion_meses)
+        st.metric("Capital Estimado a 12 Meses", f"${capital_proyectado:,.2f} USD", f"+${capital_proyectado - st.session_state.capital_actual:,.2f} USD")
+        
+        fig_proy = px.line(df_proy, x="Mes", y="Capital", title="Proyección de Cuenta a 12 Meses", markers=True, template="plotly_dark")
+        st.plotly_chart(fig_proy, use_container_width=True)
+
+    # --- TAB 7: DIARIO Y PSICOTRADING ---
+    with tab7:
+        st.markdown("### 📓 Bitácora de Psicotrading & Reflexión Mental")
+        st.caption("Lleva un registro de tu mentalidad y estado emocional para evitar el overtrading y el FOMO.")
+
+        reflexion = st.text_area("Reflexión semanal o notas mentales:", height=180, placeholder="Escribe aquí cómo te sentiste esta semana, si respetaste tus Stop Loss, etc.")
+        if st.button("💾 Guardar Reflexión en Bitácora"):
+            st.toast("¡Reflexión guardada en tu sesión!", icon="🧠")
+
+    # --- TAB 8: DASHBOARD & METRICAS ---
+    with tab8:
+        st.markdown("### 📊 Dashboard Operativo & Rendimiento Global")
+
+        cant_total = len(df_trades)
+        if not df_trades.empty:
+            wins = len(df_trades[df_trades['beneficio_usd'] > 0])
+            losses = len(df_trades[df_trades['beneficio_usd'] < 0])
+            win_rate = (wins / cant_total * 100) if cant_total > 0 else 0.0
+            pnl_total = df_trades['beneficio_usd'].sum()
+        else:
+            wins, losses, win_rate, pnl_total = 0, 0, 0.0, 0.0
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Resultado Acumulado", f"${pnl_total:,.2f} USD")
+        m2.metric("Win Rate Total", f"{win_rate:.1f}%")
+        m3.metric("Trades Totales", str(cant_total))
+        m4.metric("Días Operados", str(len(df_trades['fecha'].unique()) if not df_trades.empty else 0))
+
+        st.markdown("---")
+        st.markdown("#### 🗺️ Mapa de Rendimiento por Activo y Emoción")
+
+        if not df_trades.empty:
+            fig = px.bar(
+                df_trades, 
+                x="par", 
+                y="beneficio_usd", 
+                color="emocion", 
+                title="Ganancia / Pérdida según Estado Emocional",
+                template="plotly_dark",
+                color_discrete_sequence=["#00f2fe", "#00d2ff", "#2962ff", "#4facfe", "#ff2a2a"]
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Aún no tienes operaciones registradas. Registra tu primer trade para desbloquear tus métricas avanzadas.")
+
+# ==========================================
+# 8. FLUJO PRINCIPAL DE EJECUCIÓN
+# ==========================================
+if not st.session_state.authenticated:
+    render_auth()
+else:
+    render_dashboard()
