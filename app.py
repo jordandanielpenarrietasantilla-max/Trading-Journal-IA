@@ -53,6 +53,8 @@ if "capital_meta" not in st.session_state:
     st.session_state.capital_meta = 15000.0
 if "reglas_disciplina" not in st.session_state:
     st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
+if "foto_perfil_custom" not in st.session_state:
+    st.session_state.foto_perfil_custom = None
 
 # Variables autocompletadas por la IA
 if "auto_entry" not in st.session_state:
@@ -233,7 +235,6 @@ def aplicar_estilos():
     .paywall-card { background-color: #161b22; border: 1px solid #f0b90b; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0px 0px 20px rgba(240, 185, 11, 0.2); }
     .stExpander { background-color: #12161f !important; border: 1px solid #1f2937 !important; border-radius: 8px !important; margin-bottom: 10px !important; }
     
-    /* ESTILOS DEL AVATAR Y SIDEBAR DE ALTO NIVEL */
     .user-profile-box { text-align: center; padding: 10px 0 15px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 15px; }
     .user-avatar-img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00f2fe; box-shadow: 0px 0px 15px rgba(0, 242, 254, 0.4); object-fit: cover; }
     </style>
@@ -331,7 +332,7 @@ def render_auth():
                         st.error(f"Error: {e}")
 
 # ==========================================
-# RENDERIZADO DEL SIDEBAR COMPLETO CON AVATAR Y HORARIOS
+# SIDEBAR CON CONFIGURACIÓN DE PERFIL, REGLAS Y HORARIOS
 # ==========================================
 def render_sidebar(estado_sub):
     with st.sidebar:
@@ -339,13 +340,14 @@ def render_sidebar(estado_sub):
         user_email = user.email if user else "trader@ejemplo.com"
         metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
         
-        # 1. Foto de Perfil / Avatar Dinámico
-        avatar_url = metadata.get("avatar_url") or metadata.get("picture")
-        if not avatar_url:
-            # Avatar Cyberpunk por defecto si no tiene foto cargada
-            avatar_url = f"https://api.dicebear.com/7.x/bottts/svg?seed={user_email}"
+        # 1. Foto de Perfil Custom o Avatar por defecto
+        foto_custom = st.session_state.get("foto_perfil_custom", None)
+        if foto_custom:
+            avatar_url = f"data:image/jpeg;base64,{foto_custom}"
+        else:
+            avatar_url = metadata.get("avatar_url") or metadata.get("picture") or f"https://api.dicebear.com/7.x/bottts/svg?seed={user_email}"
 
-        nombre_actual = metadata.get("username") or metadata.get("full_name") or st.session_state.get("nombre_trader", "Trader Pro")
+        nombre_actual = st.session_state.get("nombre_trader", metadata.get("username") or metadata.get("full_name") or "Trader Pro")
 
         st.markdown(f"""
         <div class="user-profile-box">
@@ -360,15 +362,29 @@ def render_sidebar(estado_sub):
         else:
             st.warning(f"⏳ {estado_sub}")
 
+        # ⚙️ EDICIÓN DE PERFIL Y REGLAS DE TRADING
+        with st.expander("⚙️ Configurar Perfil y Reglas"):
+            nuevo_nombre = st.text_input("Nombre de Trader", value=st.session_state.nombre_trader)
+            nueva_foto = st.file_uploader("Subir Foto de Perfil", type=["jpg", "png", "jpeg"])
+            st.session_state.capital_actual = st.number_input("Capital Actual ($)", value=float(st.session_state.capital_actual))
+            st.session_state.capital_meta = st.number_input("Meta de Capital ($)", value=float(st.session_state.capital_meta))
+            st.session_state.reglas_disciplina = st.text_area("📋 Mis Reglas de Trading", value=st.session_state.reglas_disciplina, height=120)
+
+            if st.button("💾 Guardar Configuración"):
+                st.session_state.nombre_trader = nuevo_nombre
+                if nueva_foto:
+                    st.session_state.foto_perfil_custom = comprimir_y_convertir_b64(nueva_foto)
+                st.toast("¡Perfil y reglas actualizados!")
+                st.rerun()
+
         st.markdown("---")
         
-        # 2. Reloj UTC y Sesiones de Mercado en Vivo
+        # 2. Reloj UTC y Sesiones de Mercado
         st.markdown("### 🕒 Mercado & Sesiones UTC")
         ahora_utc = datetime.datetime.now(datetime.timezone.utc)
         hora_utc_str = ahora_utc.strftime("%H:%M:%S UTC")
         st.caption(f"📅 **{ahora_utc.strftime('%Y-%m-%d')}** | ⏱️ `{hora_utc_str}`")
 
-        # Cálculo aproximado de estado de sesiones (Horarios UTC)
         h_utc = ahora_utc.hour
         tokyo_open = (0 <= h_utc < 9)
         london_open = (8 <= h_utc < 16)
@@ -695,10 +711,13 @@ def render_dashboard():
         trades_mes = st.slider("Trades al mes", 5, 50, 15)
         st.write(f"Proyección estimada basada en {trades_mes} trades mensuales.")
 
-    # --- TAB 7: PSICOTRADING ---
+    # --- TAB 7: PSICOTRADING Y REGLAS ---
     with tab7:
-        st.markdown("### 📓 Bitácora Emocional")
-        st.text_area("Notas de mentalidad:")
+        st.markdown("### 📓 Bitácora Emocional & Reglas de Disciplina")
+        st.markdown("#### 📜 Mis Reglas de Trading Actuales")
+        st.info(st.session_state.reglas_disciplina)
+        st.markdown("---")
+        st.text_area("Notas breves de mentalidad para hoy:")
 
     # --- TAB 8: DASHBOARD ---
     with tab8:
