@@ -180,12 +180,11 @@ def analizar_captura_tradingview(image_bytes):
         return None
 
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS (SOLUCIÓN DEFINITIVA A CAJAS BLANCAS)
+# 2. ESTILOS CSS PERSONALIZADOS
 # ==========================================
 def aplicar_estilos():
     css = """
     <style>
-    /* Fondo principal de la app */
     .stApp {
         background-color: #0b0e14 !important;
         color: #ffffff !important;
@@ -203,7 +202,6 @@ def aplicar_estilos():
         font-weight: 800 !important;
     }
 
-    /* === FORZAR FONDO OSCURO EN TODAS LAS CAJAS DE ENTRADA Y DESPLEGABLES === */
     .stTextInput input, 
     .stNumberInput input, 
     .stDateInput input,
@@ -305,6 +303,13 @@ def aplicar_estilos():
         padding: 24px;
         text-align: center;
         box-shadow: 0px 0px 20px rgba(240, 185, 11, 0.2);
+    }
+
+    .stExpander {
+        background-color: #12161f !important;
+        border: 1px solid #1f2937 !important;
+        border-radius: 8px !important;
+        margin-bottom: 10px !important;
     }
     </style>
     """
@@ -411,7 +416,7 @@ def render_paywall():
         """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. AUTENTICACIÓN (CON RECUPERACIÓN DE CLAVE)
+# 5. AUTENTICACIÓN
 # ==========================================
 def render_auth():
     col1, col2 = st.columns([1.2, 1])
@@ -471,7 +476,7 @@ def render_auth():
                     st.warning("Por favor ingresa tu correo electrónico.")
 
 # ==========================================
-# 6. SIDEBAR COMPLETO RESTAURADO
+# 6. SIDEBAR
 # ==========================================
 def render_sidebar(estado_sub):
     with st.sidebar:
@@ -603,7 +608,7 @@ def render_sidebar(estado_sub):
             st.rerun()
 
 # ==========================================
-# 7. DASHBOARD PRINCIPAL Y TODAS LAS PESTAÑAS INTERACTIVAS
+# 7. DASHBOARD PRINCIPAL Y TODAS LAS PESTAÑAS
 # ==========================================
 def render_dashboard():
     tiene_acceso, estado_sub, dias_restantes = evaluar_suscripcion(st.session_state.user)
@@ -630,7 +635,7 @@ def render_dashboard():
     ])
 
     # --------------------------------------
-    # TAB 1: REGISTRAR TRADE (NUEVA LÓGICA DE FOTOS)
+    # TAB 1: REGISTRAR TRADE
     # --------------------------------------
     with tab1:
         st.info("💡 **Tip con IA:** Al subir una captura de TradingView con la herramienta de Posición (Larga/Corta), la IA escaneará la imagen y **autocompletará los precios de Entrada, Stop Loss y Take Profit** por ti.")
@@ -697,9 +702,14 @@ def render_dashboard():
             notas_emocionales = st.text_area("Notas emocionales de la sesión:", placeholder="Escribe aquí si respetaste tu plan...")
 
             if st.button("💾 Guardar Trade en Diario"):
-                # Convertir imágenes a Base64 para guardarlas en la BD
-                foto_antes_b64 = base64.b64encode(before_img.getvalue()).decode("utf-8") if before_img else None
-                foto_despues_b64 = base64.b64encode(after_img.getvalue()).decode("utf-8") if after_img else None
+                # Conversión segura de imágenes subidas a Base64
+                foto_antes_b64 = None
+                foto_despues_b64 = None
+
+                if before_img is not None:
+                    foto_antes_b64 = base64.b64encode(before_img.read()).decode("utf-8")
+                if after_img is not None:
+                    foto_despues_b64 = base64.b64encode(after_img.read()).decode("utf-8")
 
                 nuevo_trade = {
                     "fecha": str(fecha_op), 
@@ -717,11 +727,12 @@ def render_dashboard():
                     "foto_antes": foto_antes_b64,
                     "foto_despues": foto_despues_b64
                 }
+
                 if guardar_trade_supabase(user_id, nuevo_trade):
                     st.session_state.auto_entry = 0.0
                     st.session_state.auto_sl = 0.0
                     st.session_state.auto_tp = 0.0
-                    st.success("¡Trade guardado exitosamente!")
+                    st.success("¡Trade guardado exitosamente con sus imágenes!")
                     st.rerun()
 
     # --------------------------------------
@@ -820,7 +831,7 @@ def render_dashboard():
         st.markdown("### 📋 Historial Detallado de Trades Registrados & Capturas")
 
         if not trades_db:
-            st.info("Aún no se registran trades en la base de datos para mostrar imágenes.")
+            st.info("Aún no se registran trades en la base de datos.")
         else:
             for idx, trade in enumerate(trades_db):
                 fecha_t = trade.get("fecha", "Sin fecha")
@@ -847,7 +858,7 @@ def render_dashboard():
                     with col_f1:
                         st.markdown("#### 1️⃣ Screenshot ANTES")
                         foto_a = trade.get("foto_antes")
-                        if foto_a:
+                        if foto_a and str(foto_a).strip() != "":
                             st.markdown(f'<img src="data:image/png;base64,{foto_a}" style="width:100%; border-radius:8px; border:1px solid #00f2fe;">', unsafe_allow_html=True)
                         else:
                             st.caption("No se adjuntó captura del ANTES.")
@@ -855,7 +866,7 @@ def render_dashboard():
                     with col_f2:
                         st.markdown("#### 2️⃣ Screenshot DESPUÉS")
                         foto_d = trade.get("foto_despues")
-                        if foto_d:
+                        if foto_d and str(foto_d).strip() != "":
                             st.markdown(f'<img src="data:image/png;base64,{foto_d}" style="width:100%; border-radius:8px; border:1px solid #00f2fe;">', unsafe_allow_html=True)
                         else:
                             st.caption("No se adjuntó captura del DESPUÉS.")
@@ -913,7 +924,7 @@ def render_dashboard():
             st.info("💡 **Nota:** Para índices como US100 / US30 o Criptos, ajusta la equivalencia según el contrato de tu broker.")
 
     # --------------------------------------
-    # TAB 5: ANÁLISIS VS IA (AUDITORÍA VISUAL)
+    # TAB 5: ANÁLISIS VS IA
     # --------------------------------------
     with tab5:
         st.markdown("### 🤖 Auditoría Visual de Estructura de Mercado")
@@ -927,7 +938,7 @@ def render_dashboard():
                     st.success("✅ **Análisis completado:** El gráfico muestra una estructura clara. Recuerda confirmar la confluencia en temporalidades menores antes de ejecutar.")
 
     # --------------------------------------
-    # TAB 6: PROYECCIONES DE CAPITAL
+    # TAB 6: PROYECCIONES
     # --------------------------------------
     with tab6:
         st.markdown("### 📈 Proyección de Crecimiento por Interés Compuesto")
