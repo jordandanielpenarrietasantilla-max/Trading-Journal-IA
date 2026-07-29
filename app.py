@@ -52,7 +52,7 @@ if "capital_actual" not in st.session_state:
 if "capital_meta" not in st.session_state:
     st.session_state.capital_meta = 15000.0
 if "reglas_disciplina" not in st.session_state:
-    st.session_state.reglas_disciplina = "• Acepta la pérdida antes de entrar.\n• Corta pérdidas rápido.\n• Deja correr los ganadores.\n• Máximo 2 operaciones perdedoras por día."
+    st.session_state.reglas_disciplina = "🛡️ Acepta la pérdida antes de entrar.\n✂️ Corta pérdidas rápido.\n🚀 Deja correr los ganadores.\n🛑 Máximo 2 operaciones perdedoras por día."
 if "foto_perfil_custom" not in st.session_state:
     st.session_state.foto_perfil_custom = None
 
@@ -124,7 +124,6 @@ LISTA_ACTIVOS = [
 # FUNCIONES DE COMPRESIÓN Y BASE DE DATOS
 # ==========================================
 def comprimir_y_convertir_b64(uploaded_file, max_size=(800, 800), quality=60):
-    """Comprime la imagen cargada para evitar errores de tamaño en Supabase."""
     if uploaded_file is None:
         return None
     try:
@@ -213,30 +212,46 @@ def analizar_captura_tradingview(image_bytes):
         return None
 
 # ==========================================
-# ESTILOS CSS
+# ESTILOS CSS PRO & NEÓN
 # ==========================================
 def aplicar_estilos():
     css = """
     <style>
-    .stApp { background-color: #0b0e14 !important; color: #ffffff !important; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }
+    .stApp { background-color: #0b0e14 !important; color: #ffffff !important; font-family: 'Segoe UI', Roboto, sans-serif !important; }
     p, label, h1, h2, h3, h4, span, div, .stMarkdown { color: #ffffff !important; }
     h1, h2 { background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800 !important; }
+    
+    /* INPUTS Y FORMULARIOS */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stSelectbox div[data-baseweb="select"] > div, div[data-baseweb="input"] > div, div[data-baseweb="base-input"] {
-        background-color: #161b22 !important; color: #00f2fe !important; -webkit-text-fill-color: #00f2fe !important; border: 1px solid #00f2fe !important; border-radius: 8px !important;
+        background-color: #12161f !important; color: #00f2fe !important; -webkit-text-fill-color: #00f2fe !important; border: 1px solid rgba(0, 242, 254, 0.4) !important; border-radius: 8px !important;
     }
     input { color: #00f2fe !important; -webkit-text-fill-color: #00f2fe !important; }
-    textarea { background-color: #161b22 !important; color: #ffffff !important; border: 1px solid #00f2fe !important; border-radius: 8px !important; }
-    .stButton>button { background: linear-gradient(135deg, #00d2ff 0%, #2962ff 100%) !important; color: #ffffff !important; border-radius: 8px !important; border: none !important; font-weight: bold !important; width: 100%; box-shadow: 0px 4px 15px rgba(0, 210, 255, 0.3) !important; }
-    section[data-testid="stSidebar"] { background-color: #0f141e !important; border-right: 1px solid rgba(0, 210, 255, 0.2) !important; }
-    section[data-testid="stSidebar"] .stButton>button { background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%) !important; box-shadow: 0px 4px 12px rgba(229, 57, 53, 0.3) !important; }
-    .market-badge { display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 0.75rem; font-weight: bold; }
-    .open { background-color: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid #4caf50; }
-    .closed { background-color: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; }
-    .paywall-card { background-color: #161b22; border: 1px solid #f0b90b; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0px 0px 20px rgba(240, 185, 11, 0.2); }
-    .stExpander { background-color: #12161f !important; border: 1px solid #1f2937 !important; border-radius: 8px !important; margin-bottom: 10px !important; }
+    textarea { background-color: #12161f !important; color: #ffffff !important; border: 1px solid rgba(0, 242, 254, 0.4) !important; border-radius: 8px !important; }
     
-    .user-profile-box { text-align: center; padding: 10px 0 15px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 15px; }
-    .user-avatar-img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00f2fe; box-shadow: 0px 0px 15px rgba(0, 242, 254, 0.4); object-fit: cover; }
+    /* BOTONES GLOBALES */
+    .stButton>button { background: linear-gradient(135deg, #00d2ff 0%, #0072ff 100%) !important; color: #ffffff !important; border-radius: 8px !important; border: none !important; font-weight: bold !important; width: 100%; box-shadow: 0px 4px 15px rgba(0, 210, 255, 0.3) !important; transition: all 0.3s ease; }
+    .stButton>button:hover { transform: translateY(-2px); box-shadow: 0px 6px 20px rgba(0, 210, 255, 0.5) !important; }
+
+    /* SIDEBAR PRO */
+    section[data-testid="stSidebar"] { background-color: #0d1117 !important; border-right: 1px solid rgba(0, 242, 254, 0.15) !important; }
+    section[data-testid="stSidebar"] .stButton>button { background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%) !important; color: #000000 !important; font-weight: 800 !important; box-shadow: 0px 4px 15px rgba(0, 242, 254, 0.3) !important; }
+
+    /* EXPANDER DISEÑO PREMIUM */
+    .stExpander { background-color: #121620 !important; border: 1px solid rgba(0, 242, 254, 0.2) !important; border-radius: 10px !important; margin-bottom: 12px !important; }
+    .stExpander summary p { color: #00f2fe !important; font-weight: bold !important; }
+
+    /* MARKET BADGES */
+    .market-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
+    .open { background-color: rgba(56, 211, 97, 0.15); color: #38d361; border: 1px solid #38d361; }
+    .closed { background-color: rgba(255, 77, 77, 0.15); color: #ff4d4d; border: 1px solid #ff4d4d; }
+
+    /* AVATAR BOX */
+    .user-profile-box { text-align: center; padding: 15px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 15px; background: rgba(18, 22, 32, 0.5); border-radius: 12px; }
+    .user-avatar-img { width: 85px; height: 85px; border-radius: 50%; border: 3px solid #00f2fe; box-shadow: 0px 0px 18px rgba(0, 242, 254, 0.4); object-fit: cover; }
+
+    /* TARJETA REGLAS NEÓN */
+    .rules-card { background: linear-gradient(145deg, #121722 0%, #0d1017 100%); border: 1px solid rgba(0, 242, 254, 0.3); border-left: 4px solid #00f2fe; border-radius: 10px; padding: 16px; margin: 10px 0; box-shadow: 0px 4px 15px rgba(0,0,0,0.5); }
+    .rules-item { margin-bottom: 8px; font-size: 0.92rem; color: #e2e8f0; line-height: 1.5; }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -332,7 +347,7 @@ def render_auth():
                         st.error(f"Error: {e}")
 
 # ==========================================
-# SIDEBAR CON CONFIGURACIÓN DE PERFIL, REGLAS Y HORARIOS
+# SIDEBAR RE-DISEÑADO CON PERFIL Y CONFIGURACIÓN ELEGANTE
 # ==========================================
 def render_sidebar(estado_sub):
     with st.sidebar:
@@ -340,7 +355,7 @@ def render_sidebar(estado_sub):
         user_email = user.email if user else "trader@ejemplo.com"
         metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
         
-        # 1. Foto de Perfil Custom o Avatar por defecto
+        # Foto de Perfil Custom o Avatar Cyberpunk
         foto_custom = st.session_state.get("foto_perfil_custom", None)
         if foto_custom:
             avatar_url = f"data:image/jpeg;base64,{foto_custom}"
@@ -349,10 +364,11 @@ def render_sidebar(estado_sub):
 
         nombre_actual = st.session_state.get("nombre_trader", metadata.get("username") or metadata.get("full_name") or "Trader Pro")
 
+        # Tarjeta Visual del Perfil
         st.markdown(f"""
         <div class="user-profile-box">
             <img src="{avatar_url}" class="user-avatar-img">
-            <h3 style="margin:10px 0 2px 0; font-size:1.2rem; color:#ffffff;">{nombre_actual}</h3>
+            <h3 style="margin:12px 0 2px 0; font-size:1.2rem; color:#ffffff; font-weight:700;">{nombre_actual}</h3>
             <p style="margin:0; font-size:0.75rem; color:#00f2fe; word-break:break-all;">{user_email}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -362,24 +378,26 @@ def render_sidebar(estado_sub):
         else:
             st.warning(f"⏳ {estado_sub}")
 
-        # ⚙️ EDICIÓN DE PERFIL Y REGLAS DE TRADING
-        with st.expander("⚙️ Configurar Perfil y Reglas"):
+        # ⚙️ EXPANDER RE-DISEÑADO
+        with st.expander("⚙️ Editar Perfil & Reglas"):
             nuevo_nombre = st.text_input("Nombre de Trader", value=st.session_state.nombre_trader)
-            nueva_foto = st.file_uploader("Subir Foto de Perfil", type=["jpg", "png", "jpeg"])
-            st.session_state.capital_actual = st.number_input("Capital Actual ($)", value=float(st.session_state.capital_actual))
-            st.session_state.capital_meta = st.number_input("Meta de Capital ($)", value=float(st.session_state.capital_meta))
-            st.session_state.reglas_disciplina = st.text_area("📋 Mis Reglas de Trading", value=st.session_state.reglas_disciplina, height=120)
+            nueva_foto = st.file_uploader("Actualizar Foto de Perfil", type=["jpg", "png", "jpeg"])
+            st.session_state.capital_actual = st.number_input("Capital Actual ($USD)", value=float(st.session_state.capital_actual))
+            st.session_state.capital_meta = st.number_input("Meta de Capital ($USD)", value=float(st.session_state.capital_meta))
+            
+            st.markdown("**📜 Mis Reglas de Disciplina**")
+            st.session_state.reglas_disciplina = st.text_area("Formato libre con Emojis:", value=st.session_state.reglas_disciplina, height=130)
 
-            if st.button("💾 Guardar Configuración"):
+            if st.button("💾 Guardar Cambios"):
                 st.session_state.nombre_trader = nuevo_nombre
                 if nueva_foto:
                     st.session_state.foto_perfil_custom = comprimir_y_convertir_b64(nueva_foto)
-                st.toast("¡Perfil y reglas actualizados!")
+                st.toast("¡Perfil y reglas actualizados con éxito!", icon="✨")
                 st.rerun()
 
         st.markdown("---")
         
-        # 2. Reloj UTC y Sesiones de Mercado
+        # Reloj UTC y Sesiones
         st.markdown("### 🕒 Mercado & Sesiones UTC")
         ahora_utc = datetime.datetime.now(datetime.timezone.utc)
         hora_utc_str = ahora_utc.strftime("%H:%M:%S UTC")
@@ -392,7 +410,7 @@ def render_sidebar(estado_sub):
         sydney_open = (22 <= h_utc or h_utc < 7)
 
         st.markdown(f"""
-        <div style="font-size:0.85rem; line-height:1.8;">
+        <div style="font-size:0.85rem; line-height:1.9;">
             🇬🇧 <b>Londres:</b> <span class="market-badge {'open' if london_open else 'closed'}">{'OPEN 🟢' if london_open else 'CLOSED 🔴'}</span><br>
             🇺🇸 <b>Nueva York:</b> <span class="market-badge {'open' if ny_open else 'closed'}">{'OPEN 🟢' if ny_open else 'CLOSED 🔴'}</span><br>
             🇯🇵 <b>Tokio:</b> <span class="market-badge {'open' if tokyo_open else 'closed'}">{'OPEN 🟢' if tokyo_open else 'CLOSED 🔴'}</span><br>
@@ -402,7 +420,7 @@ def render_sidebar(estado_sub):
 
         st.markdown("---")
         
-        # 3. Meta de Cuenta
+        # Meta de Cuenta
         st.markdown("### 🎯 Meta de Cuenta")
         cap_act = st.session_state.capital_actual
         cap_met = st.session_state.capital_meta
@@ -711,11 +729,20 @@ def render_dashboard():
         trades_mes = st.slider("Trades al mes", 5, 50, 15)
         st.write(f"Proyección estimada basada en {trades_mes} trades mensuales.")
 
-    # --- TAB 7: PSICOTRADING Y REGLAS ---
+    # --- TAB 7: PSICOTRADING & REGLAS NEÓN ---
     with tab7:
-        st.markdown("### 📓 Bitácora Emocional & Reglas de Disciplina")
-        st.markdown("#### 📜 Mis Reglas de Trading Actuales")
-        st.info(st.session_state.reglas_disciplina)
+        st.markdown("### 📓 Bitácora Emocional & Disciplina")
+        st.markdown("#### 📜 Mis Reglas de Trading (Tarjetas Neón)")
+
+        # Renderizar Reglas con formato visual de Tarjeta
+        reglas_raw = st.session_state.reglas_disciplina.split("\n")
+        html_rules = '<div class="rules-card">'
+        for r in reglas_raw:
+            if r.strip():
+                html_rules += f'<div class="rules-item">{r.strip()}</div>'
+        html_rules += '</div>'
+        st.markdown(html_rules, unsafe_allow_html=True)
+
         st.markdown("---")
         st.text_area("Notas breves de mentalidad para hoy:")
 
