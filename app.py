@@ -124,7 +124,7 @@ LISTA_ACTIVOS = [
 def cargar_trades_usuario(user_id):
     try:
         client = get_supabase_client()
-        res = client.table("trades").select("*").eq("user_id", user_id).execute()
+        res = client.table("trades").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
         return res.data if res.data else []
     except Exception:
         return []
@@ -204,7 +204,6 @@ def aplicar_estilos():
     }
 
     /* === FORZAR FONDO OSCURO EN TODAS LAS CAJAS DE ENTRADA Y DESPLEGABLES === */
-    /* Cajas de texto, números, fecha y selectores */
     .stTextInput input, 
     .stNumberInput input, 
     .stDateInput input,
@@ -218,13 +217,11 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
-    /* Asegurar texto blanco/cian dentro de los inputs */
     input {
         color: #00f2fe !important;
         -webkit-text-fill-color: #00f2fe !important;
     }
 
-    /* === LISTA DESPLEGABLE Y MENÚ FLOTANTE (POPOVER / SELECT) === */
     [data-baseweb="popover"],
     [data-baseweb="menu"],
     div[role="listbox"],
@@ -234,7 +231,6 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
-    /* Opciones dentro de la lista de activos */
     [data-baseweb="menu"] li,
     div[role="listbox"] li,
     li[role="option"],
@@ -245,7 +241,6 @@ def aplicar_estilos():
         padding: 10px !important;
     }
 
-    /* Opción seleccionada o con el cursor encima */
     li[role="option"]:hover,
     li[data-baseweb="option"]:hover,
     li[aria-selected="true"] {
@@ -254,7 +249,6 @@ def aplicar_estilos():
         font-weight: bold !important;
     }
 
-    /* Cajas de Texto Grande (Notas y Reflexiones) */
     textarea {
         background-color: #161b22 !important;
         color: #ffffff !important;
@@ -262,7 +256,6 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
-    /* Campo de Chat */
     div[data-testid="stChatInput"] {
         background-color: #161b22 !important;
         border-radius: 12px !important;
@@ -275,7 +268,6 @@ def aplicar_estilos():
         -webkit-text-fill-color: #00f2fe !important;
     }
 
-    /* Botones generales */
     .stButton>button {
         background: linear-gradient(135deg, #00d2ff 0%, #2962ff 100%) !important;
         color: #ffffff !important;
@@ -638,7 +630,7 @@ def render_dashboard():
     ])
 
     # --------------------------------------
-    # TAB 1: REGISTRAR TRADE
+    # TAB 1: REGISTRAR TRADE (NUEVA LÓGICA DE FOTOS)
     # --------------------------------------
     with tab1:
         st.info("💡 **Tip con IA:** Al subir una captura de TradingView con la herramienta de Posición (Larga/Corta), la IA escaneará la imagen y **autocompletará los precios de Entrada, Stop Loss y Take Profit** por ti.")
@@ -648,7 +640,7 @@ def render_dashboard():
         with col_right:
             st.markdown("### 🖼️ Capturas del Gráfico (Antes & Después)")
             before_img = st.file_uploader("1️⃣ Screenshot ANTES (Escaneo Automático con IA)", type=["png", "jpg", "jpeg"], key="upload_before")
-            after_img = st.file_uploader("2️⃣ Screenshot DESPUÉS", type=["png", "jpg", "jpeg"])
+            after_img = st.file_uploader("2️⃣ Screenshot DESPUÉS", type=["png", "jpg", "jpeg"], key="upload_after")
 
             if before_img:
                 st.image(before_img, caption="Setup Antes de Ejecutar", use_container_width=True)
@@ -664,6 +656,9 @@ def render_dashboard():
                             st.rerun()
                         else:
                             st.warning("No se pudieron extraer los números de la captura. Ingrésalos manualmente.")
+
+            if after_img:
+                st.image(after_img, caption="Setup Después de Ejecutar", use_container_width=True)
 
             monto_pnl = st.number_input("Ganancia / Pérdida en $USD de este trade:", value=0.0, step=10.0)
 
@@ -702,14 +697,25 @@ def render_dashboard():
             notas_emocionales = st.text_area("Notas emocionales de la sesión:", placeholder="Escribe aquí si respetaste tu plan...")
 
             if st.button("💾 Guardar Trade en Diario"):
+                # Convertir imágenes a Base64 para guardarlas en la BD
+                foto_antes_b64 = base64.b64encode(before_img.getvalue()).decode("utf-8") if before_img else None
+                foto_despues_b64 = base64.b64encode(after_img.getvalue()).decode("utf-8") if after_img else None
+
                 nuevo_trade = {
                     "fecha": str(fecha_op), 
                     "hora": datetime.datetime.now().strftime("%H:%M"), 
                     "par": par, 
+                    "direccion": direccion,
+                    "precio_entrada": precio_entrada,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
                     "resultado": resultado, 
                     "emocion": emocion, 
+                    "notas": notas_emocionales,
                     "beneficio_usd": float(monto_pnl), 
-                    "trades_cant": 1
+                    "trades_cant": 1,
+                    "foto_antes": foto_antes_b64,
+                    "foto_despues": foto_despues_b64
                 }
                 if guardar_trade_supabase(user_id, nuevo_trade):
                     st.session_state.auto_entry = 0.0
@@ -719,15 +725,15 @@ def render_dashboard():
                     st.rerun()
 
     # --------------------------------------
-    # TAB 2: TRACK RECORD CALENDARIO
+    # TAB 2: TRACK RECORD CALENDARIO CON LISTADO COMPLETO Y FOTOS
     # --------------------------------------
     with tab2:
         st.info("💡 **¿Para qué sirve?** Vista mensual estilo Prop Firm. Las ganancias/pérdidas y la cantidad exacta de trades se agrupan por día.")
         
         df_calendar = pd.DataFrame(trades_db)
-        total_mes = df_calendar['beneficio_usd'].sum() if not df_calendar.empty else 0.0
+        total_mes = df_calendar['beneficio_usd'].sum() if not df_calendar.empty and 'beneficio_usd' in df_calendar.columns else 0.0
         
-        if not df_calendar.empty:
+        if not df_calendar.empty and 'beneficio_usd' in df_calendar.columns:
             df_grouped = df_calendar.groupby('fecha').agg({'beneficio_usd': 'sum', 'trades_cant': 'count'}).reset_index()
             dias_ganadores = len(df_grouped[df_grouped['beneficio_usd'] > 0])
             dias_perdedores = len(df_grouped[df_grouped['beneficio_usd'] < 0])
@@ -744,10 +750,10 @@ def render_dashboard():
 
         pnl_map = {}
         trades_map = {}
-        if not df_calendar.empty:
+        if not df_calendar.empty and 'beneficio_usd' in df_calendar.columns:
             for _, r in df_calendar.iterrows():
                 f_str = r['fecha']
-                pnl_map[f_str] = pnl_map.get(f_str, 0.0) + r['beneficio_usd']
+                pnl_map[f_str] = pnl_map.get(f_str, 0.0) + (r['beneficio_usd'] or 0.0)
                 trades_map[f_str] = trades_map.get(f_str, 0) + 1
 
         hoy = datetime.date.today()
@@ -810,6 +816,50 @@ def render_dashboard():
                         
                         st.markdown(box_html, unsafe_allow_html=True)
 
+        st.markdown("---")
+        st.markdown("### 📋 Historial Detallado de Trades Registrados & Capturas")
+
+        if not trades_db:
+            st.info("Aún no se registran trades en la base de datos para mostrar imágenes.")
+        else:
+            for idx, trade in enumerate(trades_db):
+                fecha_t = trade.get("fecha", "Sin fecha")
+                par_t = trade.get("par", "Activo")
+                res_t = trade.get("resultado", "N/A")
+                pnl_t = trade.get("beneficio_usd", 0.0)
+                dir_t = trade.get("direccion", "N/A")
+                
+                titulo_expander = f"📅 {fecha_t} | {par_t} ({dir_t}) | Resultado: {res_t} | PnL: ${pnl_t:,.2f} USD"
+                
+                with st.expander(titulo_expander, expanded=(idx==0)):
+                    col_info, col_f1, col_f2 = st.columns([1, 1.2, 1.2])
+                    
+                    with col_info:
+                        st.markdown("#### ⚙️ Datos del Trade")
+                        st.markdown(f"**Activo:** `{par_t}`")
+                        st.markdown(f"**Dirección:** `{dir_t}`")
+                        st.markdown(f"**Precio Entrada:** `{trade.get('precio_entrada', 0.0)}`")
+                        st.markdown(f"**Stop Loss:** `{trade.get('stop_loss', 0.0)}`")
+                        st.markdown(f"**Take Profit:** `{trade.get('take_profit', 0.0)}`")
+                        st.markdown(f"**Estado Emocional:** {trade.get('emocion', 'N/A')}")
+                        st.markdown(f"**Notas:** {trade.get('notas', 'Sin notas')}")
+
+                    with col_f1:
+                        st.markdown("#### 1️⃣ Screenshot ANTES")
+                        foto_a = trade.get("foto_antes")
+                        if foto_a:
+                            st.markdown(f'<img src="data:image/png;base64,{foto_a}" style="width:100%; border-radius:8px; border:1px solid #00f2fe;">', unsafe_allow_html=True)
+                        else:
+                            st.caption("No se adjuntó captura del ANTES.")
+
+                    with col_f2:
+                        st.markdown("#### 2️⃣ Screenshot DESPUÉS")
+                        foto_d = trade.get("foto_despues")
+                        if foto_d:
+                            st.markdown(f'<img src="data:image/png;base64,{foto_d}" style="width:100%; border-radius:8px; border:1px solid #00f2fe;">', unsafe_allow_html=True)
+                        else:
+                            st.caption("No se adjuntó captura del DESPUÉS.")
+
     # --------------------------------------
     # TAB 3: CHAT DE AUDITORÍA CON IA
     # --------------------------------------
@@ -833,8 +883,8 @@ def render_dashboard():
                         respuesta_ia = "Aún no has registrado trades en tu diario. Ve a la pestaña **'➕ Registrar Trade'** para comenzar a auditar tu operativa."
                     else:
                         df_tr = pd.DataFrame(trades_db)
-                        pnl_tot = df_tr['beneficio_usd'].sum()
-                        wins = len(df_tr[df_tr['beneficio_usd'] > 0])
+                        pnl_tot = df_tr['beneficio_usd'].sum() if 'beneficio_usd' in df_tr.columns else 0.0
+                        wins = len(df_tr[df_tr['beneficio_usd'] > 0]) if 'beneficio_usd' in df_tr.columns else 0
                         win_rate = (wins / cant_trades * 100) if cant_trades > 0 else 0
                         respuesta_ia = f"Has registrado **{cant_trades}** operaciones con un resultado neto acumulado de **${pnl_tot:,.2f} USD** y una tasa de acierto del **{win_rate:.1f}%**. Te sugiero seguir manteniendo la disciplina emocional."
 
@@ -927,7 +977,7 @@ def render_dashboard():
         df_trades = pd.DataFrame(trades_db)
         cant_total = len(df_trades)
         
-        if not df_trades.empty:
+        if not df_trades.empty and 'beneficio_usd' in df_trades.columns:
             wins = len(df_trades[df_trades['beneficio_usd'] > 0])
             losses = len(df_trades[df_trades['beneficio_usd'] < 0])
             win_rate = (wins / cant_total * 100) if cant_total > 0 else 0.0
@@ -939,12 +989,12 @@ def render_dashboard():
         m1.metric("Resultado Acumulado", f"${pnl_total:,.2f} USD")
         m2.metric("Win Rate Total", f"{win_rate:.1f}%")
         m3.metric("Trades Totales", str(cant_total))
-        m4.metric("Días Operados", str(len(df_trades['fecha'].unique()) if not df_trades.empty else 0))
+        m4.metric("Días Operados", str(len(df_trades['fecha'].unique()) if not df_trades.empty and 'fecha' in df_trades.columns else 0))
 
         st.markdown("---")
         st.markdown("#### 🗺️ Mapa de Rendimiento por Activo y Emoción")
 
-        if not df_trades.empty:
+        if not df_trades.empty and 'beneficio_usd' in df_trades.columns:
             fig = px.bar(
                 df_trades, 
                 x="par", 
