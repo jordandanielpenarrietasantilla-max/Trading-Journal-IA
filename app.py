@@ -2,7 +2,6 @@ import streamlit as st
 import datetime
 import requests
 import json
-import os
 import base64
 import pandas as pd
 import numpy as np
@@ -11,7 +10,7 @@ import calendar
 from supabase import create_client, Client
 
 # ==========================================
-# 1. CONFIGURACIÓN Y ENLACES DE PAGO
+# 1. CONFIGURACIÓN Y ENLACES REALES DE BINANCE PAY
 # ==========================================
 st.set_page_config(
     page_title="AI Trading Journal & Auditor",
@@ -20,8 +19,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 🔗 ENLACES DE PAGO (GUMROAD TARJETAS Y SOPORTE)
-LINK_GUMROAD_PAYMENT = "https://gumroad.com"  # Reemplaza por tu link de Gumroad
+# 🔗 ENLACES DE BINANCE PAY
+LINK_BINANCE_INSCRIPCION = "https://s.binance.com/8vSxLZRA"  # $5 USDT
+LINK_BINANCE_ANUAL = "https://s.binance.com/NvHWGF9P"        # $20 USDT
+LINK_BINANCE_RECURRENTE = "https://s.binance.com/U7v5zFVr"   # $2.50 USDT
+
+BINANCE_PAY_ID = "JORDAN_SANTI9"
 LINK_TELEGRAM_SOPORTE = "https://t.me/tu_usuario_telegram"
 
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://lyzvcbjpoydeckxtbcq.supabase.co")
@@ -85,7 +88,7 @@ LISTA_ACTIVOS = [
     "📊 UK100 (FTSE 100)",
     "📊 JP225 (Nikkei 225)",
     
-    # --- FOREX (DIVISAS MAJORS Y MINORS) ---
+    # --- FOREX ---
     "💱 EUR/USD",
     "💱 GBP/USD",
     "💱 USD/JPY",
@@ -120,7 +123,7 @@ LISTA_ACTIVOS = [
 def cargar_trades_usuario(user_id):
     try:
         client = get_supabase_client()
-        res = client.table("trades").select("*").eq("user_id", user_id).execute()
+        res = client.table("trades").select("*").eq("user_id", user_id).order("fecha", desc=True).execute()
         return res.data if res.data else []
     except Exception:
         return []
@@ -133,6 +136,15 @@ def guardar_trade_supabase(user_id, trade_data):
         return True
     except Exception as e:
         st.error(f"Error guardando en base de datos: {e}")
+        return False
+
+def eliminar_trade_supabase(trade_id):
+    try:
+        client = get_supabase_client()
+        client.table("trades").delete().eq("id", trade_id).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar la operación: {e}")
         return False
 
 def analizar_captura_tradingview(image_bytes):
@@ -181,15 +193,14 @@ def analizar_captura_tradingview(image_bytes):
 def aplicar_estilos():
     css = """
     <style>
-    /* Fondo principal de la app */
     .stApp {
         background-color: #0b0e14 !important;
-        color: #ffffff !important;
+        color: #f0f3fa !important;
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
     }
 
     p, label, h1, h2, h3, h4, span, div, .stMarkdown {
-        color: #ffffff !important;
+        color: #f0f3fa !important;
     }
 
     h1, h2 {
@@ -199,64 +210,66 @@ def aplicar_estilos():
         font-weight: 800 !important;
     }
 
-    /* FORZAR FONDO OSCURO EN TODAS LAS CAJAS DE ENTRADA Y DESPLEGABLES */
-    .stTextInput input, 
-    .stNumberInput input, 
-    .stDateInput input,
-    .stSelectbox div[data-baseweb="select"] > div,
-    div[data-baseweb="input"] > div,
-    div[data-baseweb="base-input"] {
-        background-color: #161b22 !important;
+    /* FIX PARA SELECTBOX Y DESPLEGABLES */
+    div[data-baseweb="select"] > div {
+        background-color: #121721 !important;
         color: #00f2fe !important;
-        -webkit-text-fill-color: #00f2fe !important;
-        border: 1px solid #00f2fe !important;
+        border: 1px solid rgba(0, 242, 254, 0.5) !important;
         border-radius: 8px !important;
     }
 
-    input {
+    div[data-baseweb="select"] input {
         color: #00f2fe !important;
         -webkit-text-fill-color: #00f2fe !important;
     }
 
-    /* LISTA DESPLEGABLE Y MENÚ FLOTANTE */
-    [data-baseweb="popover"],
-    [data-baseweb="menu"],
+    div[data-baseweb="select"] span[data-testid="stMarkdownContainer"] p {
+        color: #00f2fe !important;
+    }
+
+    div[data-baseweb="popover"], 
+    div[data-baseweb="menu"], 
     div[role="listbox"],
     ul[role="listbox"] {
-        background-color: #161b22 !important;
+        background-color: #121721 !important;
         border: 1px solid #00f2fe !important;
         border-radius: 8px !important;
     }
 
-    [data-baseweb="menu"] li,
-    div[role="listbox"] li,
+    div[role="option"],
     li[role="option"],
     li[data-baseweb="option"] {
-        background-color: #161b22 !important;
+        background-color: #121721 !important;
         color: #ffffff !important;
+        font-family: 'Segoe UI', sans-serif !important;
         font-size: 14px !important;
-        padding: 10px !important;
+        padding: 10px 14px !important;
+        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
     }
 
+    div[role="option"]:hover,
     li[role="option"]:hover,
-    li[data-baseweb="option"]:hover,
     li[aria-selected="true"] {
         background-color: #00f2fe !important;
         color: #000000 !important;
         font-weight: bold !important;
     }
 
-    textarea {
+    div[data-baseweb="select"] svg {
+        fill: #00f2fe !important;
+    }
+
+    .stTextInput input, .stNumberInput input, .stTextArea textarea {
         background-color: #161b22 !important;
-        color: #ffffff !important;
-        border: 1px solid #00f2fe !important;
+        color: #00f2fe !important;
+        border: 1px solid rgba(0, 210, 255, 0.4) !important;
         border-radius: 8px !important;
     }
 
     div[data-testid="stChatInput"] {
         background-color: #161b22 !important;
         border-radius: 12px !important;
-        border: 1px solid #00f2fe !important;
+        border: 1px solid rgba(0, 210, 255, 0.5) !important;
     }
     
     div[data-testid="stChatInput"] textarea {
@@ -273,6 +286,7 @@ def aplicar_estilos():
         font-weight: bold !important;
         width: 100%;
         box-shadow: 0px 4px 15px rgba(0, 210, 255, 0.3) !important;
+        transition: all 0.3s ease !important;
     }
 
     section[data-testid="stSidebar"] {
@@ -297,11 +311,11 @@ def aplicar_estilos():
 
     .paywall-card {
         background-color: #161b22;
-        border: 1px solid #00f2fe;
+        border: 1px solid #f0b90b;
         border-radius: 12px;
         padding: 24px;
         text-align: center;
-        box-shadow: 0px 0px 20px rgba(0, 242, 254, 0.2);
+        box-shadow: 0px 0px 20px rgba(240, 185, 11, 0.2);
     }
     </style>
     """
@@ -310,7 +324,7 @@ def aplicar_estilos():
 aplicar_estilos()
 
 # ==========================================
-# 3. VERIFICACIÓN DE DÍAS DE PRUEBA / PRO / ADMIN
+# 3. VERIFICACIÓN DE SUSCRIPCIÓN
 # ==========================================
 def evaluar_suscripcion(user):
     user_email = user.email if (user and hasattr(user, 'email')) else ""
@@ -337,58 +351,87 @@ def evaluar_suscripcion(user):
         return False, "Prueba Expirada 🛑", 0
 
 # ==========================================
-# 4. PANTALLA DE BLOQUEO / PAYWALL (TARJETAS)
+# 4. PAYWALL
 # ==========================================
 def render_paywall():
     st.markdown("## 🔒 Tu Período de Prueba Gratis de 3 Días ha Expirado")
-    st.markdown("Para continuar auditando tus operaciones con IA y registrando tu Track Record, activa tu acceso seguro con **Tarjeta de Débito o Crédito**:")
+    st.markdown("Para continuar auditando tus operaciones con IA y registrando tu Track Record, activa tu acceso mediante **Binance Pay**:")
 
-    col1, col2 = st.columns([1.5, 1])
+    col1, col2 = st.columns(2)
 
     with col1:
         st.markdown(f"""
         <div class="paywall-card">
-            <h3 style="color:#00f2fe;">💳 Acceso Pro - Suscripción Mensual</h3>
+            <h3 style="color:#f0b90b;">🟡 Suscripción Mensual</h3>
             <h2 style="color:#ffffff;">$5.00 USD <span style="font-size:1rem; color:#aaa;">/ mes</span></h2>
-            <p style="color:#34d399; font-weight:bold;">Acepta todas las tarjetas de Débito y Crédito internacionales</p>
+            <p style="color:#00f2fe; font-weight:bold;">luego solo $2.50 USD / mes (¡50% OFF!)</p>
             <hr style="border-color:#333;">
             <ul style="text-align:left; color:#b0b8c4; font-size:0.95rem; line-height: 1.8;">
-                <li>✔️ Acceso a todas las funciones de IA</li>
+                <li>✔️ Acceso ilimitado a todas las funciones</li>
                 <li>✔️ Track Record Calendario PnL ilimitado</li>
-                <li>✔️ Escáner automático de gráficos de TradingView</li>
-                <li>✔️ Cancela cuando quieras en 1 clic</li>
+                <li>✔️ Chat & Auditoría Visual con IA ilimitada</li>
+                <li>✔️ Sin contratos ni cobros automáticos</li>
             </ul>
             <br>
-            <a href="{LINK_GUMROAD_PAYMENT}" target="_blank">
-                <button style="background:linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color:black; border:none; padding:16px; border-radius:8px; font-weight:bold; width:100%; cursor:pointer; font-size:1.1rem;">
-                    💳 Pagar $5 USD con Tarjeta (Débito o Crédito)
+            <a href="{LINK_BINANCE_INSCRIPCION}" target="_blank">
+                <button style="background:linear-gradient(135deg, #f0b90b 0%, #f39c12 100%); color:black; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%; cursor:pointer;">
+                    🟡 Pagar $5 USD con Binance Pay
                 </button>
             </a>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("### ✈️ ¿Tienes dudas o consulta de pago?")
-        st.markdown("Si necesitas ayuda con tu cobro o verificación inmediata de tu cuenta, escríbenos directamente:")
+        st.markdown(f"""
+        <div class="paywall-card">
+            <h3 style="color:#00f2fe;">🚀 Acceso Anual</h3>
+            <h2 style="color:#ffffff;">$20.00 USD <span style="font-size:1rem; color:#aaa;">/ año</span></h2>
+            <p style="color:#00f2fe; font-weight:bold;">¡Ahorra un 60% vs suscripción mensual!</p>
+            <hr style="border-color:#333;">
+            <ul style="text-align:left; color:#b0b8c4; font-size:0.95rem; line-height: 1.8;">
+                <li>🌟 <b>Acceso ilimitado por 1 Año Completo</b></li>
+                <li>🔒 Pago único sin cobros automáticos</li>
+                <li>🎁 Actualizaciones futuras incluidas</li>
+                <li>🧠 Respuestas de IA prioritarias</li>
+            </ul>
+            <br>
+            <a href="{LINK_BINANCE_ANUAL}" target="_blank">
+                <button style="background:linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color:black; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%; cursor:pointer;">
+                    💎 Pagar $20 USD con Binance Pay
+                </button>
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    
+    col_info = st.columns(2)
+    with col_info[0]:
+        st.markdown("### 📲 Pago Directo / Renovaciones")
+        st.code(f"Binance Pay ID: {BINANCE_PAY_ID}", language="text")
+        st.markdown(f"👉 [Enlace directo de Renovación Mensual ($2.50 USDT)]({LINK_BINANCE_RECURRENTE})")
+
+    with col_info[1]:
+        st.markdown("### ✈️ Confirmar Pago y Activar Cuenta")
         st.markdown(f"""
         <a href="{LINK_TELEGRAM_SOPORTE}" target="_blank">
-            <button style="background:linear-gradient(135deg, #0088cc 0%, #005580 100%); color:white; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%; cursor:pointer;">
-                💬 Contactar Soporte / Ayuda
+            <button style="background:linear-gradient(135deg, #0088cc 0%, #005580 100%); color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; width:100%; cursor:pointer;">
+                💬 Enviar Comprobante / Contactar Soporte
             </button>
         </a>
         """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. AUTENTICACIÓN (CON RECUPERACIÓN DE CLAVE)
+# 5. AUTENTICACIÓN
 # ==========================================
 def render_auth():
-    col1, col2 = st.columns([1.2, 1])
+    col = st.columns([1.2, 1])
 
-    with col1:
+    with col[0]:
         st.markdown("# ⚡ AI Trading Journal & Auditor")
         st.markdown("Audita tu operativa con Inteligencia Artificial, registra tus emociones y lleva tu disciplina al siguiente nivel.")
 
-    with col2:
+    with col[1]:
         tab_login, tab_register, tab_reset = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse", "🔐 Recuperar Clave"])
 
         with tab_login:
@@ -417,7 +460,7 @@ def render_auth():
                     try:
                         client = get_supabase_client()
                         res = client.auth.sign_up({"email": reg_email, "password": reg_pass})
-                        st.success("¡Registro exitoso! Inicia sesión.")
+                        st.success("¡Registro exitoso! Ahora puedes iniciar sesión.")
                     except Exception as e:
                         st.error(f"Error al registrar: {e}")
 
@@ -439,7 +482,7 @@ def render_auth():
                     st.warning("Por favor ingresa tu correo electrónico.")
 
 # ==========================================
-# 6. SIDEBAR COMPLETO RESTAURADO
+# 6. SIDEBAR
 # ==========================================
 def render_sidebar(estado_sub):
     with st.sidebar:
@@ -470,13 +513,8 @@ def render_sidebar(estado_sub):
         with st.expander("⚙️ Modificar Perfil"):
             input_nombre = st.text_input("Nombre de Usuario", value=nombre_actual)
             foto_subida = st.file_uploader("Seleccionar nueva foto", type=["jpg", "jpeg", "png", "webp"])
-            lista_estrategias = ["Smart Money Concepts", "Price Action", "ICT", "Indicator Based", "Wyckoff", "Scalping"]
-            input_estrategia = st.selectbox("Estrategia Principal", lista_estrategias)
             
-            input_cap_actual = st.number_input("Capital Actual ($USD)", value=float(st.session_state.capital_actual), step=500.0)
-            input_cap_meta = st.number_input("Meta de Capital ($USD)", value=float(st.session_state.capital_meta), step=1000.0)
-
-            if st.button("Guardar Cambios de Perfil"):
+            if st.button("Guardar Cambios"):
                 nueva_foto_b64 = foto_b64
                 if foto_subida is not None:
                     bytes_data = foto_subida.getvalue()
@@ -487,19 +525,15 @@ def render_sidebar(estado_sub):
                     res = client.auth.update_user({
                         "data": {
                             "username": input_nombre,
-                            "avatar_b64": nueva_foto_b64,
-                            "estrategia": input_estrategia
+                            "avatar_b64": nueva_foto_b64
                         }
                     })
                     st.session_state.user = res.user
                     st.session_state.nombre_trader = input_nombre
-                    st.session_state.capital_actual = input_cap_actual
-                    st.session_state.capital_meta = input_cap_meta
-                    
-                    st.toast("¡Perfil guardado con éxito!", icon="✅")
+                    st.toast("¡Perfil guardado exitosamente!", icon="✅")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Error al guardar: {e}")
+                    st.error(f"Error al guardar perfil: {e}")
 
         st.markdown("---")
 
@@ -510,52 +544,52 @@ def render_sidebar(estado_sub):
         st.markdown(f"**Capital:** `${cap_act:,.0f}` / `${cap_met:,.0f}`")
         st.progress(progreso)
 
+        with st.expander("🔧 Configuración Meta"):
+            st.session_state.capital_actual = st.number_input("Capital Actual ($)", value=float(cap_act), step=500.0)
+            st.session_state.capital_meta = st.number_input("Meta de Capital ($)", value=float(cap_met), step=1000.0)
+
         st.markdown("---")
 
-        st.markdown("### ⏰ Hora Local")
+        st.markdown("### ⏰ Hora Local & Sesiones")
         st.components.v1.html(
             """
             <div id="clock" style="
                 font-family: 'Segoe UI', monospace;
-                font-size: 19px;
+                font-size: 18px;
                 font-weight: bold;
                 color: #00f2fe;
-                background-color: #141a24;
+                background-color: #161b22;
                 border: 1px solid rgba(0, 210, 255, 0.4);
                 border-radius: 8px;
-                padding: 8px;
+                padding: 6px;
                 text-align: center;
-                box-shadow: 0px 0px 10px rgba(0, 242, 254, 0.2);
             ">00:00:00</div>
 
             <script>
             function updateClock() {
                 var now = new Date();
-                var timeString = now.toLocaleTimeString([], { hour12: false });
+                var timeString = now.toLocaleTimeString();
                 document.getElementById('clock').innerHTML = timeString + " (Local)";
             }
             setInterval(updateClock, 1000);
             updateClock();
             </script>
             """,
-            height=55
+            height=50
         )
 
-        st.markdown("### 🌐 Sesiones de Mercado")
         hora_utc = datetime.datetime.utcnow().hour
         londres_status = '<span class="market-badge open">ABIERTO</span>' if 7 <= hora_utc <= 15 else '<span class="market-badge closed">CERRADO</span>'
         ny_status = '<span class="market-badge open">ABIERTO</span>' if 12 <= hora_utc <= 20 else '<span class="market-badge closed">CERRADO</span>'
-        tokio_status = '<span class="market-badge open">ABIERTO</span>' if 0 <= hora_utc <= 9 else '<span class="market-badge closed">CERRADO</span>'
 
-        st.markdown(f"**GB Londres:** {londres_status}", unsafe_allow_html=True)
-        st.markdown(f"**US Nueva York:** {ny_status}", unsafe_allow_html=True)
-        st.markdown(f"**JP Tokio / Asia:** {tokio_status}", unsafe_allow_html=True)
+        st.markdown(f"**Londres:** {londres_status}", unsafe_allow_html=True)
+        st.markdown(f"**N. York:** {ny_status}", unsafe_allow_html=True)
 
         st.markdown("---")
 
-        st.markdown("### 🎯 Mis Reglas de Disciplina")
-        with st.expander("✏️ Editar Mis Reglas"):
-            input_reglas = st.text_area("Escribe tus reglas personalizadas:", value=st.session_state.reglas_disciplina, height=150)
+        st.markdown("### 🎯 Mis Reglas")
+        with st.expander("✏️ Editar Reglas"):
+            input_reglas = st.text_area("Reglas personalizadas:", value=st.session_state.reglas_disciplina, height=150)
             if st.button("Guardar Reglas"):
                 st.session_state.reglas_disciplina = input_reglas
                 st.toast("¡Reglas actualizadas!", icon="✅")
@@ -566,12 +600,14 @@ def render_sidebar(estado_sub):
         st.markdown("---")
 
         if st.button("🚪 Cerrar Sesión"):
+            client = get_supabase_client()
+            client.auth.sign_out()
             st.session_state.authenticated = False
             st.session_state.user = None
             st.rerun()
 
 # ==========================================
-# 7. DASHBOARD PRINCIPAL Y TODAS LAS PESTAÑAS INTERACTIVAS
+# 7. DASHBOARD PRINCIPAL Y PESTAÑAS
 # ==========================================
 def render_dashboard():
     tiene_acceso, estado_sub, dias_restantes = evaluar_suscripcion(st.session_state.user)
@@ -583,12 +619,13 @@ def render_dashboard():
 
     user_id = st.session_state.user.id
     trades_db = cargar_trades_usuario(user_id)
+    df_trades = pd.DataFrame(trades_db)
 
     st.markdown("## ⚡ Journaling & AI Trading Audit")
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "➕ Registrar Trade", 
-        "📅 Track Record PnL",
+        "📅 Track Record PnL", 
         "💬 Chat IA & Auditoría",
         "🧮 Calc. Lotaje", 
         "🧠 Análisis vs IA", 
@@ -597,182 +634,201 @@ def render_dashboard():
         "📊 Dashboard & Progreso"
     ])
 
-    # --------------------------------------
-    # TAB 1: REGISTRAR TRADE
-    # --------------------------------------
+    # --- TAB 1: REGISTRAR TRADE ---
     with tab1:
-        st.info("💡 **Tip con IA:** Al subir una captura de TradingView con la herramienta de Posición (Larga/Corta), la IA escaneará la imagen y **autocompletará los precios de Entrada, Stop Loss y Take Profit** por ti.")
+        st.info("💡 **Tip con IA:** Al subir una captura de TradingView con la herramienta de Posición, la IA escaneará la imagen y **autocompletará** tus precios.")
         
-        col_left, col_right = st.columns([1, 1])
+        col1, col2 = st.columns([1.2, 1])
 
-        with col_right:
-            st.markdown("### 🖼️ Capturas del Gráfico (Antes & Después)")
-            before_img = st.file_uploader("1️⃣ Screenshot ANTES (Escaneo Automático con IA)", type=["png", "jpg", "jpeg"], key="upload_before")
-            after_img = st.file_uploader("2️⃣ Screenshot DESPUÉS", type=["png", "jpg", "jpeg"])
+        with col2:
+            st.markdown("### 🖼️ Capturas del Gráfico")
+            upload_before = st.file_uploader("1️⃣ Screenshot ANTES (Escaneo IA)", type=["png", "jpg", "jpeg"])
+            upload_after = st.file_uploader("2️⃣ Screenshot DESPUÉS", type=["png", "jpg", "jpeg"])
 
-            if before_img:
-                st.image(before_img, caption="Setup Antes de Ejecutar", use_container_width=True)
+            if upload_before:
+                st.image(upload_before, caption="Trade SETUP (Antes)", use_container_width=True)
                 
-                if st.button("🧠 Escanear Gráfico y Autocompletar Campos"):
-                    with st.spinner("Leyendo valores numéricos del gráfico con IA..."):
-                        extracted = analizar_captura_tradingview(before_img.getvalue())
+                if st.button("🧠 Escanear SETUP con IA"):
+                    with st.spinner("La IA está leyendo los valores numéricos del gráfico..."):
+                        extracted = analizar_captura_tradingview(upload_before.getvalue())
                         if extracted:
-                            st.session_state.auto_entry = float(extracted.get("entry", 0.0))
-                            st.session_state.auto_sl = float(extracted.get("sl", 0.0))
-                            st.session_state.auto_tp = float(extracted.get("tp", 0.0))
+                            st.session_state.auto_entry = extracted.get("entry", 0.0)
+                            st.session_state.auto_sl = extracted.get("sl", 0.0)
+                            st.session_state.auto_tp = extracted.get("tp", 0.0)
                             st.toast("¡Valores extraídos con éxito!", icon="✨")
                             st.rerun()
                         else:
-                            st.warning("No se pudieron extraer los números de la captura. Ingrésalos manualmente.")
+                            st.warning("La IA no pudo extraer los números. Inténtalo manualmente.")
 
             monto_pnl = st.number_input("Ganancia / Pérdida en $USD de este trade:", value=0.0, step=10.0)
 
-        with col_left:
+        with col1:
             st.markdown("### 📝 Parámetros & Fecha")
             fecha_op = st.date_input("Fecha de la Operación", datetime.date.today())
             
-            sub_c1, sub_c2 = st.columns(2)
-            with sub_c1:
+            sub_col1, sub_col2 = st.columns(2)
+            with sub_col1:
                 par = st.selectbox("Seleccionar Activo / Par", LISTA_ACTIVOS)
                 direccion = st.radio("Dirección", ["LONG 🟢", "SHORT 🔴"], horizontal=True)
                 precio_entrada = st.number_input("Precio Entrada", value=st.session_state.auto_entry, format="%.5f")
                 stop_loss = st.number_input("Stop Loss", value=st.session_state.auto_sl, format="%.5f")
             
-            with sub_c2:
+            with sub_col2:
                 take_profit = st.number_input("Take Profit", value=st.session_state.auto_tp, format="%.5f")
+                riesgo = abs(precio_entrada - stop_loss)
+                beneficio = abs(take_profit - precio_entrada)
+                rr = beneficio / riesgo if riesgo > 0 else 0
                 
-                if precio_entrada > 0 and stop_loss > 0 and take_profit > 0:
-                    riesgo = abs(precio_entrada - stop_loss)
-                    beneficio = abs(take_profit - precio_entrada)
-                    rr = beneficio / riesgo if riesgo > 0 else 0
-                else:
-                    rr = 0.0
-                
-                st.markdown(f"**Ratio Risk:Reward:** `1 : {rr:.1f}`")
+                st.markdown(f"**Ratio Risk:Reward:** 1 : {rr:.1f}")
                 resultado = st.selectbox("Resultado", ["WIN 🟢", "LOSS 🔴", "BE ⚪"])
 
             st.markdown("### 🧠 Psicotrading & Estado Emocional")
             emocion = st.selectbox("¿Cómo te sentías?", [
-                "Disciplinado / Neutro 🧘", 
-                "Ansioso ⚡", 
-                "FOMO / Miedo a perderse el movimiento 🚀", 
-                "Venganza / Frustrado 🛑", 
-                "Eufórico / Sobre-confiado 😎"
+                "Disciplinado / Neutro 🧘", "Ansioso ⚡", "FOMO / Miedo a perderse el movimiento 🚀", 
+                "Venganza / Frustrado 🛑", "Eufórico / Sobre-confiado 😎"
             ])
             notas_emocionales = st.text_area("Notas emocionales de la sesión:", placeholder="Escribe aquí si respetaste tu plan...")
 
             if st.button("💾 Guardar Trade en Diario"):
                 nuevo_trade = {
-                    "fecha": str(fecha_op), 
-                    "hora": datetime.datetime.now().strftime("%H:%M"), 
+                    "fecha": str(fecha_op),
                     "par": par, 
                     "resultado": resultado, 
                     "emocion": emocion, 
-                    "beneficio_usd": float(monto_pnl), 
+                    "beneficio_usd": monto_pnl, 
                     "trades_cant": 1
                 }
+                
                 if guardar_trade_supabase(user_id, nuevo_trade):
                     st.session_state.auto_entry = 0.0
                     st.session_state.auto_sl = 0.0
                     st.session_state.auto_tp = 0.0
-                    st.success("¡Trade guardado exitosamente!")
+                    st.success("¡Operación guardada exitosamente!")
                     st.rerun()
 
-    # --------------------------------------
-    # TAB 2: TRACK RECORD CALENDARIO
-    # --------------------------------------
+    # --- TAB 2: TRACK RECORD PNL & HISTORIAL ---
     with tab2:
-        st.info("💡 **¿Para qué sirve?** Vista mensual estilo Prop Firm. Las ganancias/pérdidas y la cantidad exacta de trades se agrupan por día.")
+        st.markdown("### 📅 Track Record & Calendario de PnL")
+        st.info("💡 **Vista de Calendario y Detalle:** Agrupa ganancias/pérdidas del mes y te permite revisar o eliminar cada registro.")
         
-        df_calendar = pd.DataFrame(trades_db)
-        total_mes = df_calendar['beneficio_usd'].sum() if not df_calendar.empty else 0.0
-        
-        if not df_calendar.empty:
-            df_grouped = df_calendar.groupby('fecha').agg({'beneficio_usd': 'sum', 'trades_cant': 'count'}).reset_index()
+        if not df_trades.empty:
+            df_grouped = df_trades.groupby('fecha').agg({'beneficio_usd': 'sum', 'trades_cant': 'count'}).reset_index()
             dias_ganadores = len(df_grouped[df_grouped['beneficio_usd'] > 0])
             dias_perdedores = len(df_grouped[df_grouped['beneficio_usd'] < 0])
         else:
+            df_grouped = pd.DataFrame(columns=['fecha', 'beneficio_usd', 'trades_cant'])
             dias_ganadores = 0
             dias_perdedores = 0
 
-        c_rec1, c_rec2, c_rec3 = st.columns(3)
-        c_rec1.metric("Resultado Neto del Mes", f"${total_mes:,.2f}", f"{'+' if total_mes >= 0 else ''}{total_mes:,.2f}")
-        c_rec2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
-        c_rec3.metric("Días Rojos 🟥", f"{dias_perdedores} días")
+        total_pnl = df_trades['beneficio_usd'].sum() if not df_trades.empty else 0.0
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Resultado Neto del Mes", f"${total_pnl:,.2f}", f"{'+' if total_pnl >= 0 else ''}{total_pnl:,.2f}")
+        c2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
+        c3.metric("Días Rojos 🟥", f"{dias_perdedores} días")
 
         st.markdown("---")
-
-        pnl_map = {}
-        trades_map = {}
-        if not df_calendar.empty:
-            for _, r in df_calendar.iterrows():
-                f_str = r['fecha']
-                pnl_map[f_str] = pnl_map.get(f_str, 0.0) + r['beneficio_usd']
-                trades_map[f_str] = trades_map.get(f_str, 0) + 1
+        
+        # --- CALENDARIO PNL ---
+        pnl_map = df_grouped.set_index('fecha')['beneficio_usd'].to_dict() if not df_grouped.empty else {}
+        trades_map = df_grouped.set_index('fecha')['trades_cant'].to_dict() if not df_grouped.empty else {}
 
         hoy = datetime.date.today()
-        año, mes = hoy.year, hoy.month
+        mes_dias = calendar.Calendar(firstweekday=6).monthdayscalendar(hoy.year, hoy.month)
         
-        cal_obj = calendar.Calendar(firstweekday=6)
-        mes_dias = cal_obj.monthdayscalendar(año, mes)
-
         dias_header = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         cols_header = st.columns(7)
         for idx, col in enumerate(cols_header):
             with col:
-                st.markdown(f"<div style='text-align:center; font-weight:bold; font-size:1.1rem; color:#f0f3fa; margin-bottom:8px;'>{dias_header[idx]}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align:center; font-weight:bold; color:#f0f3fa;'>{dias_header[idx]}</div>", unsafe_allow_html=True)
 
         for semana in mes_dias:
             cols_sem = st.columns(7)
             for day_idx, day_num in enumerate(semana):
                 with cols_sem[day_idx]:
                     if day_num == 0:
-                        st.markdown("<div style='height:90px; background:transparent;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height:80px;'></div>", unsafe_allow_html=True)
                     else:
-                        f_date = datetime.date(año, mes, day_num)
+                        f_date = datetime.date(hoy.year, hoy.month, day_num)
                         f_key = str(f_date)
                         pnl_val = pnl_map.get(f_key, None)
                         num_trades = trades_map.get(f_key, 0)
 
-                        is_today = (f_date == hoy)
-                        border_css = "border: 2px solid #00f2fe; box-shadow: 0px 0px 10px rgba(0,242,254,0.4);" if is_today else "border: 1px solid #1f2937;"
+                        border_css = "border: 2px solid #00f2fe; box-shadow: 0px 0px 10px rgba(0,242,254,0.4);" if f_date == hoy else "border: 1px solid #161b22;"
 
                         if pnl_val is None:
-                            bg_color = "#12161f"
+                            bg_color = "#161b22"
                             txt_color = "#f0f3fa"
                             pnl_html = ""
                             trades_html = ""
                         elif pnl_val > 0:
-                            bg_color = "#38d361"
+                            bg_color = "#34d399"
                             txt_color = "#000000"
-                            pnl_fmt = f"${pnl_val:,.0f}".replace(",", ".")
-                            if pnl_val >= 1000:
-                                pnl_fmt = f"${pnl_val/1000:.1f}K"
-                            pnl_html = f"<div style='font-weight:bold; font-size:1.15rem; color:#000;'>+{pnl_fmt}</div>"
-                            trades_html = f"<div style='font-size:0.8rem; color:#111;'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
+                            pnl_fmt = f"${pnl_val:,.0f}" if pnl_val < 1000 else f"${pnl_val/1000:.1f}k"
+                            pnl_html = f"<div style='font-weight:bold; font-size:1.1rem; color:{txt_color};'>+{pnl_fmt}</div>"
+                            trades_html = f"<div style='font-size:0.7rem; color:{txt_color};'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
                         elif pnl_val < 0:
-                            bg_color = "#ff4d4d"
+                            bg_color = "#f87171"
                             txt_color = "#000000"
-                            pnl_fmt = f"-${abs(pnl_val):,.0f}".replace(",", ".")
-                            if abs(pnl_val) >= 1000:
-                                pnl_fmt = f"-${abs(pnl_val)/1000:.1f}K"
-                            pnl_html = f"<div style='font-weight:bold; font-size:1.15rem; color:#000;'>{pnl_fmt}</div>"
-                            trades_html = f"<div style='font-size:0.8rem; color:#111;'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
+                            pnl_fmt = f"-${abs(pnl_val):,.0f}" if abs(pnl_val) < 1000 else f"-${abs(pnl_val)/1000:.1f}k"
+                            pnl_html = f"<div style='font-weight:bold; font-size:1.1rem; color:{txt_color};'>{pnl_fmt}</div>"
+                            trades_html = f"<div style='font-size:0.7rem; color:{txt_color};'>{num_trades} trade{'s' if num_trades > 1 else ''}</div>"
                         else:
-                            bg_color = "#2a3242"
+                            bg_color = "#161b22"
                             txt_color = "#ffffff"
-                            pnl_html = "<div style='font-weight:bold; font-size:1.15rem;'>$0</div>"
-                            trades_html = f"<div style='font-size:0.8rem;'>{num_trades} trades</div>"
+                            pnl_html = "<div style='font-weight:bold; font-size:1.1rem;'>$0</div>"
+                            trades_html = f"<div style='font-size:0.7rem;'>{num_trades} trades</div>"
 
-                        today_tag = " <span style='font-size:0.7rem; color:#00f2fe;'>(HOY)</span>" if is_today else ""
+                        today_tag = " <span style='font-size:0.6rem; color:#00f2fe;'>(HOY)</span>" if f_date == hoy else ""
 
-                        box_html = f"""<div style="background-color: {bg_color}; {border_css} border-radius: 6px; padding: 6px 8px; height: 95px; margin-bottom: 8px; display: flex; flex-direction: column; justify-content: space-between;"><div style="font-size:0.85rem; font-weight:700; color:{txt_color};">{day_num}{today_tag}</div><div style="text-align:center;">{pnl_html}{trades_html}</div></div>"""
+                        box_html = f"""<div style="background-color: {bg_color}; {border_css} border-radius: 6px; padding: 6px; height: 80px; display: flex; flex-direction: column; justify-content: space-between;"><div style="font-size:0.75rem; font-weight:bold; color:{txt_color};">{day_num}{today_tag}</div><div style="text-align:center;">{pnl_html}{trades_html}</div></div>"""
                         
                         st.markdown(box_html, unsafe_allow_html=True)
+        
+        st.markdown("---")
 
-    # --------------------------------------
-    # TAB 3: CHAT DE AUDITORÍA CON IA
-    # --------------------------------------
+        # --- TABLA DE TRADES REGISTRADOS (HISTORIAL) ---
+        st.markdown("### 📋 Historial de Operaciones Registradas")
+        
+        if not df_trades.empty:
+            # Formatear la tabla de presentación
+            df_mostrar = df_trades.copy()
+            
+            columnas_existentes = [col for col in ['id', 'fecha', 'par', 'resultado', 'beneficio_usd', 'emocion'] if col in df_mostrar.columns]
+            df_tabla = df_mostrar[columnas_existentes].rename(columns={
+                'id': 'ID',
+                'fecha': 'Fecha',
+                'par': 'Activo / Par',
+                'resultado': 'Resultado',
+                'beneficio_usd': 'PnL ($USD)',
+                'emocion': 'Emoción'
+            })
+            
+            st.dataframe(df_tabla, use_container_width=True, hide_index=True)
+
+            with st.expander("🗑️ Gestionar / Eliminar una Operación"):
+                if 'id' in df_trades.columns:
+                    lista_ids = df_trades['id'].tolist()
+                    trade_a_eliminar = st.selectbox("Selecciona el ID del Trade que deseas eliminar:", lista_ids)
+                    
+                    if st.button("❌ Eliminar Trade Seleccionado"):
+                        if eliminar_trade_supabase(trade_a_eliminar):
+                            st.toast("Operación eliminada con éxito", icon="✅")
+                            st.rerun()
+                else:
+                    st.caption("No se encontró identificador de ID único en la base de datos.")
+        else:
+            st.info("Aún no tienes trades registrados en tu diario. Ve a la pestaña **'➕ Registrar Trade'** para agregar tu primera operación.")
+
+        st.markdown("---")
+        
+        if not df_grouped.empty:
+            df_grouped['color_pnl'] = np.where(df_grouped['beneficio_usd'] >= 0, 'GANANCIA', 'PÉRDIDA')
+            fig_pnl = px.bar(df_grouped, x='fecha', y='beneficio_usd', color='color_pnl', title="PnL Monetario Diario", template="plotly_dark", color_discrete_map={'GANANCIA': '#00f2fe', 'PÉRDIDA': '#f44336'})
+            fig_pnl.update_layout(plot_bgcolor='#0b0e14', paper_bgcolor='#0b0e14', xaxis_title="Fecha", yaxis_title="Beneficio USD")
+            st.plotly_chart(fig_pnl, use_container_width=True)
+
+    # --- TAB 3: CHAT DE AUDITORÍA CON IA ---
     with tab3:
         st.markdown("### 💬 Chat de Auditoría de Trading con IA")
         st.caption("Pregúntale a tu asistente sobre tus hábitos, estadísticas o reglas operativas.")
@@ -792,18 +848,15 @@ def render_dashboard():
                     if cant_trades == 0:
                         respuesta_ia = "Aún no has registrado trades en tu diario. Ve a la pestaña **'➕ Registrar Trade'** para comenzar a auditar tu operativa."
                     else:
-                        df_tr = pd.DataFrame(trades_db)
-                        pnl_tot = df_tr['beneficio_usd'].sum()
-                        wins = len(df_tr[df_tr['beneficio_usd'] > 0])
+                        pnl_tot = df_trades['beneficio_usd'].sum()
+                        wins = len(df_trades[df_trades['beneficio_usd'] > 0])
                         win_rate = (wins / cant_trades * 100) if cant_trades > 0 else 0
                         respuesta_ia = f"Has registrado **{cant_trades}** operaciones con un resultado neto acumulado de **${pnl_tot:,.2f} USD** y una tasa de acierto del **{win_rate:.1f}%**. Te sugiero seguir manteniendo la disciplina emocional."
 
                     st.markdown(respuesta_ia)
                     st.session_state.chat_history.append({"role": "assistant", "content": respuesta_ia})
 
-    # --------------------------------------
-    # TAB 4: CALCULADORA DE LOTAJE
-    # --------------------------------------
+    # --- TAB 4: CALCULADORA DE LOTAJE ---
     with tab4:
         st.markdown("### 🧮 Calculadora de Tamaño de Posición")
         st.caption("Calcula el lotaje ideal para no sobrepasar el riesgo permitido por operación.")
@@ -822,9 +875,7 @@ def render_dashboard():
             st.metric("Lotes Sugeridos (Forex Estándar)", f"{lotaje_estimado:.2f} Lotes")
             st.info("💡 **Nota:** Para índices como US100 / US30 o Criptos, ajusta la equivalencia según el contrato de tu broker.")
 
-    # --------------------------------------
-    # TAB 5: ANÁLISIS VS IA (AUDITORÍA VISUAL)
-    # --------------------------------------
+    # --- TAB 5: ANÁLISIS VS IA ---
     with tab5:
         st.markdown("### 🤖 Auditoría Visual de Estructura de Mercado")
         st.caption("Sube la captura de tu setup previo a la entrada para recibir una segunda opinión basada en IA.")
@@ -836,9 +887,7 @@ def render_dashboard():
                 with st.spinner("Escaneando zonas de oferta, demanda y estructura..."):
                     st.success("✅ **Análisis completado:** El gráfico muestra una estructura clara. Recuerda confirmar la confluencia en temporalidades menores antes de ejecutar.")
 
-    # --------------------------------------
-    # TAB 6: PROYECCIONES DE CAPITAL
-    # --------------------------------------
+    # --- TAB 6: PROYECCIONES DE CAPITAL ---
     with tab6:
         st.markdown("### 📈 Proyección de Crecimiento por Interés Compuesto")
         st.caption("Simula cómo crecería tu cuenta a 12 meses manteniendo tu porcentaje de efectividad.")
@@ -867,9 +916,7 @@ def render_dashboard():
         fig_proy = px.line(df_proy, x="Mes", y="Capital", title="Proyección de Cuenta a 12 Meses", markers=True, template="plotly_dark")
         st.plotly_chart(fig_proy, use_container_width=True)
 
-    # --------------------------------------
-    # TAB 7: DIARIO Y PSICOTRADING
-    # --------------------------------------
+    # --- TAB 7: DIARIO Y PSICOTRADING ---
     with tab7:
         st.markdown("### 📓 Bitácora de Psicotrading & Reflexión Mental")
         st.caption("Lleva un registro de tu mentalidad y estado emocional para evitar el overtrading y el FOMO.")
@@ -878,15 +925,11 @@ def render_dashboard():
         if st.button("💾 Guardar Reflexión en Bitácora"):
             st.toast("¡Reflexión guardada en tu sesión!", icon="🧠")
 
-    # --------------------------------------
-    # TAB 8: DASHBOARD & METRICAS
-    # --------------------------------------
+    # --- TAB 8: DASHBOARD & METRICAS ---
     with tab8:
         st.markdown("### 📊 Dashboard Operativo & Rendimiento Global")
 
-        df_trades = pd.DataFrame(trades_db)
         cant_total = len(df_trades)
-        
         if not df_trades.empty:
             wins = len(df_trades[df_trades['beneficio_usd'] > 0])
             losses = len(df_trades[df_trades['beneficio_usd'] < 0])
@@ -915,11 +958,15 @@ def render_dashboard():
                 color_discrete_sequence=["#00f2fe", "#00d2ff", "#2962ff", "#4facfe", "#ff2a2a"]
             )
             st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("#### 📋 Listado Detallado de Trades")
+            st.dataframe(df_trades[['fecha', 'par', 'resultado', 'beneficio_usd', 'emocion']], use_container_width=True, hide_index=True)
         else:
             st.info("Aún no tienes operaciones registradas. Registra tu primer trade para desbloquear tus métricas avanzadas.")
 
 # ==========================================
-# 8. FLUJO PRINCIPAL DE EJECUCIÓN
+# 8. FLUJO PRINCIPAL
 # ==========================================
 if not st.session_state.authenticated:
     render_auth()
