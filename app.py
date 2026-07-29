@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import requests
 import json
+import os
 import base64
 import pandas as pd
 import numpy as np
@@ -88,7 +89,7 @@ LISTA_ACTIVOS = [
     "📊 UK100 (FTSE 100)",
     "📊 JP225 (Nikkei 225)",
     
-    # --- FOREX ---
+    # --- FOREX (DIVISAS MAJORS Y MINORS) ---
     "💱 EUR/USD",
     "💱 GBP/USD",
     "💱 USD/JPY",
@@ -123,7 +124,7 @@ LISTA_ACTIVOS = [
 def cargar_trades_usuario(user_id):
     try:
         client = get_supabase_client()
-        res = client.table("trades").select("*").eq("user_id", user_id).order("fecha", desc=True).execute()
+        res = client.table("trades").select("*").eq("user_id", user_id).execute()
         return res.data if res.data else []
     except Exception:
         return []
@@ -136,15 +137,6 @@ def guardar_trade_supabase(user_id, trade_data):
         return True
     except Exception as e:
         st.error(f"Error guardando en base de datos: {e}")
-        return False
-
-def eliminar_trade_supabase(trade_id):
-    try:
-        client = get_supabase_client()
-        client.table("trades").delete().eq("id", trade_id).execute()
-        return True
-    except Exception as e:
-        st.error(f"Error al eliminar la operación: {e}")
         return False
 
 def analizar_captura_tradingview(image_bytes):
@@ -188,11 +180,12 @@ def analizar_captura_tradingview(image_bytes):
         return None
 
 # ==========================================
-# 2. ESTILOS CSS PERSONALIZADOS
+# 2. ESTILOS CSS PERSONALIZADOS (CORRECCIÓN TOTAL DE DESPLEGABLES)
 # ==========================================
 def aplicar_estilos():
     css = """
     <style>
+    /* Fondo principal */
     .stApp {
         background-color: #0b0e14 !important;
         color: #f0f3fa !important;
@@ -210,7 +203,8 @@ def aplicar_estilos():
         font-weight: 800 !important;
     }
 
-    /* FIX PARA SELECTBOX Y DESPLEGABLES */
+    /* === SOLUCIÓN DEFINITIVA PARA MENÚS DESPLEGABLES BLANCOS (SELECTBOX) === */
+    /* Caja del selector cerrado */
     div[data-baseweb="select"] > div {
         background-color: #121721 !important;
         color: #00f2fe !important;
@@ -218,15 +212,18 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
+    /* Input de búsqueda dentro del selector */
     div[data-baseweb="select"] input {
         color: #00f2fe !important;
         -webkit-text-fill-color: #00f2fe !important;
     }
 
+    /* Texto seleccionado */
     div[data-baseweb="select"] span[data-testid="stMarkdownContainer"] p {
         color: #00f2fe !important;
     }
 
+    /* === ESTILO DEL MENÚ FLOTANTE (EL DESPLEGABLE EN SÍ) === */
     div[data-baseweb="popover"], 
     div[data-baseweb="menu"], 
     div[role="listbox"],
@@ -236,6 +233,7 @@ def aplicar_estilos():
         border-radius: 8px !important;
     }
 
+    /* Elementos individuales de la lista */
     div[role="option"],
     li[role="option"],
     li[data-baseweb="option"] {
@@ -247,6 +245,7 @@ def aplicar_estilos():
         border-bottom: 1px solid rgba(255,255,255,0.05) !important;
     }
 
+    /* Hover o elemento resaltado al pasar el mouse */
     div[role="option"]:hover,
     li[role="option"]:hover,
     li[aria-selected="true"] {
@@ -255,10 +254,12 @@ def aplicar_estilos():
         font-weight: bold !important;
     }
 
+    /* Fix para el icono de la flecha */
     div[data-baseweb="select"] svg {
         fill: #00f2fe !important;
     }
 
+    /* Entradas de texto y números normales */
     .stTextInput input, .stNumberInput input, .stTextArea textarea {
         background-color: #161b22 !important;
         color: #00f2fe !important;
@@ -324,7 +325,7 @@ def aplicar_estilos():
 aplicar_estilos()
 
 # ==========================================
-# 3. VERIFICACIÓN DE SUSCRIPCIÓN
+# 3. VERIFICACIÓN DE DÍAS DE PRUEBA / PRO / ADMIN
 # ==========================================
 def evaluar_suscripcion(user):
     user_email = user.email if (user and hasattr(user, 'email')) else ""
@@ -351,7 +352,7 @@ def evaluar_suscripcion(user):
         return False, "Prueba Expirada 🛑", 0
 
 # ==========================================
-# 4. PAYWALL
+# 4. PANTALLA DE BLOQUEO / PAYWALL
 # ==========================================
 def render_paywall():
     st.markdown("## 🔒 Tu Período de Prueba Gratis de 3 Días ha Expirado")
@@ -422,7 +423,7 @@ def render_paywall():
         """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. AUTENTICACIÓN
+# 5. AUTENTICACIÓN (CON RECUPERACIÓN DE CLAVE)
 # ==========================================
 def render_auth():
     col = st.columns([1.2, 1])
@@ -482,7 +483,7 @@ def render_auth():
                     st.warning("Por favor ingresa tu correo electrónico.")
 
 # ==========================================
-# 6. SIDEBAR
+# 6. SIDEBAR COMPLETO RESTAURADO Y MEJORADO
 # ==========================================
 def render_sidebar(estado_sub):
     with st.sidebar:
@@ -607,7 +608,7 @@ def render_sidebar(estado_sub):
             st.rerun()
 
 # ==========================================
-# 7. DASHBOARD PRINCIPAL Y PESTAÑAS
+# 7. DASHBOARD PRINCIPAL Y TODAS LAS PESTAÑAS INTERACTIVAS
 # ==========================================
 def render_dashboard():
     tiene_acceso, estado_sub, dias_restantes = evaluar_suscripcion(st.session_state.user)
@@ -692,11 +693,7 @@ def render_dashboard():
             if st.button("💾 Guardar Trade en Diario"):
                 nuevo_trade = {
                     "fecha": str(fecha_op),
-                    "par": par, 
-                    "resultado": resultado, 
-                    "emocion": emocion, 
-                    "beneficio_usd": monto_pnl, 
-                    "trades_cant": 1
+                    "par": par, "resultado": resultado, "emocion": emocion, "beneficio_usd": monto_pnl, "trades_cant": 1
                 }
                 
                 if guardar_trade_supabase(user_id, nuevo_trade):
@@ -706,10 +703,10 @@ def render_dashboard():
                     st.success("¡Operación guardada exitosamente!")
                     st.rerun()
 
-    # --- TAB 2: TRACK RECORD PNL & HISTORIAL ---
+    # --- TAB 2: TRACK RECORD PNL ---
     with tab2:
         st.markdown("### 📅 Track Record & Calendario de PnL")
-        st.info("💡 **Vista de Calendario y Detalle:** Agrupa ganancias/pérdidas del mes y te permite revisar o eliminar cada registro.")
+        st.info("💡 Vista mensual estilo Prop Firm. Los días verdes son ganancias, rojos son pérdidas.")
         
         if not df_trades.empty:
             df_grouped = df_trades.groupby('fecha').agg({'beneficio_usd': 'sum', 'trades_cant': 'count'}).reset_index()
@@ -723,20 +720,19 @@ def render_dashboard():
         total_pnl = df_trades['beneficio_usd'].sum() if not df_trades.empty else 0.0
         
         c1, c2, c3 = st.columns(3)
-        c1.metric("Resultado Neto del Mes", f"${total_pnl:,.2f}", f"{'+' if total_pnl >= 0 else ''}{total_pnl:,.2f}")
+        c1.metric("Resultado Neto Total", f"${total_pnl:,.2f}", f"{'+' if total_pnl >= 0 else ''}{total_pnl:,.2f}")
         c2.metric("Días Verdes 🟩", f"{dias_ganadores} días")
         c3.metric("Días Rojos 🟥", f"{dias_perdedores} días")
 
         st.markdown("---")
         
-        # --- CALENDARIO PNL ---
         pnl_map = df_grouped.set_index('fecha')['beneficio_usd'].to_dict() if not df_grouped.empty else {}
         trades_map = df_grouped.set_index('fecha')['trades_cant'].to_dict() if not df_grouped.empty else {}
 
         hoy = datetime.date.today()
         mes_dias = calendar.Calendar(firstweekday=6).monthdayscalendar(hoy.year, hoy.month)
         
-        dias_header = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        dias_header = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
         cols_header = st.columns(7)
         for idx, col in enumerate(cols_header):
             with col:
@@ -785,41 +781,6 @@ def render_dashboard():
                         
                         st.markdown(box_html, unsafe_allow_html=True)
         
-        st.markdown("---")
-
-        # --- TABLA DE TRADES REGISTRADOS (HISTORIAL) ---
-        st.markdown("### 📋 Historial de Operaciones Registradas")
-        
-        if not df_trades.empty:
-            # Formatear la tabla de presentación
-            df_mostrar = df_trades.copy()
-            
-            columnas_existentes = [col for col in ['id', 'fecha', 'par', 'resultado', 'beneficio_usd', 'emocion'] if col in df_mostrar.columns]
-            df_tabla = df_mostrar[columnas_existentes].rename(columns={
-                'id': 'ID',
-                'fecha': 'Fecha',
-                'par': 'Activo / Par',
-                'resultado': 'Resultado',
-                'beneficio_usd': 'PnL ($USD)',
-                'emocion': 'Emoción'
-            })
-            
-            st.dataframe(df_tabla, use_container_width=True, hide_index=True)
-
-            with st.expander("🗑️ Gestionar / Eliminar una Operación"):
-                if 'id' in df_trades.columns:
-                    lista_ids = df_trades['id'].tolist()
-                    trade_a_eliminar = st.selectbox("Selecciona el ID del Trade que deseas eliminar:", lista_ids)
-                    
-                    if st.button("❌ Eliminar Trade Seleccionado"):
-                        if eliminar_trade_supabase(trade_a_eliminar):
-                            st.toast("Operación eliminada con éxito", icon="✅")
-                            st.rerun()
-                else:
-                    st.caption("No se encontró identificador de ID único en la base de datos.")
-        else:
-            st.info("Aún no tienes trades registrados en tu diario. Ve a la pestaña **'➕ Registrar Trade'** para agregar tu primera operación.")
-
         st.markdown("---")
         
         if not df_grouped.empty:
@@ -958,15 +919,11 @@ def render_dashboard():
                 color_discrete_sequence=["#00f2fe", "#00d2ff", "#2962ff", "#4facfe", "#ff2a2a"]
             )
             st.plotly_chart(fig, use_container_width=True)
-            
-            st.markdown("---")
-            st.markdown("#### 📋 Listado Detallado de Trades")
-            st.dataframe(df_trades[['fecha', 'par', 'resultado', 'beneficio_usd', 'emocion']], use_container_width=True, hide_index=True)
         else:
             st.info("Aún no tienes operaciones registradas. Registra tu primer trade para desbloquear tus métricas avanzadas.")
 
 # ==========================================
-# 8. FLUJO PRINCIPAL
+# 8. FLUJO PRINCIPAL DE EJECUCIÓN
 # ==========================================
 if not st.session_state.authenticated:
     render_auth()
