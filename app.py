@@ -227,11 +227,15 @@ def aplicar_estilos():
     .stButton>button { background: linear-gradient(135deg, #00d2ff 0%, #2962ff 100%) !important; color: #ffffff !important; border-radius: 8px !important; border: none !important; font-weight: bold !important; width: 100%; box-shadow: 0px 4px 15px rgba(0, 210, 255, 0.3) !important; }
     section[data-testid="stSidebar"] { background-color: #0f141e !important; border-right: 1px solid rgba(0, 210, 255, 0.2) !important; }
     section[data-testid="stSidebar"] .stButton>button { background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%) !important; box-shadow: 0px 4px 12px rgba(229, 57, 53, 0.3) !important; }
-    .market-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+    .market-badge { display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 0.75rem; font-weight: bold; }
     .open { background-color: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid #4caf50; }
     .closed { background-color: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; }
     .paywall-card { background-color: #161b22; border: 1px solid #f0b90b; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0px 0px 20px rgba(240, 185, 11, 0.2); }
     .stExpander { background-color: #12161f !important; border: 1px solid #1f2937 !important; border-radius: 8px !important; margin-bottom: 10px !important; }
+    
+    /* ESTILOS DEL AVATAR Y SIDEBAR DE ALTO NIVEL */
+    .user-profile-box { text-align: center; padding: 10px 0 15px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 15px; }
+    .user-avatar-img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00f2fe; box-shadow: 0px 0px 15px rgba(0, 242, 254, 0.4); object-fit: cover; }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -326,16 +330,30 @@ def render_auth():
                     except Exception as e:
                         st.error(f"Error: {e}")
 
+# ==========================================
+# RENDERIZADO DEL SIDEBAR COMPLETO CON AVATAR Y HORARIOS
+# ==========================================
 def render_sidebar(estado_sub):
     with st.sidebar:
-        st.markdown("### 👤 Perfil Trader")
         user = st.session_state.user
         user_email = user.email if user else "trader@ejemplo.com"
         metadata = user.user_metadata if (user and hasattr(user, 'user_metadata') and user.user_metadata) else {}
-        nombre_actual = metadata.get("username", st.session_state.get("nombre_trader", "Trader Pro"))
         
-        st.markdown(f"**{nombre_actual}**")
-        st.caption(f"`{user_email}`")
+        # 1. Foto de Perfil / Avatar Dinámico
+        avatar_url = metadata.get("avatar_url") or metadata.get("picture")
+        if not avatar_url:
+            # Avatar Cyberpunk por defecto si no tiene foto cargada
+            avatar_url = f"https://api.dicebear.com/7.x/bottts/svg?seed={user_email}"
+
+        nombre_actual = metadata.get("username") or metadata.get("full_name") or st.session_state.get("nombre_trader", "Trader Pro")
+
+        st.markdown(f"""
+        <div class="user-profile-box">
+            <img src="{avatar_url}" class="user-avatar-img">
+            <h3 style="margin:10px 0 2px 0; font-size:1.2rem; color:#ffffff;">{nombre_actual}</h3>
+            <p style="margin:0; font-size:0.75rem; color:#00f2fe; word-break:break-all;">{user_email}</p>
+        </div>
+        """, unsafe_allow_html=True)
 
         if "PRO" in estado_sub or "Admin" in estado_sub:
             st.success(f"💎 {estado_sub}")
@@ -343,6 +361,32 @@ def render_sidebar(estado_sub):
             st.warning(f"⏳ {estado_sub}")
 
         st.markdown("---")
+        
+        # 2. Reloj UTC y Sesiones de Mercado en Vivo
+        st.markdown("### 🕒 Mercado & Sesiones UTC")
+        ahora_utc = datetime.datetime.now(datetime.timezone.utc)
+        hora_utc_str = ahora_utc.strftime("%H:%M:%S UTC")
+        st.caption(f"📅 **{ahora_utc.strftime('%Y-%m-%d')}** | ⏱️ `{hora_utc_str}`")
+
+        # Cálculo aproximado de estado de sesiones (Horarios UTC)
+        h_utc = ahora_utc.hour
+        tokyo_open = (0 <= h_utc < 9)
+        london_open = (8 <= h_utc < 16)
+        ny_open = (13 <= h_utc < 21)
+        sydney_open = (22 <= h_utc or h_utc < 7)
+
+        st.markdown(f"""
+        <div style="font-size:0.85rem; line-height:1.8;">
+            🇬🇧 <b>Londres:</b> <span class="market-badge {'open' if london_open else 'closed'}">{'OPEN 🟢' if london_open else 'CLOSED 🔴'}</span><br>
+            🇺🇸 <b>Nueva York:</b> <span class="market-badge {'open' if ny_open else 'closed'}">{'OPEN 🟢' if ny_open else 'CLOSED 🔴'}</span><br>
+            🇯🇵 <b>Tokio:</b> <span class="market-badge {'open' if tokyo_open else 'closed'}">{'OPEN 🟢' if tokyo_open else 'CLOSED 🔴'}</span><br>
+            🇦🇺 <b>Sídney:</b> <span class="market-badge {'open' if sydney_open else 'closed'}">{'OPEN 🟢' if sydney_open else 'CLOSED 🔴'}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
+        
+        # 3. Meta de Cuenta
         st.markdown("### 🎯 Meta de Cuenta")
         cap_act = st.session_state.capital_actual
         cap_met = st.session_state.capital_meta
