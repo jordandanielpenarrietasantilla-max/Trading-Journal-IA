@@ -4,6 +4,7 @@ import requests
 import json
 import base64
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import calendar
 import io
@@ -28,7 +29,7 @@ st.set_page_config(
 
 # =========================================================
 # 2. SECRETOS
-# =========================================================
+# ==========================================
 
 SUPABASE_URL = st.secrets.get(
     "SUPABASE_URL",
@@ -55,7 +56,6 @@ LINK_BINANCE_ANUAL = "https://s.binance.com/NvHWGF9P"
 LINK_BINANCE_RECURRENTE = "https://s.binance.com/U7v5zFVr"
 
 BINANCE_PAY_ID = "JORDAN_SANTI9"
-
 LINK_TELEGRAM_SOPORTE = "https://t.me/tu_usuario_telegram"
 
 
@@ -72,7 +72,7 @@ def get_supabase_client() -> Client:
 
 
 # =========================================================
-# 5. ESTADO
+# 5. ESTADO INICIAL
 # =========================================================
 
 DEFAULT_RULES = """• Acepta la pérdida antes de entrar.
@@ -94,7 +94,7 @@ defaults = {
     "auto_sl": 0.0,
     "auto_tp": 0.0,
     "auto_asset": "",
-    "auto_direction": "",
+    "auto_direction": "LONG 🟢",
     "auto_timeframe": "",
 
     # Resultado del último escaneo
@@ -167,40 +167,26 @@ ASSET_ALIASES = {
     "XAGUSD": "🥈 XAG/USD (Plata)",
     "XAG/USD": "🥈 XAG/USD (Plata)",
     "SILVER": "🥈 XAG/USD (Plata)",
-    "PLATA": "🥈 XAG/USD (Plata)",
 
     "USOIL": "🛢️ USOIL (Petróleo WTI)",
     "WTI": "🛢️ USOIL (Petróleo WTI)",
-    "CRUDE": "🛢️ USOIL (Petróleo WTI)",
 
     "UKOIL": "🛢️ UKOIL (Petróleo Brent)",
     "BRENT": "🛢️ UKOIL (Petróleo Brent)",
 
     "NGAS": "🌾 NGAS (Gas Natural)",
-    "NATURALGAS": "🌾 NGAS (Gas Natural)",
 
     "BTCUSD": "🪙 BTC/USD (Bitcoin)",
     "BTC/USD": "🪙 BTC/USD (Bitcoin)",
-    "BITCOIN": "🪙 BTC/USD (Bitcoin)",
 
     "ETHUSD": "🪙 ETH/USD (Ethereum)",
     "ETH/USD": "🪙 ETH/USD (Ethereum)",
-    "ETHEREUM": "🪙 ETH/USD (Ethereum)",
 
     "SOLUSD": "🪙 SOL/USD (Solana)",
-    "SOL/USD": "🪙 SOL/USD (Solana)",
-
     "XRPUSD": "🪙 XRP/USD (Ripple)",
-    "XRP/USD": "🪙 XRP/USD (Ripple)",
-
     "BNBUSD": "🪙 BNB/USD (Binance Coin)",
-    "BNB/USD": "🪙 BNB/USD (Binance Coin)",
-
     "ADAUSD": "🪙 ADA/USD (Cardano)",
-    "ADA/USD": "🪙 ADA/USD (Cardano)",
-
     "DOGEUSD": "🪙 DOGE/USD (Dogecoin)",
-    "DOGE/USD": "🪙 DOGE/USD (Dogecoin)",
 
     "US100": "📊 US100 (Nasdaq 100)",
     "NASDAQ": "📊 US100 (Nasdaq 100)",
@@ -211,49 +197,24 @@ ASSET_ALIASES = {
 
     "US500": "📊 US500 (S&P 500)",
     "SP500": "📊 US500 (S&P 500)",
-    "S&P500": "📊 US500 (S&P 500)",
 
     "GER40": "📊 GER40 (Dax Alemán)",
     "DAX": "📊 GER40 (Dax Alemán)",
 
     "UK100": "📊 UK100 (FTSE 100)",
-    "FTSE": "📊 UK100 (FTSE 100)",
-
     "JP225": "📊 JP225 (Nikkei 225)",
-    "NIKKEI": "📊 JP225 (Nikkei 225)",
 
     "EURUSD": "💱 EUR/USD",
-    "EUR/USD": "💱 EUR/USD",
-
     "GBPUSD": "💱 GBP/USD",
-    "GBP/USD": "💱 GBP/USD",
-
     "USDJPY": "💱 USD/JPY",
-    "USD/JPY": "💱 USD/JPY",
-
     "AUDUSD": "💱 AUD/USD",
-    "AUD/USD": "💱 AUD/USD",
-
     "USDCAD": "💱 USD/CAD",
-    "USD/CAD": "💱 USD/CAD",
-
     "USDCHF": "💱 USD/CHF",
-    "USD/CHF": "💱 USD/CHF",
-
     "NZDUSD": "💱 NZD/USD",
-    "NZD/USD": "💱 NZD/USD",
-
     "EURGBP": "💱 EUR/GBP",
-    "EUR/GBP": "💱 EUR/GBP",
-
     "EURJPY": "💱 EUR/JPY",
-    "EUR/JPY": "💱 EUR/JPY",
-
     "GBPJPY": "💱 GBP/JPY",
-    "GBP/JPY": "💱 GBP/JPY",
-
     "AUDJPY": "💱 AUD/JPY",
-    "AUD/JPY": "💱 AUD/JPY",
 
     "NVDA": "📈 NVDA (Nvidia)",
     "TSLA": "📈 TSLA (Tesla)",
@@ -273,323 +234,138 @@ def normalizar_activo(activo):
         return None
 
     texto = str(activo).upper().strip()
-
-    # Quitar emojis y texto descriptivo
     texto = re.sub(r"[^\w/&.-]", "", texto)
-
-    # Normalizaciones frecuentes
-    reemplazos = {
-        "EURUSD": "EUR/USD",
-        "EUR-US D": "EUR/USD",
-        "EURUSD": "EUR/USD",
-        "GBPUSD": "GBP/USD",
-        "USDJPY": "USD/JPY",
-        "AUDUSD": "AUD/USD",
-        "USDCAD": "USD/CAD",
-        "USDCHF": "USD/CHF",
-        "NZDUSD": "NZD/USD",
-        "EURGBP": "EUR/GBP",
-        "EURJPY": "EUR/JPY",
-        "GBPJPY": "GBP/JPY",
-        "AUDJPY": "AUD/JPY",
-        "XAUUSD": "XAU/USD",
-        "XAGUSD": "XAG/USD",
-        "BTCUSD": "BTC/USD",
-        "ETHUSD": "ETH/USD",
-        "SOLUSD": "SOL/USD",
-        "XRPUSD": "XRP/USD",
-        "BNBUSD": "BNB/USD",
-        "ADAUSD": "ADA/USD",
-        "DOGEUSD": "DOGE/USD"
-    }
 
     if texto in ASSET_ALIASES:
         return ASSET_ALIASES[texto]
 
-    if texto in reemplazos:
-        texto = reemplazos[texto]
-
-    # Buscar por símbolo dentro del texto original
-    original = str(activo).upper()
-
     for alias, nombre in ASSET_ALIASES.items():
-        alias_clean = alias.replace("/", "")
-        original_clean = re.sub(
-            r"[^A-Z0-9]",
-            "",
-            original
-        )
-
-        if alias_clean in original_clean:
+        if alias in texto:
             return nombre
 
     for nombre in LISTA_ACTIVOS:
-        nombre_clean = re.sub(
-            r"[^A-Z0-9]",
-            "",
-            nombre.upper()
-        )
-
-        texto_clean = re.sub(
-            r"[^A-Z0-9]",
-            "",
-            texto
-        )
-
-        if texto_clean == nombre_clean:
+        if texto in nombre.upper():
             return nombre
 
     return None
 
 
-# =========================================================
-# 8. DIRECCIÓN
-# =========================================================
-
 def normalizar_direccion(valor):
-
     if not valor:
-        return None
-
-    texto = str(valor).upper().strip()
-
-    if any(x in texto for x in [
-        "LONG",
-        "BUY",
-        "COMPRA",
-        "LARGO"
-    ]):
         return "LONG 🟢"
 
-    if any(x in texto for x in [
-        "SHORT",
-        "SELL",
-        "VENTA",
-        "CORTO"
-    ]):
+    texto = str(valor).upper().strip()
+    if any(x in texto for x in ["LONG", "BUY", "COMPRA", "LARGO"]):
+        return "LONG 🟢"
+    if any(x in texto for x in ["SHORT", "SELL", "VENTA", "CORTO"]):
         return "SHORT 🔴"
 
-    return None
+    return "LONG 🟢"
 
-
-# =========================================================
-# 9. TIMEFRAME
-# =========================================================
 
 def normalizar_timeframe(valor):
-
     if not valor:
-        return None
+        return ""
 
     texto = str(valor).upper().strip()
-
     equivalencias = {
-        "1MIN": "M1",
-        "1M": "M1",
-        "5MIN": "M5",
-        "5M": "M5",
-        "15MIN": "M15",
-        "15M": "M15",
-        "30MIN": "M30",
-        "30M": "M30",
-        "1H": "H1",
-        "60M": "H1",
-        "60MIN": "H1",
-        "4H": "H4",
-        "240M": "H4",
-        "4HR": "H4",
-        "1D": "D1",
-        "1DAY": "D1",
-        "1W": "W1",
-        "1WEEK": "W1"
+        "1MIN": "M1", "1M": "M1", "5MIN": "M5", "5M": "M5",
+        "15MIN": "M15", "15M": "M15", "30MIN": "M30", "30M": "M30",
+        "1H": "H1", "60M": "H1", "4H": "H4", "240M": "H4",
+        "1D": "D1", "1DAY": "D1", "1W": "W1", "1WEEK": "W1"
     }
 
     if texto in equivalencias:
         return equivalencias[texto]
-
-    if texto in [
-        "M1",
-        "M5",
-        "M15",
-        "M30",
-        "H1",
-        "H4",
-        "D1",
-        "W1"
-    ]:
+    if texto in ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"]:
         return texto
 
-    return None
+    return ""
 
 
 # =========================================================
-# 10. IMÁGENES
+# 8. IMÁGENES
 # =========================================================
 
 def procesar_imagen_b64(uploaded_file, max_size=(1200, 900)):
-
     if uploaded_file is None:
         return ""
-
     try:
-
         image = Image.open(uploaded_file)
-
         if image.mode in ("RGBA", "LA", "P"):
-
             if image.mode == "P":
                 image = image.convert("RGBA")
-
-            background = Image.new(
-                "RGB",
-                image.size,
-                "white"
-            )
-
+            background = Image.new("RGB", image.size, "white")
             if image.mode in ("RGBA", "LA"):
-
-                background.paste(
-                    image,
-                    mask=image.getchannel("A")
-                )
-
+                background.paste(image, mask=image.getchannel("A"))
                 image = background
-
             else:
                 image = image.convert("RGB")
-
         else:
             image = image.convert("RGB")
 
         image.thumbnail(max_size)
-
         buffer = io.BytesIO()
-
-        image.save(
-            buffer,
-            format="JPEG",
-            quality=78,
-            optimize=True
-        )
-
-        encoded = base64.b64encode(
-            buffer.getvalue()
-        ).decode("utf-8")
-
-        return (
-            "data:image/jpeg;base64,"
-            + encoded
-        )
-
+        image.save(buffer, format="JPEG", quality=78, optimize=True)
+        encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        return "data:image/jpeg;base64," + encoded
     except Exception as e:
-
-        st.error(
-            f"Error procesando imagen: {e}"
-        )
-
+        st.error(f"Error procesando imagen: {e}")
         return ""
 
 
 def convertir_imagen_display(valor):
-
     if not valor:
         return None
-
     try:
-
         valor = str(valor)
-
         if valor.startswith("data:image"):
             return valor
-
         if len(valor) > 100:
-            return (
-                "data:image/jpeg;base64,"
-                + valor
-            )
-
+            return "data:image/jpeg;base64," + valor
     except Exception:
         return None
-
     return None
 
 
 # =========================================================
-# 11. SUPABASE - TRADES
+# 9. SUPABASE - TRADES
 # =========================================================
 
 def cargar_trades_usuario(user_id):
-
     try:
-
         client = get_supabase_client()
-
         response = (
             client
             .table("trades")
             .select("*")
             .eq("user_id", user_id)
             .order("fecha", desc=True)
-            .order("created_at", desc=True)
             .execute()
         )
-
         return response.data or []
-
     except Exception as e:
-
-        st.error(
-            "❌ Error cargando operaciones:\n\n"
-            f"{e}"
-        )
-
+        st.error(f"❌ Error cargando operaciones: {e}")
         return []
 
 
 def guardar_trade_supabase(user_id, trade_data):
-
     try:
-
         client = get_supabase_client()
-
         data = dict(trade_data)
-
         data["user_id"] = user_id
-
-        client.table(
-            "trades"
-        ).insert(
-            data
-        ).execute()
-
+        client.table("trades").insert(data).execute()
         return True
-
     except Exception as e:
-
-        st.error(
-            f"❌ Error guardando operación: {e}"
-        )
-
+        st.error(f"❌ Error guardando operación: {e}")
         return False
 
 
-def actualizar_trade_supabase(
-    trade_id,
-    user_id,
-    trade_data
-):
-
+def actualizar_trade_supabase(trade_id, user_id, trade_data):
     try:
-
         client = get_supabase_client()
-
         data = dict(trade_data)
-
-        data.pop(
-            "user_id",
-            None
-        )
-
+        data.pop("user_id", None)
         response = (
             client
             .table("trades")
@@ -598,27 +374,15 @@ def actualizar_trade_supabase(
             .eq("user_id", user_id)
             .execute()
         )
-
         return bool(response.data)
-
     except Exception as e:
-
-        st.error(
-            f"❌ Error actualizando operación: {e}"
-        )
-
+        st.error(f"❌ Error actualizando operación: {e}")
         return False
 
 
-def eliminar_trade_supabase(
-    trade_id,
-    user_id
-):
-
+def eliminar_trade_supabase(trade_id, user_id):
     try:
-
         client = get_supabase_client()
-
         (
             client
             .table("trades")
@@ -627,637 +391,162 @@ def eliminar_trade_supabase(
             .eq("user_id", user_id)
             .execute()
         )
-
         return True
-
     except Exception as e:
-
-        st.error(
-            f"❌ Error eliminando operación: {e}"
-        )
-
+        st.error(f"❌ Error eliminando operación: {e}")
         return False
 
 
 # =========================================================
-# 12. EXTRAER JSON DE LA RESPUESTA IA
+# 10. IA & PARSER
 # =========================================================
 
 def extraer_json_ia(content):
-
     if not content:
         return None
-
     texto = str(content).strip()
-
-    # Quitar markdown
-    texto = texto.replace(
-        "```json",
-        ""
-    )
-
-    texto = texto.replace(
-        "```JSON",
-        ""
-    )
-
-    texto = texto.replace(
-        "```",
-        ""
-    )
-
-    texto = texto.strip()
-
-    # Buscar objeto JSON
-    match = re.search(
-        r"\{.*\}",
-        texto,
-        re.DOTALL
-    )
-
+    texto = texto.replace("```json", "").replace("```JSON", "").replace("```", "").strip()
+    match = re.search(r"\{.*\}", texto, re.DOTALL)
     if match:
-
         texto = match.group(0)
-
     try:
-
         return json.loads(texto)
-
     except Exception:
-
-        # Segundo intento: reparar comillas simples
         try:
-
-            texto2 = texto.replace(
-                "'",
-                '"'
-            )
-
+            texto2 = texto.replace("'", '"')
             return json.loads(texto2)
-
         except Exception:
-
             return None
 
 
-# =========================================================
-# 13. LIMPIAR NÚMEROS
-# =========================================================
-
 def limpiar_numero(valor):
-
     if valor is None:
         return 0.0
-
     if isinstance(valor, (int, float)):
         return float(valor)
-
-    texto = str(valor).strip()
-
-    texto = texto.replace(
-        ",",
-        ""
-    )
-
-    texto = texto.replace(
-        "$",
-        ""
-    )
-
-    texto = texto.replace(
-        "USD",
-        "",
-    )
-
-    texto = texto.strip()
-
-    # Buscar número
-    match = re.search(
-        r"-?\d+(?:\.\d+)?",
-        texto
-    )
-
+    texto = str(valor).strip().replace(",", "").replace("$", "").replace("USD", "").strip()
+    match = re.search(r"-?\d+(?:\.\d+)?", texto)
     if not match:
         return 0.0
-
     try:
-        return float(
-            match.group(0)
-        )
-
+        return float(match.group(0))
     except Exception:
         return 0.0
 
 
-# =========================================================
-# 14. IA - ESCÁNER COMPLETO
-# =========================================================
-
-def analizar_captura_tradingview(
-    image_bytes
-):
-
+def analizar_captura_tradingview(image_bytes):
     if not OPENROUTER_API_KEY:
-
-        return {
-            "error":
-                "OPENROUTER_API_KEY no configurada."
-        }
+        return {"error": "OPENROUTER_API_KEY no configurada."}
 
     try:
-
-        b64_img = base64.b64encode(
-            image_bytes
-        ).decode("utf-8")
-
+        b64_img = base64.b64encode(image_bytes).decode("utf-8")
         headers = {
-            "Authorization":
-                f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type":
-                "application/json"
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
         }
-
         prompt = """
-Eres un extractor especializado en capturas de
-TradingView y plataformas de trading.
-
-Analiza visualmente TODA la imagen.
-
-Tu objetivo NO es dar una señal.
-Tu objetivo es extraer los datos visibles de la operación.
-
-IMPORTANTE:
-
-1. IDENTIFICA EL ACTIVO REAL QUE APARECE EN LA CAPTURA.
-
-Busca especialmente:
-- símbolo en la parte superior
-- ticker
-- nombre del instrumento
-- eje de precios
-- texto del gráfico
-- símbolo de TradingView
-
-Ejemplos:
-EURUSD -> EUR/USD
-EUR/USD -> EUR/USD
-XAUUSD -> XAU/USD
-GBPJPY -> GBP/JPY
-BTCUSD -> BTC/USD
-
-NO asumas XAU/USD.
-Si la imagen muestra EUR/USD, devuelve EUR/USD.
-
-2. IDENTIFICA LA DIRECCIÓN.
-
-Busca:
-- BUY / SELL
-- LONG / SHORT
-- flechas
-- herramienta Long Position
-- herramienta Short Position
-- estructura de la operación
-
-Devuelve únicamente:
-LONG
-o
-SHORT
-
-3. IDENTIFICA ENTRY.
-
-Busca el precio de entrada de la posición.
-
-4. IDENTIFICA STOP LOSS.
-
-Busca el precio exacto de SL.
-
-5. IDENTIFICA TAKE PROFIT.
-
-Busca el precio exacto de TP.
-
-6. IDENTIFICA TIMEFRAME.
-
-Si aparece claramente, devuelve:
-M1, M5, M15, M30, H1, H4, D1 o W1.
-
-Si no es visible, devuelve vacío.
-
-REGLAS:
-
-- NO inventes números.
-- NO inventes activo.
-- NO conviertas XAU/USD en EUR/USD ni viceversa.
-- Usa exactamente los números visibles.
-- Si un dato no es visible, utiliza null.
-- Los precios deben ser números, no texto.
-- Devuelve ÚNICAMENTE JSON válido.
-- No escribas explicaciones.
-- No utilices markdown.
-
-FORMATO EXACTO:
-
-{
-    "asset": null,
-    "direction": null,
-    "entry": null,
-    "sl": null,
-    "tp": null,
-    "timeframe": null,
-    "confidence": 0
-}
-
-confidence debe ser un número entre 0 y 100.
-"""
+        Analiza este gráfico de TradingView. Extrae los datos numéricos de la herramienta de posición (Risk/Reward):
+        Devuelve ÚNICAMENTE un JSON con estas claves exactas:
+        {"asset": "XAU/USD", "direction": "LONG", "entry": float, "sl": float, "tp": float, "timeframe": "H1", "confidence": 90}
+        Si no encuentras algún dato pon null. No agregues texto extra.
+        """
 
         payload = {
-
-            "model":
-                "openai/gpt-4o-mini",
-
-            "temperature":
-                0,
-
+            "model": "openai/gpt-4o-mini",
+            "temperature": 0,
             "messages": [
-
-                {
-                    "role":
-                        "system",
-
-                    "content":
-                        "Eres un extractor visual preciso de datos de trading."
-                },
-
-                {
-                    "role":
-                        "user",
-
-                    "content": [
-
-                        {
-                            "type":
-                                "text",
-
-                            "text":
-                                prompt
-                        },
-
-                        {
-                            "type":
-                                "image_url",
-
-                            "image_url": {
-
-                                "url":
-                                    "data:image/jpeg;base64,"
-                                    + b64_img
-                            }
-                        }
-
-                    ]
-                }
+                {"role": "system", "content": "Eres un extractor visual preciso de datos de trading."},
+                {"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64_img}}
+                ]}
             ]
         }
 
-        response = requests.post(
-
-            "https://openrouter.ai/api/v1/chat/completions",
-
-            headers=headers,
-
-            json=payload,
-
-            timeout=60
-        )
-
+        response = requests.post("[https://openrouter.ai/api/v1/chat/completions](https://openrouter.ai/api/v1/chat/completions)", headers=headers, json=payload, timeout=60)
         if response.status_code != 200:
-
-            return {
-                "error":
-                    f"OpenRouter HTTP {response.status_code}: "
-                    f"{response.text[:500]}"
-            }
+            return {"error": f"OpenRouter HTTP {response.status_code}: {response.text[:500]}"}
 
         result = response.json()
-
-        content = (
-            result
-            .get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
-
-        data = extraer_json_ia(
-            content
-        )
+        content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        data = extraer_json_ia(content)
 
         if not data:
-
-            return {
-                "error":
-                    "La IA respondió, pero no devolvió JSON válido.",
-                "raw":
-                    content
-            }
-
-        # -------------------------------------------------
-        # NORMALIZACIÓN
-        # -------------------------------------------------
-
-        asset = normalizar_activo(
-            data.get("asset")
-        )
-
-        direction = normalizar_direccion(
-            data.get("direction")
-        )
-
-        timeframe = normalizar_timeframe(
-            data.get("timeframe")
-        )
-
-        entry = limpiar_numero(
-            data.get("entry")
-        )
-
-        sl = limpiar_numero(
-            data.get("sl")
-        )
-
-        tp = limpiar_numero(
-            data.get("tp")
-        )
-
-        confidence = limpiar_numero(
-            data.get("confidence")
-        )
+            return {"error": "La IA respondió, pero no devolvió JSON válido.", "raw": content}
 
         return {
-
-            "asset":
-                asset,
-
-            "direction":
-                direction,
-
-            "entry":
-                entry,
-
-            "sl":
-                sl,
-
-            "tp":
-                tp,
-
-            "timeframe":
-                timeframe,
-
-            "confidence":
-                confidence
+            "asset": normalizar_activo(data.get("asset")),
+            "direction": normalizar_direccion(data.get("direction")),
+            "entry": limpiar_numero(data.get("entry")),
+            "sl": limpiar_numero(data.get("sl")),
+            "tp": limpiar_numero(data.get("tp")),
+            "timeframe": normalizar_timeframe(data.get("timeframe")),
+            "confidence": limpiar_numero(data.get("confidence"))
         }
-
     except Exception as e:
-
-        return {
-            "error":
-                f"Error analizando imagen: {e}"
-        }
+        return {"error": f"Error analizando imagen: {e}"}
 
 
-# =========================================================
-# 15. APLICAR RESULTADO IA DIRECTAMENTE A STREAMLIT
-# =========================================================
-
-def aplicar_resultado_ia_a_formulario(
-    resultado
-):
-
+def aplicar_resultado_ia_a_formulario(resultado):
     if not resultado:
         return
-
     if resultado.get("asset"):
-
-        st.session_state[
-            "new_trade_asset"
-        ] = resultado["asset"]
-
-        st.session_state[
-            "auto_asset"
-        ] = resultado["asset"]
-
+        st.session_state["auto_asset"] = resultado["asset"]
     if resultado.get("direction"):
-
-        st.session_state[
-            "new_trade_direction"
-        ] = resultado["direction"]
-
-        st.session_state[
-            "auto_direction"
-        ] = resultado["direction"]
-
+        st.session_state["auto_direction"] = resultado["direction"]
     if resultado.get("entry", 0) > 0:
-
-        valor = float(
-            resultado["entry"]
-        )
-
-        st.session_state[
-            "new_trade_entry"
-        ] = valor
-
-        st.session_state[
-            "auto_entry"
-        ] = valor
-
+        st.session_state["auto_entry"] = float(resultado["entry"])
     if resultado.get("sl", 0) > 0:
-
-        valor = float(
-            resultado["sl"]
-        )
-
-        st.session_state[
-            "new_trade_sl"
-        ] = valor
-
-        st.session_state[
-            "auto_sl"
-        ] = valor
-
+        st.session_state["auto_sl"] = float(resultado["sl"])
     if resultado.get("tp", 0) > 0:
-
-        valor = float(
-            resultado["tp"]
-        )
-
-        st.session_state[
-            "new_trade_tp"
-        ] = valor
-
-        st.session_state[
-            "auto_tp"
-        ] = valor
-
+        st.session_state["auto_tp"] = float(resultado["tp"])
     if resultado.get("timeframe"):
-
-        st.session_state[
-            "new_trade_tf"
-        ] = resultado["timeframe"]
-
-        st.session_state[
-            "auto_timeframe"
-        ] = resultado["timeframe"]
+        st.session_state["auto_timeframe"] = resultado["timeframe"]
 
 
 # =========================================================
-# 16. SESIONES
+# 11. SESIONES
 # =========================================================
 
 SESIONES = [
-
-    {
-        "nombre":
-            "🇦🇺 Sídney",
-        "zona":
-            "Australia/Sydney",
-        "inicio":
-            8,
-        "fin":
-            17
-    },
-
-    {
-        "nombre":
-            "🇯🇵 Tokio",
-        "zona":
-            "Asia/Tokyo",
-        "inicio":
-            9,
-        "fin":
-            18
-    },
-
-    {
-        "nombre":
-            "🇬🇧 Londres",
-        "zona":
-            "Europe/London",
-        "inicio":
-            8,
-        "fin":
-            17
-    },
-
-    {
-        "nombre":
-            "🇺🇸 Nueva York",
-        "zona":
-            "America/New_York",
-        "inicio":
-            8,
-        "fin":
-            17
-    }
+    {"nombre": "🇦🇺 Sídney", "zona": "Australia/Sydney", "inicio": 8, "fin": 17},
+    {"nombre": "🇯🇵 Tokio", "zona": "Asia/Tokyo", "inicio": 9, "fin": 18},
+    {"nombre": "🇬🇧 Londres", "zona": "Europe/London", "inicio": 8, "fin": 17},
+    {"nombre": "🇺🇸 Nueva York", "zona": "America/New_York", "inicio": 8, "fin": 17}
 ]
 
 
 def obtener_hora_zona(zona):
-
     try:
-
-        return datetime.datetime.now(
-            ZoneInfo(zona)
-        )
-
+        return datetime.datetime.now(ZoneInfo(zona))
     except Exception:
-
         return datetime.datetime.now()
 
 
-def mercado_abierto(
-    zona,
-    inicio,
-    fin
-):
-
+def mercado_abierto(zona, inicio, fin):
     try:
-
-        ahora = obtener_hora_zona(
-            zona
-        )
-
+        ahora = obtener_hora_zona(zona)
         if ahora.weekday() >= 5:
             return False
-
-        hora_decimal = (
-            ahora.hour
-            +
-            ahora.minute / 60
-        )
-
-        return (
-            inicio
-            <= hora_decimal
-            <
-            fin
-        )
-
+        hora_decimal = ahora.hour + ahora.minute / 60
+        return inicio <= hora_decimal < fin
     except Exception:
-
         return False
 
 
-def render_sesion(
-    nombre,
-    zona,
-    inicio,
-    fin
-):
-
-    ahora = obtener_hora_zona(
-        zona
-    )
-
-    abierto = mercado_abierto(
-        zona,
-        inicio,
-        fin
-    )
-
-    estado = (
-        "ABIERTO"
-        if abierto
-        else
-        "CERRADO"
-    )
-
-    color = (
-        "#34d399"
-        if abierto
-        else
-        "#f87171"
-    )
+def render_sesion(nombre, zona, inicio, fin):
+    ahora = obtener_hora_zona(zona)
+    abierto = mercado_abierto(zona, inicio, fin)
+    estado = "ABIERTO" if abierto else "CERRADO"
+    color = "#34d399" if abierto else "#f87171"
 
     st.markdown(
         f"""
         <div class="session-card">
-
-            <div class="session-title">
-                {nombre}
-            </div>
-
-            <div class="session-time">
-                {ahora.strftime("%H:%M:%S")}
-            </div>
-
-            <div class="session-date">
-                {ahora.strftime("%d/%m/%Y")}
-            </div>
-
-            <div class="session-status"
-                 style="color:{color};
-                        border-color:{color};">
-                {estado}
-            </div>
-
+            <div class="session-title">{nombre}</div>
+            <div class="session-time">{ahora.strftime("%H:%M:%S")}</div>
+            <div class="session-date">{ahora.strftime("%d/%m/%Y")}</div>
+            <div class="session-status" style="color:{color}; border-color:{color};">{estado}</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -1265,254 +554,113 @@ def render_sesion(
 
 
 # =========================================================
-# 17. SUSCRIPCIÓN
+# 12. SUSCRIPCIÓN
 # =========================================================
 
 def evaluar_suscripcion(user):
-
     if not user:
+        return False, "Sin sesión", 0
 
-        return (
-            False,
-            "Sin sesión",
-            0
-        )
+    user_email = getattr(user, "email", "") or ""
+    if user_email.lower() == "jordandanielpenarrietasantilla@gmail.com":
+        return True, "Creador / Admin 👑", 99999
 
-    user_email = (
-        getattr(
-            user,
-            "email",
-            ""
-        )
-        or
-        ""
-    )
+    metadata = getattr(user, "user_metadata", {}) or {}
+    if metadata.get("es_vip", False):
+        return True, "Acceso PRO 💎", 999
 
-    if user_email.lower() == (
-        "jordandanielpenarrietasantilla@gmail.com"
-    ):
-
-        return (
-            True,
-            "Creador / Admin 👑",
-            99999
-        )
-
-    metadata = (
-        getattr(
-            user,
-            "user_metadata",
-            {}
-        )
-        or
-        {}
-    )
-
-    if metadata.get(
-        "es_vip",
-        False
-    ):
-
-        return (
-            True,
-            "Acceso PRO 💎",
-            999
-        )
-
-    created_at = getattr(
-        user,
-        "created_at",
-        None
-    )
-
+    created_at = getattr(user, "created_at", None)
     try:
-
         if created_at:
-
-            fecha_registro = (
-                datetime.datetime
-                .fromisoformat(
-                    str(created_at)
-                    .replace(
-                        "Z",
-                        "+00:00"
-                    )
-                )
-                .date()
-            )
-
+            fecha_registro = datetime.datetime.fromisoformat(str(created_at).replace("Z", "+00:00")).date()
         else:
-
-            fecha_registro = (
-                datetime.date.today()
-            )
-
+            fecha_registro = datetime.date.today()
     except Exception:
+        fecha_registro = datetime.date.today()
 
-        fecha_registro = (
-            datetime.date.today()
-        )
-
-    dias_usados = (
-        datetime.date.today()
-        -
-        fecha_registro
-    ).days
-
-    dias_restantes = max(
-        0,
-        3 - dias_usados
-    )
+    dias_usados = (datetime.date.today() - fecha_registro).days
+    dias_restantes = max(0, 3 - dias_usados)
 
     if dias_usados <= 3:
+        return True, f"Prueba Gratis ({dias_restantes} días rest.)", dias_restantes
 
-        return (
-            True,
-            f"Prueba Gratis ({dias_restantes} días rest.)",
-            dias_restantes
-        )
-
-    return (
-        False,
-        "Prueba Expirada 🛑",
-        0
-    )
+    return False, "Prueba Expirada 🛑", 0
 
 
 # =========================================================
-# 18. CSS
+# 13. CSS
 # =========================================================
 
 def aplicar_estilos():
-
     css = """
     <style>
-
     .stApp {
         background-color: #0b0e14 !important;
         color: #f0f3fa !important;
         font-family: 'Segoe UI', Roboto, sans-serif !important;
     }
-
-    p, label, h1, h2, h3, h4, span, div,
-    .stMarkdown {
+    p, label, h1, h2, h3, h4, span, div, .stMarkdown {
         color: #f0f3fa;
     }
-
     section[data-testid="stSidebar"] {
         background-color: #0f141e !important;
-        border-right: 1px solid
-            rgba(0, 210, 255, 0.2) !important;
+        border-right: 1px solid rgba(0, 210, 255, 0.2) !important;
     }
-
     h1, h2 {
-        background: linear-gradient(
-            90deg,
-            #00f2fe 0%,
-            #4facfe 100%
-        );
-
+        background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 800 !important;
     }
-
     div[data-baseweb="select"] > div {
         background-color: #121721 !important;
         color: #00f2fe !important;
-        border: 1px solid
-            rgba(0, 242, 254, 0.5) !important;
+        border: 1px solid rgba(0, 242, 254, 0.5) !important;
         border-radius: 8px !important;
     }
-
     div[data-baseweb="select"] input {
         color: #00f2fe !important;
         -webkit-text-fill-color: #00f2fe !important;
     }
-
-    div[data-baseweb="popover"],
-    div[data-baseweb="menu"],
-    div[role="listbox"],
-    ul[role="listbox"] {
+    div[data-baseweb="popover"], div[data-baseweb="menu"], div[role="listbox"], ul[role="listbox"] {
         background-color: #121721 !important;
         border: 1px solid #00f2fe !important;
         border-radius: 8px !important;
     }
-
-    div[role="option"],
-    li[role="option"],
-    li[data-baseweb="option"] {
+    div[role="option"], li[role="option"], li[data-baseweb="option"] {
         background-color: #121721 !important;
         color: #ffffff !important;
     }
-
-    div[role="option"]:hover,
-    li[role="option"]:hover,
-    li[aria-selected="true"] {
+    div[role="option"]:hover, li[role="option"]:hover, li[aria-selected="true"] {
         background-color: #00f2fe !important;
         color: #000000 !important;
     }
-
-    .stTextInput input,
-    .stNumberInput input,
-    .stTextArea textarea {
+    .stTextInput input, .stNumberInput input, .stTextArea textarea {
         background-color: #161b22 !important;
         color: #00f2fe !important;
-        border: 1px solid
-            rgba(0, 210, 255, 0.4) !important;
+        border: 1px solid rgba(0, 210, 255, 0.4) !important;
         border-radius: 8px !important;
     }
-
     .stButton > button {
-        background: linear-gradient(
-            135deg,
-            #00d2ff 0%,
-            #2962ff 100%
-        ) !important;
-
+        background: linear-gradient(135deg, #00d2ff 0%, #2962ff 100%) !important;
         color: #ffffff !important;
         border-radius: 8px !important;
         border: none !important;
         font-weight: bold !important;
         width: 100%;
     }
-
     .session-card {
         background: #161b22;
-        border: 1px solid
-            rgba(0, 242, 254, 0.25);
+        border: 1px solid rgba(0, 242, 254, 0.25);
         border-radius: 10px;
         padding: 10px;
         margin-bottom: 10px;
         text-align: center;
     }
-
-    .session-title {
-        font-size: 14px;
-        font-weight: bold;
-    }
-
-    .session-time {
-        color: #00f2fe !important;
-        font-size: 22px;
-        font-weight: 800;
-    }
-
-    .session-date {
-        color: #8b98a8 !important;
-        font-size: 11px;
-    }
-
-    .session-status {
-        display: inline-block;
-        margin-top: 6px;
-        padding: 2px 8px;
-        border: 1px solid;
-        border-radius: 20px;
-        font-size: 10px;
-        font-weight: bold;
-    }
-
+    .session-title { font-size: 14px; font-weight: bold; }
+    .session-time { color: #00f2fe !important; font-size: 22px; font-weight: 800; }
+    .session-date { color: #8b98a8 !important; font-size: 11px; }
+    .session-status { display: inline-block; margin-top: 6px; padding: 2px 8px; border: 1px solid; border-radius: 20px; font-size: 10px; font-weight: bold; }
     .paywall-card {
         background-color: #161b22;
         border: 1px solid #f0b90b;
@@ -1520,2727 +668,661 @@ def aplicar_estilos():
         padding: 24px;
         text-align: center;
     }
-
     </style>
     """
-
-    st.markdown(
-        css,
-        unsafe_allow_html=True
-    )
-
+    st.markdown(css, unsafe_allow_html=True)
 
 aplicar_estilos()
 
 
 # =========================================================
-# 19. PAYWALL
+# 14. PAYWALL
 # =========================================================
 
 def render_paywall():
-
-    st.markdown(
-        "## 🔒 Tu período de prueba ha expirado"
-    )
-
-    st.markdown(
-        "Continúa utilizando tu diario de trading, "
-        "Track Record y herramientas de IA activando "
-        "tu acceso PRO."
-    )
+    st.markdown("## 🔒 Tu período de prueba ha expirado")
+    st.markdown("Continúa utilizando tu diario de trading, Track Record y herramientas de IA activando tu acceso PRO.")
 
     col1, col2 = st.columns(2)
-
     with col1:
-
-        st.markdown(
-            f"""
-            <div class="paywall-card">
-
+        st.markdown(f"""
+        <div class="paywall-card">
             <h3>🟡 Suscripción Mensual</h3>
-
             <h2>$5.00 USD</h2>
-
             <p>Luego $2.50 USD / mes</p>
-
             <hr>
-
-            <p>
-            ✔️ Acceso ilimitado<br>
-            ✔️ Track Record<br>
-            ✔️ Auditoría IA<br>
-            ✔️ Psicotrading<br>
-            ✔️ Sin contrato
-            </p>
-
-            <a href="{LINK_BINANCE_INSCRIPCION}"
-               target="_blank">
-
-            <button style="
-            background:#f0b90b;
-            color:#000;
-            border:none;
-            padding:14px;
-            border-radius:8px;
-            font-weight:bold;
-            width:100%;">
-            🟡 Pagar con Binance Pay
-            </button>
-
+            <p>✔️ Acceso ilimitado<br>✔️ Track Record<br>✔️ Auditoría IA<br>✔️ Psicotrading<br>✔️ Sin contrato</p>
+            <a href="{LINK_BINANCE_INSCRIPCION}" target="_blank">
+                <button style="background:#f0b90b; color:#000; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%;">
+                    🟡 Pagar con Binance Pay
+                </button>
             </a>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        </div>
+        """, unsafe_allow_html=True)
 
     with col2:
-
-        st.markdown(
-            f"""
-            <div class="paywall-card">
-
+        st.markdown(f"""
+        <div class="paywall-card">
             <h3>💎 Acceso Anual</h3>
-
             <h2>$20.00 USD</h2>
-
             <p>Ahorra frente al plan mensual</p>
-
             <hr>
-
-            <p>
-            🌟 1 año completo<br>
-            🔒 Pago único<br>
-            🎁 Actualizaciones futuras<br>
-            🧠 IA prioritaria
-            </p>
-
-            <a href="{LINK_BINANCE_ANUAL}"
-               target="_blank">
-
-            <button style="
-            background:#00f2fe;
-            color:#000;
-            border:none;
-            padding:14px;
-            border-radius:8px;
-            font-weight:bold;
-            width:100%;">
-            💎 Pagar $20 USD
-            </button>
-
+            <p>🌟 1 año completo<br>🔒 Pago único<br>🎁 Actualizaciones futuras<br>🧠 IA prioritaria</p>
+            <a href="{LINK_BINANCE_ANUAL}" target="_blank">
+                <button style="background:#00f2fe; color:#000; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%;">
+                    💎 Pagar $20 USD
+                </button>
             </a>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
-
     c1, c2 = st.columns(2)
-
     with c1:
-
-        st.markdown(
-            "### 📲 Renovación"
-        )
-
-        st.code(
-            f"Binance Pay ID: {BINANCE_PAY_ID}"
-        )
-
-        st.markdown(
-            f"[Renovación mensual $2.50]({LINK_BINANCE_RECURRENTE})"
-        )
-
+        st.markdown("### 📲 Renovación")
+        st.code(f"Binance Pay ID: {BINANCE_PAY_ID}")
+        st.markdown(f"[Renovación mensual $2.50]({LINK_BINANCE_RECURRENTE})")
     with c2:
-
-        st.markdown(
-            "### 💬 Confirmar pago"
-        )
-
-        st.markdown(
-            f"""
-            <a href="{LINK_TELEGRAM_SOPORTE}"
-               target="_blank">
-
-            <button style="
-            background:#0088cc;
-            color:white;
-            border:none;
-            padding:12px;
-            border-radius:8px;
-            font-weight:bold;
-            width:100%;">
-            💬 Enviar comprobante
+        st.markdown("### 💬 Confirmar pago")
+        st.markdown(f"""
+        <a href="{LINK_TELEGRAM_SOPORTE}" target="_blank">
+            <button style="background:#0088cc; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; width:100%;">
+                💬 Enviar comprobante
             </button>
-
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
+        </a>
+        """, unsafe_allow_html=True)
 
 
 # =========================================================
-# 20. AUTENTICACIÓN
+# 15. AUTENTICACIÓN
 # =========================================================
 
 def render_auth():
-
-    left, right = st.columns(
-        [1.3, 1]
-    )
+    left, right = st.columns([1.3, 1])
 
     with left:
-
-        st.markdown(
-            "# ⚡ AI Trading Journal & Auditor"
-        )
-
-        st.markdown(
-            """
-            ### Tu operativa. Tus datos. Tu disciplina.
-
-            Registra tus operaciones, analiza tus emociones,
-            controla tu Track Record y utiliza IA para auditar
-            tu proceso de trading.
-            """
-        )
-
+        st.markdown("# ⚡ AI Trading Journal & Auditor")
+        st.markdown("""
+        ### Tu operativa. Tus datos. Tu disciplina.
+        Registra tus operaciones, analiza tus emociones, controla tu Track Record y utiliza IA para auditar tu proceso de trading.
+        """)
         st.markdown("---")
-
-        st.markdown(
-            """
-            **Incluye:**
-
-            🧠 Psicotrading  
-            📊 Track Record  
-            📅 Calendario PnL  
-            🖼️ Antes / Después  
-            🤖 Auditoría IA  
-            🌎 Sesiones de mercado  
-            🧮 Gestión de riesgo
-            """
-        )
+        st.markdown("""
+        **Incluye:**
+        🧠 Psicotrading | 📊 Track Record | 📅 Calendario PnL  
+        🖼️ Antes / Después | 🤖 Auditoría IA | 🌎 Sesiones de mercado
+        """)
 
     with right:
-
-        tab_login, tab_register, tab_reset = st.tabs(
-            [
-                "🔑 Iniciar Sesión",
-                "📝 Registrarse",
-                "🔐 Recuperar"
-            ]
-        )
+        tab_login, tab_register, tab_reset = st.tabs(["🔑 Iniciar Sesión", "📝 Registrarse", "🔐 Recuperar"])
 
         with tab_login:
+            st.markdown("### Ingresa a tu cuenta")
+            email = st.text_input("Correo electrónico", key="login_email")
+            password = st.text_input("Contraseña", type="password", key="login_password")
 
-            st.markdown(
-                "### Ingresa a tu cuenta"
-            )
-
-            email = st.text_input(
-                "Correo electrónico",
-                key="login_email"
-            )
-
-            password = st.text_input(
-                "Contraseña",
-                type="password",
-                key="login_password"
-            )
-
-            if st.button(
-                "Ingresar",
-                key="login_button"
-            ):
-
+            if st.button("Ingresar", key="login_button"):
                 if not email or not password:
-
-                    st.warning(
-                        "Completa correo y contraseña."
-                    )
-
+                    st.warning("Completa correo y contraseña.")
                 else:
-
                     try:
-
                         client = get_supabase_client()
-
-                        result = (
-                            client
-                            .auth
-                            .sign_in_with_password(
-                                {
-                                    "email":
-                                        email,
-                                    "password":
-                                        password
-                                }
-                            )
-                        )
-
-                        st.session_state.user = (
-                            result.user
-                        )
-
+                        result = client.auth.sign_in_with_password({"email": email, "password": password})
+                        st.session_state.user = result.user
                         st.session_state.authenticated = True
-
-                        st.success(
-                            "Inicio de sesión correcto."
-                        )
-
+                        st.success("Inicio de sesión correcto.")
                         st.rerun()
-
                     except Exception as e:
-
-                        st.error(
-                            f"❌ No se pudo iniciar sesión: {e}"
-                        )
+                        st.error(f"❌ No se pudo iniciar sesión: {e}")
 
         with tab_register:
+            st.markdown("### Crear cuenta")
+            email = st.text_input("Correo electrónico", key="register_email")
+            password = st.text_input("Contraseña", type="password", key="register_password")
+            password2 = st.text_input("Repetir contraseña", type="password", key="register_password_2")
 
-            st.markdown(
-                "### Crear cuenta"
-            )
-
-            email = st.text_input(
-                "Correo electrónico",
-                key="register_email"
-            )
-
-            password = st.text_input(
-                "Contraseña",
-                type="password",
-                key="register_password"
-            )
-
-            password2 = st.text_input(
-                "Repetir contraseña",
-                type="password",
-                key="register_password_2"
-            )
-
-            if st.button(
-                "Crear cuenta y probar",
-                key="register_button"
-            ):
-
+            if st.button("Crear cuenta y probar", key="register_button"):
                 if not email or not password:
-
-                    st.warning(
-                        "Completa todos los campos."
-                    )
-
+                    st.warning("Completa todos los campos.")
                 elif password != password2:
-
-                    st.error(
-                        "Las contraseñas no coinciden."
-                    )
-
+                    st.error("Las contraseñas no coinciden.")
                 elif len(password) < 6:
-
-                    st.error(
-                        "La contraseña debe tener al menos 6 caracteres."
-                    )
-
+                    st.error("La contraseña debe tener al menos 6 caracteres.")
                 else:
-
                     try:
-
                         client = get_supabase_client()
-
-                        result = client.auth.sign_up(
-                            {
-                                "email":
-                                    email,
-                                "password":
-                                    password
-                            }
-                        )
-
+                        result = client.auth.sign_up({"email": email, "password": password})
                         if result.user:
-
-                            st.success(
-                                "Cuenta creada. "
-                                "Ahora puedes iniciar sesión."
-                            )
-
+                            st.success("Cuenta creada. Ahora puedes iniciar sesión.")
                     except Exception as e:
-
-                        st.error(
-                            f"❌ Error registrando usuario: {e}"
-                        )
+                        st.error(f"❌ Error registrando usuario: {e}")
 
         with tab_reset:
+            st.markdown("### Recuperar contraseña")
+            email = st.text_input("Correo registrado", key="reset_email")
 
-            st.markdown(
-                "### Recuperar contraseña"
-            )
-
-            email = st.text_input(
-                "Correo registrado",
-                key="reset_email"
-            )
-
-            if st.button(
-                "Enviar enlace",
-                key="reset_button"
-            ):
-
+            if st.button("Enviar enlace", key="reset_button"):
                 if not email:
-
-                    st.warning(
-                        "Introduce tu correo."
-                    )
-
+                    st.warning("Introduce tu correo.")
                 else:
-
                     try:
-
                         client = get_supabase_client()
-
-                        app_url = (
-                            "https://trading-journal-ia-"
-                            "7lvamxtjspcbclwcda2zxg."
-                            "streamlit.app/"
-                        )
-
-                        client.auth.reset_password_for_email(
-                            email,
-                            {
-                                "redirectTo":
-                                    app_url
-                            }
-                        )
-
-                        st.success(
-                            "📩 Revisa tu correo y Spam."
-                        )
-
+                        app_url = "[https://trading-journal-ia-7lvamxtjspcbclwcda2zxg.streamlit.app/](https://trading-journal-ia-7lvamxtjspcbclwcda2zxg.streamlit.app/)"
+                        client.auth.reset_password_for_email(email, {"redirectTo": app_url})
+                        st.success("📩 Revisa tu correo y Spam.")
                     except Exception as e:
-
-                        st.error(
-                            f"❌ Error: {e}"
-                        )
+                        st.error(f"❌ Error: {e}")
 
 
 # =========================================================
-# 21. SIDEBAR
+# 16. SIDEBAR
 # =========================================================
 
 def render_sidebar(estado_sub):
-
     with st.sidebar:
-
         user = st.session_state.user
+        metadata = getattr(user, "user_metadata", {}) or {}
+        nombre_actual = metadata.get("username", st.session_state.nombre_trader)
+        foto_b64 = metadata.get("avatar_b64", "")
 
-        metadata = (
-            getattr(
-                user,
-                "user_metadata",
-                {}
-            )
-            or
-            {}
-        )
-
-        nombre_actual = metadata.get(
-            "username",
-            st.session_state.nombre_trader
-        )
-
-        foto_b64 = metadata.get(
-            "avatar_b64",
-            ""
-        )
-
-        st.markdown(
-            "### 👤 Perfil Trader"
-        )
-
-        c1, c2 = st.columns(
-            [1, 2]
-        )
+        st.markdown("### 👤 Perfil Trader")
+        c1, c2 = st.columns([1, 2])
 
         with c1:
-
-            foto_display = (
-                convertir_imagen_display(
-                    foto_b64
-                )
-            )
-
+            foto_display = convertir_imagen_display(foto_b64)
             if foto_display:
-
-                st.image(
-                    foto_display,
-                    width=65
-                )
-
+                st.image(foto_display, width=65)
             else:
-
-                st.markdown(
-                    "<div style='font-size:45px;"
-                    "text-align:center;'>👤</div>",
-                    unsafe_allow_html=True
-                )
+                st.markdown("<div style='font-size:45px; text-align:center;'>👤</div>", unsafe_allow_html=True)
 
         with c2:
+            st.markdown(f"**{nombre_actual}**")
+            st.caption(getattr(user, "email", ""))
 
-            st.markdown(
-                f"**{nombre_actual}**"
-            )
-
-            st.caption(
-                getattr(
-                    user,
-                    "email",
-                    ""
-                )
-            )
-
-        if (
-            "PRO" in estado_sub
-            or
-            "Admin" in estado_sub
-        ):
-
-            st.success(
-                f"💎 {estado_sub}"
-            )
-
+        if "PRO" in estado_sub or "Admin" in estado_sub:
+            st.success(f"💎 {estado_sub}")
         else:
+            st.info(f"⏳ {estado_sub}")
 
-            st.info(
-                f"⏳ {estado_sub}"
-            )
+        with st.expander("⚙️ Modificar Perfil"):
+            nuevo_nombre = st.text_input("Nombre", value=nombre_actual, key="profile_name")
+            nueva_foto = st.file_uploader("Nueva foto", type=["jpg", "jpeg", "png", "webp"], key="profile_photo")
 
-        with st.expander(
-            "⚙️ Modificar Perfil"
-        ):
-
-            nuevo_nombre = st.text_input(
-                "Nombre",
-                value=nombre_actual,
-                key="profile_name"
-            )
-
-            nueva_foto = st.file_uploader(
-                "Nueva foto",
-                type=[
-                    "jpg",
-                    "jpeg",
-                    "png",
-                    "webp"
-                ],
-                key="profile_photo"
-            )
-
-            if st.button(
-                "Guardar perfil",
-                key="save_profile"
-            ):
-
+            if st.button("Guardar perfil", key="save_profile"):
                 try:
-
-                    nueva_foto_b64 = (
-                        foto_b64
-                    )
-
+                    nueva_foto_b64 = foto_b64
                     if nueva_foto:
+                        nueva_foto_b64 = base64.b64encode(nueva_foto.getvalue()).decode("utf-8")
 
-                        nueva_foto_b64 = (
-                            base64.b64encode(
-                                nueva_foto.getvalue()
-                            )
-                            .decode("utf-8")
-                        )
-
-                    client = (
-                        get_supabase_client()
-                    )
-
-                    result = (
-                        client
-                        .auth
-                        .update_user(
-                            {
-                                "data": {
-                                    "username":
-                                        nuevo_nombre,
-                                    "avatar_b64":
-                                        nueva_foto_b64
-                                }
-                            }
-                        )
-                    )
-
-                    st.session_state.user = (
-                        result.user
-                    )
-
-                    st.session_state.nombre_trader = (
-                        nuevo_nombre
-                    )
-
+                    client = get_supabase_client()
+                    result = client.auth.update_user({
+                        "data": {
+                            "username": nuevo_nombre,
+                            "avatar_b64": nueva_foto_b64
+                        }
+                    })
+                    st.session_state.user = result.user
+                    st.session_state.nombre_trader = nuevo_nombre
                     st.rerun()
-
                 except Exception as e:
-
-                    st.error(
-                        f"❌ Error actualizando perfil: {e}"
-                    )
+                    st.error(f"❌ Error actualizando perfil: {e}")
 
         st.markdown("---")
+        st.markdown("### 🎯 Meta de Cuenta")
+        cap_actual = st.session_state.capital_actual
+        cap_meta = st.session_state.capital_meta
+        progreso = min(1.0, max(0.0, cap_actual / cap_meta)) if cap_meta > 0 else 0
 
-        st.markdown(
-            "### 🎯 Meta de Cuenta"
-        )
+        st.markdown(f"**Capital:** ${cap_actual:,.2f} / ${cap_meta:,.2f}")
+        st.progress(progreso)
 
-        cap_actual = (
-            st.session_state.capital_actual
-        )
-
-        cap_meta = (
-            st.session_state.capital_meta
-        )
-
-        progreso = (
-            cap_actual / cap_meta
-            if cap_meta > 0
-            else 0
-        )
-
-        progreso = min(
-            1,
-            max(0, progreso)
-        )
-
-        st.markdown(
-            f"**Capital:** "
-            f"${cap_actual:,.2f} / "
-            f"${cap_meta:,.2f}"
-        )
-
-        st.progress(
-            progreso
-        )
-
-        with st.expander(
-            "🔧 Configurar meta"
-        ):
-
-            st.session_state.capital_actual = (
-                st.number_input(
-                    "Capital actual ($)",
-                    value=float(
-                        cap_actual
-                    ),
-                    step=100.0,
-                    key="sidebar_capital"
-                )
-            )
-
-            st.session_state.capital_meta = (
-                st.number_input(
-                    "Meta ($)",
-                    value=float(
-                        cap_meta
-                    ),
-                    step=500.0,
-                    key="sidebar_meta"
-                )
-            )
+        with st.expander("🔧 Configurar meta"):
+            st.session_state.capital_actual = st.number_input("Capital actual ($)", value=float(cap_actual), step=100.0, key="sidebar_capital")
+            st.session_state.capital_meta = st.number_input("Meta ($)", value=float(cap_meta), step=500.0, key="sidebar_meta")
 
         st.markdown("---")
-
-        st.markdown(
-            "### 🌎 Sesiones de Trading"
-        )
-
+        st.markdown("### 🌎 Sesiones de Trading")
         for sesion in SESIONES:
-
-            render_sesion(
-                sesion["nombre"],
-                sesion["zona"],
-                sesion["inicio"],
-                sesion["fin"]
-            )
-
-        st.caption(
-            "Horarios calculados automáticamente "
-            "según la zona horaria de cada mercado."
-        )
+            render_sesion(sesion["nombre"], sesion["zona"], sesion["inicio"], sesion["fin"])
 
         st.markdown("---")
-
-        st.markdown(
-            "### 🎯 Mis Reglas"
-        )
-
-        with st.expander(
-            "✏️ Editar reglas"
-        ):
-
-            nuevas_reglas = st.text_area(
-                "Reglas",
-                value=(
-                    st.session_state
-                    .reglas_disciplina
-                ),
-                height=150,
-                key="rules_editor"
-            )
-
-            if st.button(
-                "Guardar reglas",
-                key="save_rules"
-            ):
-
-                st.session_state.reglas_disciplina = (
-                    nuevas_reglas
-                )
-
+        st.markdown("### 🎯 Mis Reglas")
+        with st.expander("✏️ Editar reglas"):
+            nuevas_reglas = st.text_area("Reglas", value=st.session_state.reglas_disciplina, height=150, key="rules_editor")
+            if st.button("Guardar reglas", key="save_rules"):
+                st.session_state.reglas_disciplina = nuevas_reglas
                 st.rerun()
 
-        st.markdown(
-            st.session_state.reglas_disciplina
-        )
+        st.markdown(st.session_state.reglas_disciplina)
 
         st.markdown("---")
-
-        if st.button(
-            "🚪 Cerrar Sesión",
-            key="logout"
-        ):
-
+        if st.button("🚪 Cerrar Sesión", key="logout"):
             try:
-
                 get_supabase_client().auth.sign_out()
-
             except Exception:
                 pass
-
             st.session_state.authenticated = False
             st.session_state.user = None
             st.session_state.chat_history = []
-
             st.rerun()
 
 
 # =========================================================
-# 22. EDITAR TRADE
+# 17. EDITAR TRADE
 # =========================================================
 
-def editar_trade_ui(
-    row,
-    user_id
-):
-
-    trade_id = row.get(
-        "id"
-    )
-
-    fecha_original = row.get(
-        "fecha",
-        str(datetime.date.today())
-    )
+def editar_trade_ui(row, user_id):
+    trade_id = row.get("id")
+    fecha_original = row.get("fecha", str(datetime.date.today()))
 
     try:
-
-        fecha_default = (
-            datetime.date.fromisoformat(
-                str(fecha_original)[:10]
-            )
-        )
-
+        fecha_default = datetime.date.fromisoformat(str(fecha_original)[:10])
     except Exception:
+        fecha_default = datetime.date.today()
 
-        fecha_default = (
-            datetime.date.today()
-        )
-
-    par_actual = normalizar_activo(
-        row.get(
-            "par",
-            ""
-        )
-    )
-
-    if not par_actual:
-        par_actual = LISTA_ACTIVOS[0]
-
-    direccion_actual = (
-        normalizar_direccion(
-            row.get(
-                "direccion",
-                ""
-            )
-        )
-        or
-        "LONG 🟢"
-    )
-
-    resultados = [
-        "WIN 🟢",
-        "LOSS 🔴",
-        "BE ⚪"
-    ]
-
-    resultado_actual = row.get(
-        "resultado",
-        "BE ⚪"
-    )
-
+    par_actual = normalizar_activo(row.get("par", "")) or LISTA_ACTIVOS[0]
+    direccion_actual = normalizar_direccion(row.get("direccion", ""))
+    resultados = ["WIN 🟢", "LOSS 🔴", "BE ⚪"]
+    resultado_actual = row.get("resultado", "BE ⚪")
     if resultado_actual not in resultados:
         resultado_actual = "BE ⚪"
 
     emociones = [
-        "Disciplinado / Neutro 🧘",
-        "Ansioso ⚡",
-        "FOMO / Miedo a perderse el movimiento 🚀",
-        "Venganza / Frustrado 🛑",
-        "Eufórico / Sobre-confiado 😎"
+        "Disciplinado / Neutro 🧘", "Ansioso ⚡", 
+        "FOMO / Miedo a perderse el movimiento 🚀", 
+        "Venganza / Frustrado 🛑", "Eufórico / Sobre-confiado 😎"
     ]
-
-    emocion_actual = row.get(
-        "emocion",
-        emociones[0]
-    )
-
+    emocion_actual = row.get("emocion", emociones[0])
     if emocion_actual not in emociones:
         emocion_actual = emociones[0]
 
     c1, c2 = st.columns(2)
-
     with c1:
+        fecha = st.date_input("Fecha", value=fecha_default, key=f"edit_fecha_{trade_id}")
+        par = st.selectbox("Activo", LISTA_ACTIVOS, index=LISTA_ACTIVOS.index(par_actual), key=f"edit_par_{trade_id}")
+        direccion = st.radio("Dirección", ["LONG 🟢", "SHORT 🔴"], index=(0 if direccion_actual == "LONG 🟢" else 1), horizontal=True, key=f"edit_dir_{trade_id}")
+        entrada = st.number_input("Precio de entrada", value=float(row.get("precio_entrada", 0) or 0), format="%.5f", key=f"edit_entry_{trade_id}")
+        sl = st.number_input("Stop Loss", value=float(row.get("stop_loss", 0) or 0), format="%.5f", key=f"edit_sl_{trade_id}")
+        tp = st.number_input("Take Profit", value=float(row.get("take_profit", 0) or 0), format="%.5f", key=f"edit_tp_{trade_id}")
 
-        fecha = st.date_input(
-            "Fecha",
-            value=fecha_default,
-            key=f"edit_fecha_{trade_id}"
-        )
-
-        par = st.selectbox(
-            "Activo",
-            LISTA_ACTIVOS,
-            index=LISTA_ACTIVOS.index(
-                par_actual
-            ),
-            key=f"edit_par_{trade_id}"
-        )
-
-        direccion = st.radio(
-            "Dirección",
-            [
-                "LONG 🟢",
-                "SHORT 🔴"
-            ],
-            index=(
-                0
-                if direccion_actual == "LONG 🟢"
-                else
-                1
-            ),
-            horizontal=True,
-            key=f"edit_dir_{trade_id}"
-        )
-
-        entrada = st.number_input(
-            "Precio de entrada",
-            value=float(
-                row.get(
-                    "precio_entrada",
-                    0
-                )
-                or
-                0
-            ),
-            format="%.5f",
-            key=f"edit_entry_{trade_id}"
-        )
-
-        sl = st.number_input(
-            "Stop Loss",
-            value=float(
-                row.get(
-                    "stop_loss",
-                    0
-                )
-                or
-                0
-            ),
-            format="%.5f",
-            key=f"edit_sl_{trade_id}"
-        )
-
-        tp = st.number_input(
-            "Take Profit",
-            value=float(
-                row.get(
-                    "take_profit",
-                    0
-                )
-                or
-                0
-            ),
-            format="%.5f",
-            key=f"edit_tp_{trade_id}"
-        )
-
-        timeframes = [
-            "",
-            "M1",
-            "M5",
-            "M15",
-            "M30",
-            "H1",
-            "H4",
-            "D1",
-            "W1"
-        ]
-
-        tf_actual = (
-            normalizar_timeframe(
-                row.get(
-                    "timeframe",
-                    ""
-                )
-            )
-            or
-            ""
-        )
-
-        timeframe = st.selectbox(
-            "Timeframe",
-            timeframes,
-            index=(
-                timeframes.index(
-                    tf_actual
-                )
-                if tf_actual in timeframes
-                else 0
-            ),
-            key=f"edit_tf_{trade_id}"
-        )
+        timeframes = ["", "M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"]
+        tf_actual = normalizar_timeframe(row.get("timeframe", ""))
+        timeframe = st.selectbox("Timeframe", timeframes, index=(timeframes.index(tf_actual) if tf_actual in timeframes else 0), key=f"edit_tf_{trade_id}")
 
     with c2:
+        riesgo = abs(entrada - sl)
+        beneficio = abs(tp - entrada)
+        rr = beneficio / riesgo if riesgo > 0 else 0
 
-        riesgo = abs(
-            entrada - sl
-        )
+        st.metric("Risk : Reward", f"1 : {rr:.2f}")
+        resultado = st.selectbox("Resultado", resultados, index=resultados.index(resultado_actual), key=f"edit_result_{trade_id}")
+        emocion = st.selectbox("Estado emocional", emociones, index=emociones.index(emocion_actual), key=f"edit_emotion_{trade_id}")
+        pnl = st.number_input("PnL ($)", value=float(row.get("beneficio_usd", 0) or 0), step=10.0, key=f"edit_pnl_{trade_id}")
+        notas = st.text_area("Notas emocionales", value=row.get("notas_emocionales", "") or "", height=130, key=f"edit_notes_{trade_id}")
 
-        beneficio = abs(
-            tp - entrada
-        )
+        imagen_before = st.file_uploader("Cambiar ANTES", type=["png", "jpg", "jpeg", "webp"], key=f"edit_before_{trade_id}")
+        imagen_after = st.file_uploader("Cambiar DESPUÉS", type=["png", "jpg", "jpeg", "webp"], key=f"edit_after_{trade_id}")
 
-        rr = (
-            beneficio / riesgo
-            if riesgo > 0
-            else 0
-        )
-
-        st.metric(
-            "Risk : Reward",
-            f"1 : {rr:.2f}"
-        )
-
-        resultado = st.selectbox(
-            "Resultado",
-            resultados,
-            index=resultados.index(
-                resultado_actual
-            ),
-            key=f"edit_result_{trade_id}"
-        )
-
-        emocion = st.selectbox(
-            "Estado emocional",
-            emociones,
-            index=emociones.index(
-                emocion_actual
-            ),
-            key=f"edit_emotion_{trade_id}"
-        )
-
-        pnl = st.number_input(
-            "PnL ($)",
-            value=float(
-                row.get(
-                    "beneficio_usd",
-                    0
-                )
-                or
-                0
-            ),
-            step=10.0,
-            key=f"edit_pnl_{trade_id}"
-        )
-
-        notas = st.text_area(
-            "Notas emocionales",
-            value=row.get(
-                "notas_emocionales",
-                ""
-            )
-            or
-            "",
-            height=130,
-            key=f"edit_notes_{trade_id}"
-        )
-
-        imagen_before = st.file_uploader(
-            "Cambiar / agregar ANTES",
-            type=[
-                "png",
-                "jpg",
-                "jpeg",
-                "webp"
-            ],
-            key=f"edit_before_{trade_id}"
-        )
-
-        imagen_after = st.file_uploader(
-            "Cambiar / agregar DESPUÉS",
-            type=[
-                "png",
-                "jpg",
-                "jpeg",
-                "webp"
-            ],
-            key=f"edit_after_{trade_id}"
-        )
-
-    old_before = row.get(
-        "img_before",
-        ""
-    )
-
-    old_after = row.get(
-        "img_after",
-        ""
-    )
+    old_before = row.get("img_before", "")
+    old_after = row.get("img_after", "")
 
     p1, p2 = st.columns(2)
-
     with p1:
-
-        st.markdown(
-            "**🖼️ ANTES actual**"
-        )
-
-        img = convertir_imagen_display(
-            old_before
-        )
-
+        st.markdown("**🖼️ ANTES actual**")
+        img = convertir_imagen_display(old_before)
         if img:
-
-            st.image(
-                img,
-                use_container_width=True
-            )
-
+            st.image(img, use_container_width=True)
         else:
-
-            st.caption(
-                "No hay imagen."
-            )
+            st.caption("No hay imagen.")
 
     with p2:
-
-        st.markdown(
-            "**🖼️ DESPUÉS actual**"
-        )
-
-        img = convertir_imagen_display(
-            old_after
-        )
-
+        st.markdown("**🖼️ DESPUÉS actual**")
+        img = convertir_imagen_display(old_after)
         if img:
-
-            st.image(
-                img,
-                use_container_width=True
-            )
-
+            st.image(img, use_container_width=True)
         else:
-
-            st.caption(
-                "No hay imagen."
-            )
+            st.caption("No hay imagen.")
 
     save, cancel = st.columns(2)
-
     with save:
-
-        guardar = st.button(
-            "💾 Guardar cambios",
-            key=f"save_edit_{trade_id}"
-        )
-
+        guardar = st.button("💾 Guardar cambios", key=f"save_edit_{trade_id}")
     with cancel:
-
-        cancelar = st.button(
-            "↩️ Cancelar",
-            key=f"cancel_edit_{trade_id}"
-        )
+        cancelar = st.button("↩️ Cancelar", key=f"cancel_edit_{trade_id}")
 
     if cancelar:
-
         st.rerun()
 
     if guardar:
-
-        final_before = old_before
-        final_after = old_after
-
-        if imagen_before:
-
-            final_before = (
-                procesar_imagen_b64(
-                    imagen_before
-                )
-            )
-
-        if imagen_after:
-
-            final_after = (
-                procesar_imagen_b64(
-                    imagen_after
-                )
-            )
+        final_before = procesar_imagen_b64(imagen_before) if imagen_before else old_before
+        final_after = procesar_imagen_b64(imagen_after) if imagen_after else old_after
 
         data = {
-
-            "fecha":
-                str(fecha),
-
-            "par":
-                par,
-
-            "direccion":
-                direccion,
-
-            "precio_entrada":
-                entrada,
-
-            "stop_loss":
-                sl,
-
-            "take_profit":
-                tp,
-
-            "rr":
-                rr,
-
-            "timeframe":
-                timeframe,
-
-            "resultado":
-                resultado,
-
-            "emocion":
-                emocion,
-
-            "notas_emocionales":
-                notas,
-
-            "beneficio_usd":
-                pnl,
-
-            "trades_cant":
-                1,
-
-            "img_before":
-                final_before,
-
-            "img_after":
-                final_after
+            "fecha": str(fecha),
+            "par": par,
+            "direccion": direccion,
+            "precio_entrada": entrada,
+            "stop_loss": sl,
+            "take_profit": tp,
+            "rr": rr,
+            "timeframe": timeframe,
+            "resultado": resultado,
+            "emocion": emocion,
+            "notas_emocionales": notas,
+            "beneficio_usd": pnl,
+            "trades_cant": 1,
+            "img_before": final_before,
+            "img_after": final_after
         }
 
-        if actualizar_trade_supabase(
-            trade_id,
-            user_id,
-            data
-        ):
-
-            st.success(
-                "✅ Trade actualizado."
-            )
-
+        if actualizar_trade_supabase(trade_id, user_id, data):
+            st.success("✅ Trade actualizado.")
             st.rerun()
 
 
 # =========================================================
-# 23. DASHBOARD
+# 18. DASHBOARD
 # =========================================================
 
 def render_dashboard():
-
-    tiene_acceso, estado_sub, dias_restantes = (
-        evaluar_suscripcion(
-            st.session_state.user
-        )
-    )
-
-    render_sidebar(
-        estado_sub
-    )
+    tiene_acceso, estado_sub, _ = evaluar_suscripcion(st.session_state.user)
+    render_sidebar(estado_sub)
 
     if not tiene_acceso:
-
         render_paywall()
-
         return
 
-    user_id = (
-        st.session_state.user.id
-    )
-
-    trades_db = (
-        cargar_trades_usuario(
-            user_id
-        )
-    )
-
-    df_trades = pd.DataFrame(
-        trades_db
-    )
+    user_id = st.session_state.user.id
+    trades_db = cargar_trades_usuario(user_id)
+    df_trades = pd.DataFrame(trades_db)
 
     if not df_trades.empty:
-
         if "beneficio_usd" not in df_trades.columns:
-
-            df_trades[
-                "beneficio_usd"
-            ] = 0.0
-
+            df_trades["beneficio_usd"] = 0.0
         if "fecha" not in df_trades.columns:
+            df_trades["fecha"] = str(datetime.date.today())
+        df_trades["beneficio_usd"] = pd.to_numeric(df_trades["beneficio_usd"], errors="coerce").fillna(0)
 
-            df_trades[
-                "fecha"
-            ] = str(
-                datetime.date.today()
-            )
+    st.markdown("## ⚡ Journaling & AI Trading Audit")
 
-        df_trades[
-            "beneficio_usd"
-        ] = pd.to_numeric(
-            df_trades[
-                "beneficio_usd"
-            ],
-            errors="coerce"
-        ).fillna(0)
+    tabs = st.tabs([
+        "➕ Registrar Trade",
+        "📅 Track Record PnL",
+        "💬 Chat IA",
+        "🧮 Lotaje",
+        "🧠 Análisis IA",
+        "📈 Proyecciones",
+        "📓 Psicotrading",
+        "📊 Dashboard"
+    ])
 
-    st.markdown(
-        "## ⚡ Journaling & AI Trading Audit"
-    )
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = tabs
 
-    st.caption(
-        f"Estado: **{estado_sub}**"
-    )
-
-    tabs = st.tabs(
-        [
-            "➕ Registrar Trade",
-            "📅 Track Record PnL",
-            "💬 Chat IA",
-            "🧮 Lotaje",
-            "🧠 Análisis IA",
-            "📈 Proyecciones",
-            "📓 Psicotrading",
-            "📊 Dashboard"
-        ]
-    )
-
-    (
-        tab1,
-        tab2,
-        tab3,
-        tab4,
-        tab5,
-        tab6,
-        tab7,
-        tab8
-    ) = tabs
-
-
-    # =====================================================
-    # TAB 1
-    # =====================================================
-
+    # --- TAB 1: REGISTRAR TRADE ---
     with tab1:
+        st.markdown("### ➕ Registrar nueva operación")
+        st.info("🧠 Sube una captura de TradingView. La IA intentará detectar automáticamente ACTIVO, DIRECCIÓN, ENTRY, SL, TP y TIMEFRAME.")
 
-        st.markdown(
-            "### ➕ Registrar nueva operación"
-        )
-
-        st.info(
-            "🧠 Sube una captura de TradingView. "
-            "La IA intentará detectar automáticamente "
-            "ACTIVO, DIRECCIÓN, ENTRY, SL, TP y TIMEFRAME."
-        )
-
-        left, right = st.columns(
-            [1.15, 1]
-        )
-
-        # -------------------------------------------------
-        # IMÁGENES
-        # -------------------------------------------------
+        left, right = st.columns([1.15, 1])
 
         with right:
-
-            st.markdown(
-                "### 🖼️ Capturas"
-            )
-
-            upload_before = st.file_uploader(
-                "1️⃣ ANTES de la operación",
-                type=[
-                    "png",
-                    "jpg",
-                    "jpeg",
-                    "webp"
-                ],
-                key="new_trade_before"
-            )
-
-            upload_after = st.file_uploader(
-                "2️⃣ DESPUÉS de la operación",
-                type=[
-                    "png",
-                    "jpg",
-                    "jpeg",
-                    "webp"
-                ],
-                key="new_trade_after"
-            )
+            st.markdown("### 🖼️ Capturas")
+            upload_before = st.file_uploader("1️⃣ ANTES de la operación", type=["png", "jpg", "jpeg", "webp"], key="new_trade_before")
+            upload_after = st.file_uploader("2️⃣ DESPUÉS de la operación", type=["png", "jpg", "jpeg", "webp"], key="new_trade_after")
 
             if upload_before:
+                st.image(upload_before, caption="SETUP ANTES", use_container_width=True)
 
-                st.image(
-                    upload_before,
-                    caption="SETUP ANTES",
-                    use_container_width=True
-                )
+                if st.button("🧠 ESCANEAR OPERACIÓN CON IA", key="scan_new_trade"):
+                    with st.spinner("Analizando gráfico..."):
+                        resultado_ia = analizar_captura_tradingview(upload_before.getvalue())
 
-                if st.button(
-                    "🧠 ESCANEAR OPERACIÓN CON IA",
-                    key="scan_new_trade"
-                ):
-
-                    with st.spinner(
-                        "Analizando activo, dirección, Entry, SL, TP y timeframe..."
-                    ):
-
-                        resultado_ia = (
-                            analizar_captura_tradingview(
-                                upload_before.getvalue()
-                            )
-                        )
-
-                    if resultado_ia.get(
-                        "error"
-                    ):
-
-                        st.error(
-                            resultado_ia[
-                                "error"
-                            ]
-                        )
-
+                    if resultado_ia.get("error"):
+                        st.error(resultado_ia["error"])
                     else:
-
-                        # Guardar resultado
-                        st.session_state[
-                            "scan_result"
-                        ] = resultado_ia
-
-                        # Aplicar directamente a los
-                        # widgets reales
-                        aplicar_resultado_ia_a_formulario(
-                            resultado_ia
-                        )
-
-                        st.session_state[
-                            "scan_message"
-                        ] = (
-                            "IA completó los campos."
-                        )
-
+                        st.session_state.scan_result = resultado_ia
+                        aplicar_resultado_ia_a_formulario(resultado_ia)
+                        st.session_state.scan_message = "IA completó los campos."
                         st.rerun()
 
             if upload_after:
+                st.image(upload_after, caption="RESULTADO DESPUÉS", use_container_width=True)
 
-                st.image(
-                    upload_after,
-                    caption="RESULTADO DESPUÉS",
-                    use_container_width=True
-                )
-
-            pnl = st.number_input(
-                "Ganancia / Pérdida ($)",
-                value=0.0,
-                step=10.0,
-                key="new_trade_pnl"
-            )
-
-        # -------------------------------------------------
-        # FORMULARIO
-        # -------------------------------------------------
+            pnl = st.number_input("Ganancia / Pérdida ($)", value=0.0, step=10.0, key="new_trade_pnl")
 
         with left:
-
-            st.markdown(
-                "### 📝 Datos de la operación"
-            )
-
-            # -------------------------------------------------
-            # MENSAJE DE IA
-            # -------------------------------------------------
+            st.markdown("### 📝 Datos de la operación")
 
             if st.session_state.scan_message:
-
-                resultado = (
-                    st.session_state.scan_result
-                    or
-                    {}
-                )
-
-                st.success(
-                    "✨ Datos detectados y colocados "
-                    "directamente en las casillas."
-                )
-
+                resultado = st.session_state.scan_result or {}
+                st.success("✨ Datos detectados e ingresados.")
                 a, b, c = st.columns(3)
-
                 with a:
-
-                    if resultado.get(
-                        "asset"
-                    ):
-
-                        st.metric(
-                            "Activo detectado",
-                            resultado[
-                                "asset"
-                            ]
-                        )
-
+                    if resultado.get("asset"):
+                        st.metric("Activo", resultado["asset"])
                 with b:
-
-                    if resultado.get(
-                        "direction"
-                    ):
-
-                        st.metric(
-                            "Dirección",
-                            resultado[
-                                "direction"
-                            ]
-                        )
-
+                    if resultado.get("direction"):
+                        st.metric("Dirección", resultado["direction"])
                 with c:
+                    st.metric("Confianza IA", f"{resultado.get('confidence', 0):.0f}%")
 
-                    confidence = resultado.get(
-                        "confidence",
-                        0
-                    )
-
-                    st.metric(
-                        "Confianza IA",
-                        f"{confidence:.0f}%"
-                    )
-
-                if st.button(
-                    "✖️ Limpiar resultado IA",
-                    key="clear_scan"
-                ):
-
-                    st.session_state[
-                        "scan_result"
-                    ] = None
-
-                    st.session_state[
-                        "scan_message"
-                    ] = ""
-
+                if st.button("✖️ Limpiar resultado IA", key="clear_scan"):
+                    st.session_state.scan_result = None
+                    st.session_state.scan_message = ""
+                    st.session_state.auto_asset = ""
+                    st.session_state.auto_entry = 0.0
+                    st.session_state.auto_sl = 0.0
+                    st.session_state.auto_tp = 0.0
                     st.rerun()
 
-            fecha = st.date_input(
-                "Fecha",
-                datetime.date.today(),
-                key="new_trade_date"
-            )
-
+            fecha = st.date_input("Fecha", datetime.date.today(), key="new_trade_date")
             c1, c2 = st.columns(2)
 
             with c1:
+                asset_index = LISTA_ACTIVOS.index(st.session_state.auto_asset) if st.session_state.auto_asset in LISTA_ACTIVOS else 0
+                par = st.selectbox("Activo / Par", LISTA_ACTIVOS, index=asset_index, key="select_asset")
 
-                # IMPORTANTE:
-                # Estos widgets usan exactamente las
-                # mismas keys que modificamos al escanear.
+                dir_opts = ["LONG 🟢", "SHORT 🔴"]
+                dir_index = dir_opts.index(st.session_state.auto_direction) if st.session_state.auto_direction in dir_opts else 0
+                direccion = st.radio("Dirección", dir_opts, index=dir_index, horizontal=True, key="select_direction")
 
-                asset_value = st.session_state.get(
-                    "new_trade_asset",
-                    LISTA_ACTIVOS[0]
-                )
-
-                if asset_value not in LISTA_ACTIVOS:
-
-                    asset_value = LISTA_ACTIVOS[0]
-
-                    st.session_state[
-                        "new_trade_asset"
-                    ] = asset_value
-
-                par = st.selectbox(
-                    "Activo / Par",
-                    LISTA_ACTIVOS,
-                    key="new_trade_asset"
-                )
-
-                direction_value = st.session_state.get(
-                    "new_trade_direction",
-                    "LONG 🟢"
-                )
-
-                if direction_value not in [
-                    "LONG 🟢",
-                    "SHORT 🔴"
-                ]:
-
-                    direction_value = "LONG 🟢"
-
-                    st.session_state[
-                        "new_trade_direction"
-                    ] = direction_value
-
-                direccion = st.radio(
-                    "Dirección",
-                    [
-                        "LONG 🟢",
-                        "SHORT 🔴"
-                    ],
-                    horizontal=True,
-                    key="new_trade_direction"
-                )
-
-                entrada = st.number_input(
-                    "Precio Entrada",
-                    min_value=0.0,
-                    value=float(
-                        st.session_state.get(
-                            "new_trade_entry",
-                            0.0
-                        )
-                    ),
-                    format="%.5f",
-                    key="new_trade_entry"
-                )
-
-                sl = st.number_input(
-                    "Stop Loss",
-                    min_value=0.0,
-                    value=float(
-                        st.session_state.get(
-                            "new_trade_sl",
-                            0.0
-                        )
-                    ),
-                    format="%.5f",
-                    key="new_trade_sl"
-                )
+                entrada = st.number_input("Precio Entrada", min_value=0.0, value=float(st.session_state.auto_entry), format="%.5f", key="input_entry")
+                sl = st.number_input("Stop Loss", min_value=0.0, value=float(st.session_state.auto_sl), format="%.5f", key="input_sl")
 
             with c2:
+                tp = st.number_input("Take Profit", min_value=0.0, value=float(st.session_state.auto_tp), format="%.5f", key="input_tp")
 
-                tp = st.number_input(
-                    "Take Profit",
-                    min_value=0.0,
-                    value=float(
-                        st.session_state.get(
-                            "new_trade_tp",
-                            0.0
-                        )
-                    ),
-                    format="%.5f",
-                    key="new_trade_tp"
-                )
+                timeframes = ["", "M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"]
+                tf_index = timeframes.index(st.session_state.auto_timeframe) if st.session_state.auto_timeframe in timeframes else 0
+                timeframe = st.selectbox("Timeframe", timeframes, index=tf_index, key="select_tf")
 
-                timeframes = [
-                    "",
-                    "M1",
-                    "M5",
-                    "M15",
-                    "M30",
-                    "H1",
-                    "H4",
-                    "D1",
-                    "W1"
-                ]
+                riesgo = abs(entrada - sl)
+                beneficio = abs(tp - entrada)
+                rr = beneficio / riesgo if riesgo > 0 else 0
 
-                tf_value = st.session_state.get(
-                    "new_trade_tf",
-                    ""
-                )
+                st.metric("Risk : Reward", f"1 : {rr:.2f}")
+                resultado = st.selectbox("Resultado", ["WIN 🟢", "LOSS 🔴", "BE ⚪"], key="new_trade_result")
 
-                if tf_value not in timeframes:
+            st.markdown("### 🧠 Psicotrading")
+            emocion = st.selectbox("Estado emocional", [
+                "Disciplinado / Neutro 🧘", "Ansioso ⚡", 
+                "FOMO / Miedo a perderse el movimiento 🚀", 
+                "Venganza / Frustrado 🛑", "Eufórico / Sobre-confiado 😎"
+            ], key="new_trade_emotion")
 
-                    tf_value = ""
+            notas = st.text_area("Notas emocionales", placeholder="¿Respetaste tu plan?", key="new_trade_notes")
 
-                    st.session_state[
-                        "new_trade_tf"
-                    ] = ""
-
-                timeframe = st.selectbox(
-                    "Timeframe",
-                    timeframes,
-                    key="new_trade_tf"
-                )
-
-                riesgo = abs(
-                    entrada - sl
-                )
-
-                beneficio = abs(
-                    tp - entrada
-                )
-
-                rr = (
-                    beneficio / riesgo
-                    if riesgo > 0
-                    else 0
-                )
-
-                st.metric(
-                    "Risk : Reward",
-                    f"1 : {rr:.2f}"
-                )
-
-                resultado = st.selectbox(
-                    "Resultado",
-                    [
-                        "WIN 🟢",
-                        "LOSS 🔴",
-                        "BE ⚪"
-                    ],
-                    key="new_trade_result"
-                )
-
-            st.markdown(
-                "### 🧠 Psicotrading"
-            )
-
-            emocion = st.selectbox(
-                "Estado emocional",
-                [
-                    "Disciplinado / Neutro 🧘",
-                    "Ansioso ⚡",
-                    "FOMO / Miedo a perderse el movimiento 🚀",
-                    "Venganza / Frustrado 🛑",
-                    "Eufórico / Sobre-confiado 😎"
-                ],
-                key="new_trade_emotion"
-            )
-
-            notas = st.text_area(
-                "Notas emocionales",
-                placeholder=(
-                    "¿Respetaste tu plan? "
-                    "¿Qué sentías antes de entrar?"
-                ),
-                key="new_trade_notes"
-            )
-
-            if st.button(
-                "💾 GUARDAR TRADE",
-                key="save_new_trade"
-            ):
-
-                # Seguridad
+            if st.button("💾 GUARDAR TRADE", key="save_new_trade"):
                 if not par:
-
-                    st.error(
-                        "Selecciona un activo."
-                    )
-
+                    st.error("Selecciona un activo.")
                 elif entrada <= 0:
-
-                    st.error(
-                        "La entrada debe ser mayor que 0."
-                    )
-
+                    st.error("La entrada debe ser mayor que 0.")
                 else:
-
                     data = {
-
-                        "fecha":
-                            str(fecha),
-
-                        "par":
-                            par,
-
-                        "direccion":
-                            direccion,
-
-                        "precio_entrada":
-                            entrada,
-
-                        "stop_loss":
-                            sl,
-
-                        "take_profit":
-                            tp,
-
-                        "rr":
-                            rr,
-
-                        "timeframe":
-                            timeframe,
-
-                        "resultado":
-                            resultado,
-
-                        "emocion":
-                            emocion,
-
-                        "notas_emocionales":
-                            notas,
-
-                        "beneficio_usd":
-                            pnl,
-
-                        "trades_cant":
-                            1,
-
-                        "img_before":
-                            (
-                                procesar_imagen_b64(
-                                    upload_before
-                                )
-                                if upload_before
-                                else
-                                ""
-                            ),
-
-                        "img_after":
-                            (
-                                procesar_imagen_b64(
-                                    upload_after
-                                )
-                                if upload_after
-                                else
-                                ""
-                            )
+                        "fecha": str(fecha),
+                        "par": par,
+                        "direccion": direccion,
+                        "precio_entrada": entrada,
+                        "stop_loss": sl,
+                        "take_profit": tp,
+                        "rr": rr,
+                        "timeframe": timeframe,
+                        "resultado": resultado,
+                        "emocion": emocion,
+                        "notas_emocionales": notas,
+                        "beneficio_usd": pnl,
+                        "trades_cant": 1,
+                        "img_before": procesar_imagen_b64(upload_before) if upload_before else "",
+                        "img_after": procesar_imagen_b64(upload_after) if upload_after else ""
                     }
 
-                    if guardar_trade_supabase(
-                        user_id,
-                        data
-                    ):
-
-                        # Limpiar campos IA
-                        st.session_state[
-                            "new_trade_entry"
-                        ] = 0.0
-
-                        st.session_state[
-                            "new_trade_sl"
-                        ] = 0.0
-
-                        st.session_state[
-                            "new_trade_tp"
-                        ] = 0.0
-
-                        st.session_state[
-                            "new_trade_asset"
-                        ] = LISTA_ACTIVOS[0]
-
-                        st.session_state[
-                            "new_trade_direction"
-                        ] = "LONG 🟢"
-
-                        st.session_state[
-                            "new_trade_tf"
-                        ] = ""
-
-                        st.session_state[
-                            "scan_result"
-                        ] = None
-
-                        st.session_state[
-                            "scan_message"
-                        ] = ""
-
-                        st.success(
-                            "✅ Trade guardado correctamente."
-                        )
-
+                    if guardar_trade_supabase(user_id, data):
+                        st.session_state.auto_entry = 0.0
+                        st.session_state.auto_sl = 0.0
+                        st.session_state.auto_tp = 0.0
+                        st.session_state.auto_asset = ""
+                        st.session_state.auto_direction = "LONG 🟢"
+                        st.session_state.auto_timeframe = ""
+                        st.session_state.scan_result = None
+                        st.session_state.scan_message = ""
+                        st.success("✅ Trade guardado correctamente.")
                         st.rerun()
 
-
-    # =====================================================
-    # TAB 2 TRACK RECORD
-    # =====================================================
-
+    # --- TAB 2: TRACK RECORD PNL ---
     with tab2:
-
-        st.markdown(
-            "### 📅 Track Record & Calendario PnL"
-        )
+        st.markdown("### 📅 Track Record & Calendario PnL")
 
         if df_trades.empty:
-
-            st.info(
-                "Aún no tienes operaciones registradas."
-            )
-
+            st.info("Aún no tienes operaciones registradas.")
         else:
-
-            total_pnl = float(
-                df_trades[
-                    "beneficio_usd"
-                ].sum()
-            )
-
-            wins = len(
-                df_trades[
-                    df_trades[
-                        "beneficio_usd"
-                    ] > 0
-                ]
-            )
-
-            losses = len(
-                df_trades[
-                    df_trades[
-                        "beneficio_usd"
-                    ] < 0
-                ]
-            )
-
-            total = len(
-                df_trades
-            )
-
-            win_rate = (
-                wins / total * 100
-                if total
-                else
-                0
-            )
+            total_pnl = float(df_trades["beneficio_usd"].sum())
+            wins = len(df_trades[df_trades["beneficio_usd"] > 0])
+            losses = len(df_trades[df_trades["beneficio_usd"] < 0])
+            total = len(df_trades)
+            win_rate = (wins / total * 100) if total else 0
 
             c1, c2, c3, c4 = st.columns(4)
-
-            c1.metric(
-                "PnL",
-                f"${total_pnl:,.2f}"
-            )
-
-            c2.metric(
-                "Win Rate",
-                f"{win_rate:.1f}%"
-            )
-
-            c3.metric(
-                "Trades",
-                total
-            )
-
-            c4.metric(
-                "Wins / Losses",
-                f"{wins} / {losses}"
-            )
+            c1.metric("PnL Total", f"${total_pnl:,.2f}")
+            c2.metric("Win Rate", f"{win_rate:.1f}%")
+            c3.metric("Trades", total)
+            c4.metric("Wins / Losses", f"{wins} / {losses}")
 
             st.markdown("---")
-
-            st.markdown(
-                "### 📋 Historial de operaciones"
-            )
+            st.markdown("### 📋 Historial Detallado y Capturas (ANTES / DESPUÉS)")
 
             for _, row in df_trades.iterrows():
+                trade_id = row.get("id")
+                pnl_value = float(row.get("beneficio_usd", 0) or 0)
+                titulo = f"📅 {row.get('fecha', '')} | {row.get('par', '')} | {row.get('resultado', '')} | PnL: ${pnl_value:,.2f}"
 
-                trade_id = row.get(
-                    "id"
-                )
-
-                pnl_value = float(
-                    row.get(
-                        "beneficio_usd",
-                        0
-                    )
-                    or
-                    0
-                )
-
-                titulo = (
-                    f"📅 {row.get('fecha', '')} | "
-                    f"{row.get('par', '')} | "
-                    f"{row.get('resultado', '')} | "
-                    f"${pnl_value:,.2f}"
-                )
-
-                with st.expander(
-                    titulo
-                ):
-
-                    editing_key = (
-                        f"editing_{trade_id}"
-                    )
-
+                with st.expander(titulo):
+                    editing_key = f"editing_{trade_id}"
                     if editing_key not in st.session_state:
+                        st.session_state[editing_key] = False
 
-                        st.session_state[
-                            editing_key
-                        ] = False
-
-                    if not st.session_state[
-                        editing_key
-                    ]:
-
-                        c1, c2, c3 = st.columns(
-                            [1.2, 2, 2]
-                        )
-
+                    if not st.session_state[editing_key]:
+                        c1, c2, c3 = st.columns([1.2, 2, 2])
                         with c1:
+                            st.markdown("#### ⚙️ Detalle de Operación")
+                            st.write(f"**Activo:** {row.get('par', '-')}")
+                            st.write(f"**Dirección:** {row.get('direccion', '-')}")
+                            st.write(f"**Entrada:** {row.get('precio_entrada', 0)}")
+                            st.write(f"**SL:** {row.get('stop_loss', 0)} | **TP:** {row.get('take_profit', 0)}")
+                            st.write(f"**R:R:** 1 : {float(row.get('rr', 0) or 0):.2f}")
+                            st.write(f"**Emoción:** {row.get('emocion', '-')}")
 
-                            st.write(
-                                f"**Activo:** "
-                                f"{row.get('par', '-')}"
-                            )
-
-                            st.write(
-                                f"**Dirección:** "
-                                f"{row.get('direccion', '-')}"
-                            )
-
-                            st.write(
-                                f"**Entrada:** "
-                                f"{row.get('precio_entrada', 0)}"
-                            )
-
-                            st.write(
-                                f"**SL:** "
-                                f"{row.get('stop_loss', 0)}"
-                            )
-
-                            st.write(
-                                f"**TP:** "
-                                f"{row.get('take_profit', 0)}"
-                            )
-
-                            st.write(
-                                f"**R:R:** "
-                                f"1 : "
-                                f"{float(row.get('rr', 0) or 0):.2f}"
-                            )
-
-                            st.write(
-                                f"**Timeframe:** "
-                                f"{row.get('timeframe', '-')}"
-                            )
-
-                            st.write(
-                                f"**PnL:** "
-                                f"${pnl_value:,.2f}"
-                            )
-
-                            if st.button(
-                                "✏️ Editar Trade",
-                                key=f"edit_{trade_id}"
-                            ):
-
-                                st.session_state[
-                                    editing_key
-                                ] = True
-
+                            if st.button("✏️ Editar Trade", key=f"edit_{trade_id}"):
+                                st.session_state[editing_key] = True
                                 st.rerun()
 
-                            if st.button(
-                                "🗑️ Eliminar",
-                                key=f"delete_{trade_id}"
-                            ):
-
-                                if eliminar_trade_supabase(
-                                    trade_id,
-                                    user_id
-                                ):
-
-                                    st.success(
-                                        "Trade eliminado."
-                                    )
-
+                            if st.button("🗑️ Eliminar Trade", key=f"delete_{trade_id}"):
+                                if eliminar_trade_supabase(trade_id, user_id):
+                                    st.success("Trade eliminado.")
                                     st.rerun()
 
                         with c2:
-
-                            st.markdown(
-                                "**1️⃣ ANTES**"
-                            )
-
-                            img = convertir_imagen_display(
-                                row.get(
-                                    "img_before"
-                                )
-                            )
-
+                            st.markdown("**1️⃣ ANTES**")
+                            img = convertir_imagen_display(row.get("img_before"))
                             if img:
-
-                                st.image(
-                                    img,
-                                    use_container_width=True
-                                )
-
+                                st.image(img, use_container_width=True)
                             else:
-
-                                st.info(
-                                    "📷 Sin captura ANTES"
-                                )
+                                st.info("📷 Sin captura ANTES")
 
                         with c3:
-
-                            st.markdown(
-                                "**2️⃣ DESPUÉS**"
-                            )
-
-                            img = convertir_imagen_display(
-                                row.get(
-                                    "img_after"
-                                )
-                            )
-
+                            st.markdown("**2️⃣ DESPUÉS**")
+                            img = convertir_imagen_display(row.get("img_after"))
                             if img:
-
-                                st.image(
-                                    img,
-                                    use_container_width=True
-                                )
-
+                                st.image(img, use_container_width=True)
                             else:
-
-                                st.info(
-                                    "📷 Sin captura DESPUÉS"
-                                )
-
+                                st.info("📷 Sin captura DESPUÉS")
                     else:
+                        editar_trade_ui(row, user_id)
 
-                        editar_trade_ui(
-                            row,
-                            user_id
-                        )
-
-            st.markdown("---")
-
-            df_chart = (
-                df_trades
-                .groupby(
-                    "fecha"
-                )[
-                    "beneficio_usd"
-                ]
-                .sum()
-                .reset_index()
-            )
-
-            if not df_chart.empty:
-
-                fig = px.bar(
-                    df_chart,
-                    x="fecha",
-                    y="beneficio_usd",
-                    title="PnL Diario",
-                    template="plotly_dark"
-                )
-
-                fig.update_layout(
-                    plot_bgcolor="#0b0e14",
-                    paper_bgcolor="#0b0e14"
-                )
-
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True
-                )
-
-
-    # =====================================================
-    # TAB 3 CHAT
-    # =====================================================
-
+    # --- TAB 3: CHAT IA ---
     with tab3:
+        st.markdown("### 💬 Chat IA & Auditoría")
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-        st.markdown(
-            "### 💬 Chat IA & Auditoría"
-        )
-
-        for message in (
-            st.session_state.chat_history
-        ):
-
-            with st.chat_message(
-                message["role"]
-            ):
-
-                st.markdown(
-                    message["content"]
-                )
-
-        prompt = st.chat_input(
-            "Pregúntame sobre tu operativa..."
-        )
-
+        prompt = st.chat_input("Pregúntame sobre tu operativa...")
         if prompt:
-
-            st.session_state.chat_history.append(
-                {
-                    "role":
-                        "user",
-                    "content":
-                        prompt
-                }
-            )
-
-            with st.chat_message(
-                "assistant"
-            ):
-
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            with st.chat_message("assistant"):
                 if df_trades.empty:
-
-                    answer = (
-                        "Todavía no tienes suficientes "
-                        "operaciones registradas."
-                    )
-
+                    answer = "Todavía no tienes suficientes operaciones registradas."
                 else:
+                    total = len(df_trades)
+                    pnl_tot = df_trades["beneficio_usd"].sum()
+                    wins = len(df_trades[df_trades["beneficio_usd"] > 0])
+                    wr = (wins / total * 100)
+                    answer = f"Has registrado **{total} trades** con un PnL acumulado de **${pnl_tot:,.2f}** y un Win Rate de **{wr:.1f}%**."
+                st.markdown(answer)
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
 
-                    total = len(
-                        df_trades
-                    )
-
-                    pnl = df_trades[
-                        "beneficio_usd"
-                    ].sum()
-
-                    wins = len(
-                        df_trades[
-                            df_trades[
-                                "beneficio_usd"
-                            ] > 0
-                        ]
-                    )
-
-                    losses = len(
-                        df_trades[
-                            df_trades[
-                                "beneficio_usd"
-                            ] < 0
-                        ]
-                    )
-
-                    wr = (
-                        wins / total * 100
-                    )
-
-                    answer = f"""
-### 🧠 Resumen de tu operativa
-
-Has registrado **{total} trades**.
-
-**PnL acumulado:** ${pnl:,.2f}
-
-**Win Rate:** {wr:.1f}%
-
-**Wins:** {wins}
-
-**Losses:** {losses}
-
-No evalúes únicamente el porcentaje de acierto.
-También debemos analizar R:R, drawdown, emoción
-y contexto de entrada.
-"""
-
-                st.markdown(
-                    answer
-                )
-
-                st.session_state.chat_history.append(
-                    {
-                        "role":
-                            "assistant",
-                        "content":
-                            answer
-                    }
-                )
-
-
-    # =====================================================
-    # TAB 4 LOTES
-    # =====================================================
-
+    # --- TAB 4: CALCULADORA LOTAJE ---
     with tab4:
-
-        st.markdown(
-            "### 🧮 Calculadora de Tamaño de Posición"
-        )
-
+        st.markdown("### 🧮 Calculadora de Tamaño de Posición")
         c1, c2 = st.columns(2)
-
         with c1:
-
-            balance = st.number_input(
-                "Balance ($)",
-                value=float(
-                    st.session_state.capital_actual
-                ),
-                step=100.0
-            )
-
-            risk_percent = st.number_input(
-                "Riesgo por operación (%)",
-                value=1.0,
-                step=0.25
-            )
-
-            stop_distance = st.number_input(
-                "Distancia SL",
-                value=20.0,
-                step=1.0
-            )
-
+            balance = st.number_input("Balance ($)", value=float(st.session_state.capital_actual), step=100.0)
+            risk_percent = st.number_input("Riesgo por operación (%)", value=1.0, step=0.25)
+            stop_distance = st.number_input("Distancia SL", value=20.0, step=1.0)
         with c2:
+            risk_money = balance * risk_percent / 100
+            lots = (risk_money / (stop_distance * 10)) if stop_distance > 0 else 0
+            st.metric("Riesgo máximo", f"${risk_money:,.2f}")
+            st.metric("Lotaje estimado", f"{lots:.2f}")
 
-            risk_money = (
-                balance
-                *
-                risk_percent
-                /
-                100
-            )
-
-            lots = (
-                risk_money
-                /
-                (
-                    stop_distance
-                    *
-                    10
-                )
-                if stop_distance > 0
-                else
-                0
-            )
-
-            st.metric(
-                "Riesgo máximo",
-                f"${risk_money:,.2f}"
-            )
-
-            st.metric(
-                "Lotaje estimado",
-                f"{lots:.2f}"
-            )
-
-            st.warning(
-                "⚠️ La equivalencia depende del "
-                "instrumento y broker."
-            )
-
-
-    # =====================================================
-    # TAB 5 ANÁLISIS IA
-    # =====================================================
-
+    # --- TAB 5: ANÁLISIS IA ---
     with tab5:
-
-        st.markdown(
-            "### 🤖 Auditoría Visual de Setup"
-        )
-
-        chart = st.file_uploader(
-            "Subir gráfico",
-            type=[
-                "png",
-                "jpg",
-                "jpeg",
-                "webp"
-            ],
-            key="visual_audit"
-        )
-
+        st.markdown("### 🤖 Auditoría Visual de Setup")
+        chart = st.file_uploader("Subir gráfico", type=["png", "jpg", "jpeg", "webp"], key="visual_audit")
         if chart:
+            st.image(chart, use_container_width=True)
 
-            st.image(
-                chart,
-                use_container_width=True
-            )
-
-            if st.button(
-                "🔍 Analizar con IA",
-                key="analyze_chart"
-            ):
-
-                if not OPENROUTER_API_KEY:
-
-                    st.warning(
-                        "OPENROUTER_API_KEY no configurada."
-                    )
-
-                else:
-
-                    with st.spinner(
-                        "Analizando gráfico..."
-                    ):
-
-                        try:
-
-                            b64 = base64.b64encode(
-                                chart.getvalue()
-                            ).decode("utf-8")
-
-                            headers = {
-                                "Authorization":
-                                    f"Bearer {OPENROUTER_API_KEY}",
-                                "Content-Type":
-                                    "application/json"
-                            }
-
-                            prompt = """
-Analiza este gráfico como auditor de trading.
-
-No des una señal de compra o venta.
-
-Evalúa:
-1. Estructura
-2. Tendencia
-3. Soportes/resistencias
-4. Liquidez
-5. Riesgo
-6. R:R visible
-7. Calidad del setup
-8. Posibles errores de disciplina
-
-Devuelve una evaluación clara y educativa.
-"""
-
-                            payload = {
-
-                                "model":
-                                    "openai/gpt-4o-mini",
-
-                                "messages": [
-
-                                    {
-                                        "role":
-                                            "user",
-
-                                        "content": [
-
-                                            {
-                                                "type":
-                                                    "text",
-
-                                                "text":
-                                                    prompt
-                                            },
-
-                                            {
-                                                "type":
-                                                    "image_url",
-
-                                                "image_url": {
-
-                                                    "url":
-                                                        "data:image/jpeg;base64,"
-                                                        + b64
-                                                }
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }
-
-                            response = requests.post(
-                                "https://openrouter.ai/api/v1/chat/completions",
-                                headers=headers,
-                                json=payload,
-                                timeout=60
-                            )
-
-                            if response.status_code == 200:
-
-                                result = (
-                                    response.json()
-                                )
-
-                                answer = (
-                                    result
-                                    .get(
-                                        "choices",
-                                        [{}]
-                                    )[0]
-                                    .get(
-                                        "message",
-                                        {}
-                                    )
-                                    .get(
-                                        "content",
-                                        ""
-                                    )
-                                )
-
-                                st.markdown(
-                                    answer
-                                )
-
-                            else:
-
-                                st.error(
-                                    "La IA no respondió correctamente."
-                                )
-
-                        except Exception as e:
-
-                            st.error(
-                                f"Error de IA: {e}"
-                            )
-
-
-    # =====================================================
-    # TAB 6 PROYECCIONES
-    # =====================================================
-
+    # --- TAB 6: PROYECCIONES ---
     with tab6:
+        st.markdown("### 📈 Proyección de Capital")
+        trades_month = st.slider("Trades por mes", 5, 100, 15)
+        win_rate_est = st.slider("Win Rate estimado (%)", 1, 99, 55)
 
-        st.markdown(
-            "### 📈 Proyección de Capital"
-        )
-
-        c1, c2 = st.columns(2)
-
-        with c1:
-
-            trades_month = st.slider(
-                "Trades por mes",
-                5,
-                100,
-                15
-            )
-
-            win_rate_est = st.slider(
-                "Win Rate estimado (%)",
-                1,
-                99,
-                55
-            )
-
-        with c2:
-
-            avg_win = st.number_input(
-                "Ganancia promedio por WIN ($)",
-                value=200.0,
-                step=25.0
-            )
-
-            avg_loss = st.number_input(
-                "Pérdida promedio por LOSS ($)",
-                value=100.0,
-                step=25.0
-            )
-
-        capital = float(
-            st.session_state.capital_actual
-        )
-
-        projection = []
-
-        for month in range(
-            1,
-            13
-        ):
-
-            winners = (
-                trades_month
-                *
-                win_rate_est
-                /
-                100
-            )
-
-            losers = (
-                trades_month
-                -
-                winners
-            )
-
-            pnl_month = (
-                winners
-                *
-                avg_win
-                -
-                losers
-                *
-                avg_loss
-            )
-
-            capital += pnl_month
-
-            projection.append(
-                {
-                    "Mes":
-                        f"Mes {month}",
-                    "Capital":
-                        capital
-                }
-            )
-
-        df_projection = pd.DataFrame(
-            projection
-        )
-
-        st.metric(
-            "Capital proyectado a 12 meses",
-            f"${capital:,.2f}"
-        )
-
-        fig = px.line(
-            df_projection,
-            x="Mes",
-            y="Capital",
-            markers=True,
-            template="plotly_dark"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-
-    # =====================================================
-    # TAB 7 PSICOTRADING
-    # =====================================================
-
+    # --- TAB 7: PSICOTRADING ---
     with tab7:
+        st.markdown("### 📓 Diario & Psicotrading")
+        st.text_area("Reflexión de hoy", height=200, key="daily_reflection")
 
-        st.markdown(
-            "### 📓 Diario & Psicotrading"
-        )
-
-        if not df_trades.empty:
-
-            st.markdown(
-                "#### 🧠 Emociones registradas"
-            )
-
-            if "emocion" in df_trades.columns:
-
-                emotion_stats = (
-                    df_trades
-                    .groupby(
-                        "emocion"
-                    )[
-                        "beneficio_usd"
-                    ]
-                    .agg(
-                        [
-                            "count",
-                            "sum",
-                            "mean"
-                        ]
-                    )
-                    .reset_index()
-                )
-
-                emotion_stats.columns = [
-                    "Emoción",
-                    "Trades",
-                    "PnL",
-                    "Promedio"
-                ]
-
-                st.dataframe(
-                    emotion_stats,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-        reflection = st.text_area(
-            "Reflexión de hoy",
-            height=200,
-            key="daily_reflection"
-        )
-
-        if st.button(
-            "🧠 Guardar reflexión",
-            key="save_reflection"
-        ):
-
-            st.success(
-                "Reflexión guardada en esta sesión."
-            )
-
-
-    # =====================================================
-    # TAB 8 DASHBOARD
-    # =====================================================
-
+    # --- TAB 8: DASHBOARD ---
     with tab8:
-
-        st.markdown(
-            "### 📊 Dashboard Operativo"
-        )
-
-        if df_trades.empty:
-
-            st.info(
-                "Registra operaciones para desbloquear "
-                "tus estadísticas."
-            )
-
-        else:
-
-            total = len(
-                df_trades
-            )
-
-            pnl = float(
-                df_trades[
-                    "beneficio_usd"
-                ].sum()
-            )
-
-            wins = len(
-                df_trades[
-                    df_trades[
-                        "beneficio_usd"
-                    ] > 0
-                ]
-            )
-
-            losses = len(
-                df_trades[
-                    df_trades[
-                        "beneficio_usd"
-                    ] < 0
-                ]
-            )
-
-            wr = (
-                wins / total * 100
-            )
-
-            max_win = float(
-                df_trades[
-                    "beneficio_usd"
-                ].max()
-            )
-
-            max_loss = float(
-                df_trades[
-                    "beneficio_usd"
-                ].min()
-            )
-
-            c1, c2, c3, c4 = st.columns(4)
-
-            c1.metric(
-                "PnL",
-                f"${pnl:,.2f}"
-            )
-
-            c2.metric(
-                "Win Rate",
-                f"{wr:.1f}%"
-            )
-
-            c3.metric(
-                "Trades",
-                total
-            )
-
-            c4.metric(
-                "Máx. Win / Loss",
-                f"${max_win:,.0f} / "
-                f"${max_loss:,.0f}"
-            )
-
-            st.markdown("---")
-
-            pnl_series = (
-                df_trades
-                .sort_values(
-                    "fecha"
-                )[
-                    "beneficio_usd"
-                ]
-                .cumsum()
-            )
-
-            chart_df = pd.DataFrame(
-                {
-                    "Trade":
-                        range(
-                            1,
-                            len(
-                                pnl_series
-                            ) + 1
-                        ),
-
-                    "PnL Acumulado":
-                        pnl_series.values
-                }
-            )
-
-            fig = px.line(
-                chart_df,
-                x="Trade",
-                y="PnL Acumulado",
-                markers=True,
-                template="plotly_dark",
-                title="Curva de PnL"
-            )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
-
-            display_columns = [
-                "fecha",
-                "par",
-                "direccion",
-                "timeframe",
-                "resultado",
-                "beneficio_usd",
-                "emocion"
-            ]
-
-            existing_columns = [
-                c
-                for c in display_columns
-                if c in df_trades.columns
-            ]
-
-            st.dataframe(
-                df_trades[
-                    existing_columns
-                ],
-                use_container_width=True,
-                hide_index=True
-            )
+        st.markdown("### 📊 Dashboard Operativo")
+        if not df_trades.empty:
+            st.dataframe(df_trades, use_container_width=True, hide_index=True)
 
 
 # =========================================================
-# 24. FLUJO PRINCIPAL
+# 19. FLUJO PRINCIPAL
 # =========================================================
 
 if not st.session_state.authenticated:
-
     render_auth()
-
 else:
-
     render_dashboard()
