@@ -1,5 +1,6 @@
 import streamlit as st
 import datetime
+import time
 import requests
 import json
 import base64
@@ -726,31 +727,79 @@ def convertir_imagen_display(valor):
 # =========================================================
 # 12. SUPABASE TRADES
 # =========================================================
+#
+# ---------------------------------------------------------
+# FIX #3: "Connection reset by peer" / "Broken pipe"
+# El cliente de Supabase reutiliza una conexión HTTP entre
+# reruns de Streamlit. Si esa conexión estuvo inactiva un
+# rato, el socket puede quedar "muerto" del lado del
+# servidor y la siguiente petición falla con estos errores
+# de bajo nivel (no son errores de tus datos ni de tus
+# credenciales). La solución es: si pasa, descartamos el
+# cliente guardado y reintentamos una vez con uno nuevo.
+# ---------------------------------------------------------
+
+def _es_error_de_conexion(e):
+
+    texto = str(e).lower()
+
+    return any(
+        x in texto
+        for x in [
+            "broken pipe",
+            "connection reset",
+            "errno 32",
+            "errno 104",
+            "remotedisconnected",
+            "connection aborted",
+            "timed out",
+            "timeout"
+        ]
+    )
+
+
+def _forzar_reconexion_supabase():
+
+    st.session_state.pop(
+        "supabase_client",
+        None
+    )
+
 
 def cargar_trades_usuario(user_id):
 
-    try:
+    for intento in (1, 2):
 
-        client = get_supabase_client()
+        try:
 
-        response = (
-            client
-            .table("trades")
-            .select("*")
-            .eq("user_id", user_id)
-            .order("fecha", desc=True)
-            .execute()
-        )
+            client = get_supabase_client()
 
-        return response.data or []
+            response = (
+                client
+                .table("trades")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("fecha", desc=True)
+                .execute()
+            )
 
-    except Exception as e:
+            return response.data or []
 
-        st.error(
-            f"❌ Error cargando operaciones: {e}"
-        )
+        except Exception as e:
 
-        return []
+            if intento == 1 and _es_error_de_conexion(e):
+
+                _forzar_reconexion_supabase()
+
+                time.sleep(0.6)
+
+                continue
+
+            st.error(
+                f"❌ Error cargando operaciones: {e}"
+            )
+
+            return []
 
 
 def guardar_trade_supabase(
@@ -758,27 +807,37 @@ def guardar_trade_supabase(
     trade_data
 ):
 
-    try:
+    for intento in (1, 2):
 
-        client = get_supabase_client()
+        try:
 
-        data = dict(trade_data)
+            client = get_supabase_client()
 
-        data["user_id"] = user_id
+            data = dict(trade_data)
 
-        client.table(
-            "trades"
-        ).insert(data).execute()
+            data["user_id"] = user_id
 
-        return True
+            client.table(
+                "trades"
+            ).insert(data).execute()
 
-    except Exception as e:
+            return True
 
-        st.error(
-            f"❌ Error guardando operación: {e}"
-        )
+        except Exception as e:
 
-        return False
+            if intento == 1 and _es_error_de_conexion(e):
+
+                _forzar_reconexion_supabase()
+
+                time.sleep(0.6)
+
+                continue
+
+            st.error(
+                f"❌ Error guardando operación: {e}"
+            )
+
+            return False
 
 
 def actualizar_trade_supabase(
@@ -787,32 +846,42 @@ def actualizar_trade_supabase(
     trade_data
 ):
 
-    try:
+    for intento in (1, 2):
 
-        client = get_supabase_client()
+        try:
 
-        data = dict(trade_data)
+            client = get_supabase_client()
 
-        data.pop("user_id", None)
+            data = dict(trade_data)
 
-        response = (
-            client
-            .table("trades")
-            .update(data)
-            .eq("id", trade_id)
-            .eq("user_id", user_id)
-            .execute()
-        )
+            data.pop("user_id", None)
 
-        return bool(response.data)
+            response = (
+                client
+                .table("trades")
+                .update(data)
+                .eq("id", trade_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
 
-    except Exception as e:
+            return bool(response.data)
 
-        st.error(
-            f"❌ Error actualizando operación: {e}"
-        )
+        except Exception as e:
 
-        return False
+            if intento == 1 and _es_error_de_conexion(e):
+
+                _forzar_reconexion_supabase()
+
+                time.sleep(0.6)
+
+                continue
+
+            st.error(
+                f"❌ Error actualizando operación: {e}"
+            )
+
+            return False
 
 
 def eliminar_trade_supabase(
@@ -820,28 +889,38 @@ def eliminar_trade_supabase(
     user_id
 ):
 
-    try:
+    for intento in (1, 2):
 
-        client = get_supabase_client()
+        try:
 
-        (
-            client
-            .table("trades")
-            .delete()
-            .eq("id", trade_id)
-            .eq("user_id", user_id)
-            .execute()
-        )
+            client = get_supabase_client()
 
-        return True
+            (
+                client
+                .table("trades")
+                .delete()
+                .eq("id", trade_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
 
-    except Exception as e:
+            return True
 
-        st.error(
-            f"❌ Error eliminando operación: {e}"
-        )
+        except Exception as e:
 
-        return False
+            if intento == 1 and _es_error_de_conexion(e):
+
+                _forzar_reconexion_supabase()
+
+                time.sleep(0.6)
+
+                continue
+
+            st.error(
+                f"❌ Error eliminando operación: {e}"
+            )
+
+            return False
 
 
 # =========================================================
