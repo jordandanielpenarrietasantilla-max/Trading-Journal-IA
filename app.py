@@ -4166,4 +4166,3 @@ if not st.session_state.authenticated:
 else:
 
     render_dashboard()
-````
