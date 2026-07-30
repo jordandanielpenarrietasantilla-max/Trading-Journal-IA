@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 # =========================================================
 
 st.set_page_config(
-    page_title="AI Trading Journal & Auditor V8",
+    page_title="AI Trading Journal & Auditor V9",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -39,6 +39,21 @@ SUPABASE_URL = st.secrets.get(
 
 SUPABASE_KEY = st.secrets.get(
     "SUPABASE_KEY",
+    ""
+)
+
+# ---------------------------------------------------------
+# OPCIONAL - Panel de Administración (V9)
+# Esta es la "service_role key" de tu proyecto Supabase
+# (Project Settings -> API -> service_role). Tiene permisos
+# totales, así que NUNCA se debe exponer al navegador — pero
+# aquí es segura porque Streamlit corre del lado del servidor.
+# Si no la configuras, el panel de admin simplemente queda
+# oculto/deshabilitado; el resto de la app funciona igual.
+# ---------------------------------------------------------
+
+SUPABASE_SERVICE_KEY = st.secrets.get(
+    "SUPABASE_SERVICE_KEY",
     ""
 )
 
@@ -123,6 +138,27 @@ def get_supabase_client() -> Client:
             pass
 
     return client
+
+
+@st.cache_resource
+def get_supabase_admin_client():
+    """
+    Cliente con la service_role key, SOLO para el panel de
+    administración (listar usuarios, activar/desactivar PRO).
+    A diferencia del cliente normal, este SÍ puede cachearse
+    de forma global porque no lleva la sesión de ningún
+    usuario particular — usa la clave de servicio directamente
+    en cada llamada, no un token de login.
+    Devuelve None si no configuraste SUPABASE_SERVICE_KEY.
+    """
+
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return None
+
+    try:
+        return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    except Exception:
+        return None
 
 
 # =========================================================
@@ -1162,7 +1198,7 @@ No escribas ```json.
                 "https://trading-journal-ia.streamlit.app",
 
             "X-Title":
-                "AI Trading Journal V8"
+                "AI Trading Journal V9"
         }
 
         payload = {
@@ -1830,6 +1866,93 @@ def aplicar_estilos():
         text-align: center;
     }
 
+    /* ---- V9: tarjetas de métricas estilo SaaS ---- */
+
+    .metric-card {
+
+        background: linear-gradient(
+            160deg,
+            #161b22 0%,
+            #10141c 100%
+        );
+
+        border: 1px solid rgba(0,242,254,.18);
+        border-radius: 14px;
+        padding: 18px 20px;
+        height: 100%;
+    }
+
+    .metric-card .metric-label {
+
+        color: #8b98a8 !important;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin-bottom: 6px;
+    }
+
+    .metric-card .metric-value {
+
+        font-size: 26px;
+        font-weight: 800;
+        color: #f0f3fa !important;
+    }
+
+    .metric-card .metric-sub {
+
+        color: #8b98a8 !important;
+        font-size: 11px;
+        margin-top: 4px;
+    }
+
+    /* ---- V9: badge admin junto al nombre ---- */
+
+    .admin-badge {
+
+        display: inline-block;
+        background: linear-gradient(
+            135deg,
+            #f0b90b,
+            #ffdd7a
+        );
+
+        color: #1a1200 !important;
+        font-weight: 800;
+        font-size: 10px;
+        letter-spacing: .5px;
+        padding: 2px 8px;
+        border-radius: 20px;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+
+    /* ---- V9: portada / hero del login ---- */
+
+    .hero-panel {
+
+        background: linear-gradient(
+            160deg,
+            rgba(0,210,255,.10),
+            rgba(10,14,20,.9)
+        );
+
+        border: 1px solid rgba(0,242,254,.2);
+        border-radius: 18px;
+        padding: 34px 30px;
+        height: 100%;
+    }
+
+    .hero-quote {
+
+        background: #111a24;
+        border-left: 3px solid #00f2fe;
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-top: 22px;
+        font-style: italic;
+        color: #c8d3e0 !important;
+    }
+
     </style>
 
     """
@@ -1841,6 +1964,20 @@ def aplicar_estilos():
 
 
 aplicar_estilos()
+
+
+def render_metric_card(icono, label, valor, sub=""):
+
+    st.markdown(
+        f"""
+        <div class="metric-card">
+            <div class="metric-label">{icono} {label}</div>
+            <div class="metric-value">{valor}</div>
+            <div class="metric-sub">{sub}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # =========================================================
@@ -2018,32 +2155,52 @@ def render_auth():
     with left:
 
         st.markdown(
-            "# ⚡ AI Trading Journal V8"
-        )
-
-        st.markdown(
             """
-            ### Tu operativa. Tus datos. Tu disciplina.
+            <div class="hero-panel">
 
-            Registra tus operaciones, analiza tus emociones,
-            controla tu Track Record y utiliza IA para auditar
-            visualmente tus setups.
+                <div style="font-size:34px; font-weight:900;">
+                    ⚡ AI TRADING JOURNAL
+                </div>
 
-            ### 🧠 IA Visual V8
+                <div style="color:#8b98a8; margin-bottom:18px;">
+                    Disciplina · Análisis · Constancia · Resultados
+                </div>
 
-            La IA puede detectar:
+                <div style="font-size:26px; font-weight:800; margin-top:10px;">
+                    Eleva tu trading<br>al siguiente nivel.
+                </div>
 
-            - Activo
-            - LONG / SHORT
-            - Entry
-            - Stop Loss
-            - Take Profit
-            - Timeframe
-            - Confianza de lectura
-            """
+                <div style="color:#c8d3e0; margin:10px 0 20px 0;">
+                    Tu diario, tu auditor, tu ventaja.
+                </div>
+
+                <div style="line-height:2.1;">
+                    ✅ Track Record inteligente<br>
+                    🧠 Auditoría con IA<br>
+                    💭 Psicotrading y emociones<br>
+                    📊 Estadísticas avanzadas<br>
+                    📈 Análisis y proyecciones
+                </div>
+
+                <div class="hero-quote">
+                    "Lo que no se mide, no se puede mejorar."<br>
+                    — Trading Pro
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
     with right:
+
+        st.markdown(
+            "### 👋 Bienvenido de vuelta"
+        )
+
+        st.caption(
+            "Inicia sesión para continuar"
+        )
 
         tab_login, tab_register, tab_reset = st.tabs(
             [
@@ -2287,6 +2444,61 @@ def render_auth():
                             f"❌ Error: {e}"
                         )
 
+        st.markdown("---")
+
+        st.caption(
+            "o continúa con"
+        )
+
+        if st.button(
+            "🔵 Continuar con Google",
+            key="google_login",
+            use_container_width=True
+        ):
+
+            # NOTA: esto solo funciona si activaste el
+            # proveedor Google en Supabase (Authentication ->
+            # Providers -> Google). Si no lo configuraste,
+            # Supabase devolverá un error claro al respecto.
+            try:
+
+                client = get_supabase_client()
+
+                app_url = (
+                    "https://trading-journal-ia-7lvamxtjspcbclwcda2zxg.streamlit.app/"
+                )
+
+                result = client.auth.sign_in_with_oauth(
+                    {
+                        "provider": "google",
+                        "options": {
+                            "redirect_to": app_url
+                        }
+                    }
+                )
+
+                url_login = getattr(result, "url", None)
+
+                if url_login:
+
+                    st.markdown(
+                        f'<meta http-equiv="refresh" content="0; url={url_login}">',
+                        unsafe_allow_html=True
+                    )
+
+                    st.link_button(
+                        "Continuar en Google →",
+                        url_login,
+                        use_container_width=True
+                    )
+
+            except Exception as e:
+
+                st.error(
+                    f"❌ El login con Google no está activado "
+                    f"todavía en tu proyecto de Supabase: {e}"
+                )
+
 
 # =========================================================
 # 24. SIDEBAR
@@ -2392,8 +2604,15 @@ def render_sidebar(estado_sub):
 
         with c2:
 
+            badge_admin = (
+                '<span class="admin-badge">ADMINISTRADOR</span>'
+                if "Admin" in estado_sub
+                else ""
+            )
+
             st.markdown(
-                f"**{nombre_actual}**"
+                f"**{nombre_actual}** {badge_admin}",
+                unsafe_allow_html=True
             )
 
             st.caption(
@@ -2715,7 +2934,7 @@ def render_nuevo_trade(
         """
         <div class="ai-box">
 
-        <h4>🧠 AI Vision V8</h4>
+        <h4>🧠 AI Vision V9</h4>
 
         Sube una captura de TradingView y la IA intentará
         leer directamente:
@@ -4553,6 +4772,251 @@ def render_dashboard_stats(
 
 
 # =========================================================
+# 33B. CALENDARIO ECONÓMICO (V9)
+# =========================================================
+#
+# Placeholder con datos de ejemplo/manuales. Si más adelante
+# quieres conectarlo a una API real (ForexFactory, Investing,
+# TradingEconomics), esta es la función a reemplazar: solo
+# tiene que devolver una lista de dicts con las mismas claves
+# y el resto de la pantalla sigue funcionando igual.
+
+EVENTOS_ECONOMICOS_EJEMPLO = [
+    {
+        "fecha": "Hoy",
+        "hora": "08:30",
+        "pais": "🇺🇸 EE.UU.",
+        "evento": "Solicitudes de Desempleo",
+        "impacto": "Alto"
+    },
+    {
+        "fecha": "Hoy",
+        "hora": "10:00",
+        "pais": "🇺🇸 EE.UU.",
+        "evento": "Índice ISM Manufacturero",
+        "impacto": "Medio"
+    },
+    {
+        "fecha": "Mañana",
+        "hora": "03:00",
+        "pais": "🇪🇺 Eurozona",
+        "evento": "IPC (Inflación) Preliminar",
+        "impacto": "Alto"
+    },
+    {
+        "fecha": "Mañana",
+        "hora": "09:00",
+        "pais": "🇬🇧 Reino Unido",
+        "evento": "Decisión de Tipos de Interés (BoE)",
+        "impacto": "Alto"
+    },
+    {
+        "fecha": "Viernes",
+        "hora": "08:30",
+        "pais": "🇺🇸 EE.UU.",
+        "evento": "Nóminas No Agrícolas (NFP)",
+        "impacto": "Alto"
+    }
+]
+
+
+def render_calendario_economico():
+
+    st.markdown(
+        "### 🗓️ Calendario Económico"
+    )
+
+    st.info(
+        "📌 Estos son eventos de ejemplo (datos manuales). "
+        "Para conectar un calendario en tiempo real, se puede "
+        "integrar una API como ForexFactory, Investing.com o "
+        "TradingEconomics en esta misma sección."
+    )
+
+    for ev in EVENTOS_ECONOMICOS_EJEMPLO:
+
+        color = (
+            "#f87171"
+            if ev["impacto"] == "Alto"
+            else "#facc15"
+            if ev["impacto"] == "Medio"
+            else "#34d399"
+        )
+
+        st.markdown(
+            f"""
+            <div class="detected" style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:10px;
+            ">
+                <div>
+                    <b>{ev['evento']}</b><br>
+                    <span style="color:#8b98a8; font-size:12px;">
+                        {ev['pais']} · {ev['fecha']} {ev['hora']}
+                    </span>
+                </div>
+                <div style="
+                    color:{color};
+                    border:1px solid {color};
+                    border-radius:20px;
+                    padding:2px 10px;
+                    font-size:11px;
+                    font-weight:bold;
+                ">
+                    {ev['impacto']}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+# =========================================================
+# 33C. PANEL DE ADMINISTRACIÓN (V9)
+# =========================================================
+
+def render_admin_panel():
+
+    st.markdown(
+        "### 🛡️ Panel de Administración"
+    )
+
+    admin_client = get_supabase_admin_client()
+
+    if admin_client is None:
+
+        st.warning(
+            "⚠️ Para activar la gestión de usuarios necesitas "
+            "agregar `SUPABASE_SERVICE_KEY` en tus Streamlit "
+            "Secrets (Project Settings → API → service_role "
+            "en tu proyecto de Supabase). Es una clave sensible: "
+            "nunca la compartas ni la subas a un repositorio "
+            "público."
+        )
+
+        return
+
+    try:
+
+        respuesta = admin_client.auth.admin.list_users()
+
+        usuarios = (
+            respuesta
+            if isinstance(respuesta, list)
+            else getattr(respuesta, "users", [])
+        )
+
+    except Exception as e:
+
+        st.error(
+            f"❌ No se pudo obtener la lista de usuarios: {e}"
+        )
+
+        return
+
+    st.success(
+        f"👥 {len(usuarios)} usuarios registrados"
+    )
+
+    for u in usuarios:
+
+        email_u = getattr(u, "email", "") or ""
+
+        if (
+            ADMIN_EMAIL
+            and email_u.lower() == ADMIN_EMAIL.lower()
+        ):
+
+            continue
+
+        metadata_u = getattr(u, "user_metadata", {}) or {}
+
+        es_vip_actual = bool(
+            metadata_u.get("es_vip", False)
+        )
+
+        with st.expander(
+            f"{'💎' if es_vip_actual else '⏳'} {email_u}"
+        ):
+
+            c1, c2 = st.columns(
+                [2, 1]
+            )
+
+            with c1:
+
+                st.write(
+                    f"**ID:** {getattr(u, 'id', '')}"
+                )
+
+                st.write(
+                    f"**Registrado:** "
+                    f"{getattr(u, 'created_at', '-')}"
+                )
+
+                st.write(
+                    f"**Acceso PRO:** "
+                    f"{'✅ Activo' if es_vip_actual else '❌ Inactivo'}"
+                )
+
+            with c2:
+
+                if es_vip_actual:
+
+                    if st.button(
+                        "🔻 Desactivar PRO",
+                        key=f"deact_{getattr(u, 'id', email_u)}"
+                    ):
+
+                        try:
+
+                            nuevo_metadata = dict(metadata_u)
+
+                            nuevo_metadata["es_vip"] = False
+
+                            admin_client.auth.admin.update_user_by_id(
+                                getattr(u, "id", ""),
+                                {"user_metadata": nuevo_metadata}
+                            )
+
+                            st.success("PRO desactivado.")
+
+                            st.rerun()
+
+                        except Exception as e:
+
+                            st.error(f"❌ Error: {e}")
+
+                else:
+
+                    if st.button(
+                        "✅ Activar PRO",
+                        key=f"act_{getattr(u, 'id', email_u)}"
+                    ):
+
+                        try:
+
+                            nuevo_metadata = dict(metadata_u)
+
+                            nuevo_metadata["es_vip"] = True
+
+                            admin_client.auth.admin.update_user_by_id(
+                                getattr(u, "id", ""),
+                                {"user_metadata": nuevo_metadata}
+                            )
+
+                            st.success("PRO activado.")
+
+                            st.rerun()
+
+                        except Exception as e:
+
+                            st.error(f"❌ Error: {e}")
+
+
+# =========================================================
 # 34. DASHBOARD PRINCIPAL
 # =========================================================
 
@@ -4620,27 +5084,104 @@ def render_dashboard():
         ).fillna(0)
 
     st.markdown(
-        "## ⚡ AI Trading Journal & Auditor V8"
+        "## ⚡ AI Trading Journal & Auditor V9"
     )
 
     st.caption(
         "Sistema de journaling + IA visual + disciplina + Track Record"
     )
 
-    tabs = st.tabs(
-        [
-            "➕ Registrar Trade",
-            "📅 Track Record",
-            "💬 Chat IA",
-            "🧮 Lotaje",
-            "🤖 Análisis IA",
-            "📈 Proyecciones",
-            "📓 Psicotrading",
-            "📊 Dashboard"
-        ]
+    # -----------------------------------------------------
+    # V9: fila de tarjetas de métricas estilo SaaS
+    # -----------------------------------------------------
+
+    pnl_total = (
+        float(df_trades["beneficio_usd"].sum())
+        if not df_trades.empty
+        else 0.0
     )
 
-    # TAB 1
+    total_trades = len(df_trades)
+
+    wins_top = (
+        len(df_trades[df_trades["beneficio_usd"] > 0])
+        if not df_trades.empty
+        else 0
+    )
+
+    win_rate_top = (
+        (wins_top / total_trades * 100)
+        if total_trades
+        else 0.0
+    )
+
+    mc1, mc2, mc3, mc4 = st.columns(4)
+
+    with mc1:
+
+        render_metric_card(
+            "💰",
+            "Balance Actual",
+            f"${st.session_state.capital_actual:,.2f}",
+            "Capital de trading"
+        )
+
+    with mc2:
+
+        render_metric_card(
+            "🎯",
+            "Meta",
+            f"${st.session_state.capital_meta:,.2f}",
+            "Objetivo de cuenta"
+        )
+
+    with mc3:
+
+        render_metric_card(
+            "📈",
+            "P&L Total",
+            f"${pnl_total:,.2f}",
+            f"{total_trades} trades"
+        )
+
+    with mc4:
+
+        render_metric_card(
+            "🏆",
+            "Win Rate",
+            f"{win_rate_top:.1f}%",
+            "Porcentaje de aciertos"
+        )
+
+    st.markdown("")
+
+    # -----------------------------------------------------
+    # V9: pestañas (Admin y Calendario son nuevas)
+    # -----------------------------------------------------
+
+    es_admin = "Admin" in estado_sub
+
+    tab_labels = [
+        "➕ Registrar Trade",
+        "📅 Track Record",
+        "💬 Chat IA",
+        "🧮 Lotaje",
+        "🤖 Análisis IA",
+        "📈 Proyecciones",
+        "📓 Psicotrading",
+        "🗓️ Calendario Económico",
+        "📊 Dashboard"
+    ]
+
+    if es_admin:
+
+        tab_labels.append(
+            "🛡️ Panel Admin"
+        )
+
+    tabs = st.tabs(
+        tab_labels
+    )
 
     with tabs[0]:
 
@@ -4649,8 +5190,6 @@ def render_dashboard():
             df_trades
         )
 
-    # TAB 2
-
     with tabs[1]:
 
         render_track_record(
@@ -4658,45 +5197,43 @@ def render_dashboard():
             user_id
         )
 
-    # TAB 3
-
     with tabs[2]:
 
         render_chat_ia(
             df_trades
         )
 
-    # TAB 4
-
     with tabs[3]:
 
         render_lotaje()
-
-    # TAB 5
 
     with tabs[4]:
 
         render_analisis_ia()
 
-    # TAB 6
-
     with tabs[5]:
 
         render_proyecciones()
-
-    # TAB 7
 
     with tabs[6]:
 
         render_psicotrading()
 
-    # TAB 8
-
     with tabs[7]:
+
+        render_calendario_economico()
+
+    with tabs[8]:
 
         render_dashboard_stats(
             df_trades
         )
+
+    if es_admin:
+
+        with tabs[9]:
+
+            render_admin_panel()
 
 
 # =========================================================
