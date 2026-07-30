@@ -37,12 +37,12 @@ SUPABASE_URL = st.secrets.get(
 
 SUPABASE_KEY = st.secrets.get(
     "SUPABASE_KEY",
-    ""
+    
 )
 
 OPENROUTER_API_KEY = st.secrets.get(
     "OPENROUTER_API_KEY",
-    ""
+    
 )
 
 
@@ -522,12 +522,12 @@ def limpiar_json_ia(content):
 
     texto = texto.replace(
         "```json",
-        ""
+        
     )
 
     texto = texto.replace(
         "```",
-        ""
+        
     )
 
     texto = texto.strip()
@@ -900,7 +900,7 @@ def aplicar_resultado_ia(resultado):
     timeframe = str(
         resultado.get(
             "timeframe",
-            ""
+            
         )
     ).upper().strip()
 
@@ -1072,7 +1072,7 @@ def evaluar_suscripcion(user):
         getattr(
             user,
             "email",
-            ""
+            
         )
         or ""
     )
@@ -1489,7 +1489,7 @@ def render_auth():
             Registra tus operaciones, analiza tus emociones,
             controla tu Track Record y utiliza IA para auditar
             tu proceso de trading.
-            """
+            
         )
 
         st.markdown("---")
@@ -1505,7 +1505,7 @@ def render_auth():
             🤖 Auditoría IA  
             🌎 Sesiones de mercado  
             🧮 Gestión de riesgo
-            """
+            
         )
 
     with right:
@@ -2175,7 +2175,7 @@ def editar_trade_ui(
 
         old_tf = row.get(
             "timeframe",
-            ""
+            
         )
 
         if old_tf not in timeframes:
