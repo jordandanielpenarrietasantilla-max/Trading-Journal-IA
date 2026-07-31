@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime
 import time
+import textwrap
 import requests
 import json
 import base64
@@ -1969,13 +1970,15 @@ aplicar_estilos()
 def render_metric_card(icono, label, valor, sub=""):
 
     st.markdown(
-        f"""
-        <div class="metric-card">
+        textwrap.dedent(
+            f"""
+            <div class="metric-card">
             <div class="metric-label">{icono} {label}</div>
             <div class="metric-value">{valor}</div>
             <div class="metric-sub">{sub}</div>
-        </div>
-        """,
+            </div>
+            """
+        ),
         unsafe_allow_html=True
     )
 
@@ -2155,40 +2158,35 @@ def render_auth():
     with left:
 
         st.markdown(
-            """
-            <div class="hero-panel">
-
+            textwrap.dedent(
+                """
+                <div class="hero-panel">
                 <div style="font-size:34px; font-weight:900;">
-                    ⚡ AI TRADING JOURNAL
+                ⚡ AI TRADING JOURNAL
                 </div>
-
                 <div style="color:#8b98a8; margin-bottom:18px;">
-                    Disciplina · Análisis · Constancia · Resultados
+                Disciplina · Análisis · Constancia · Resultados
                 </div>
-
                 <div style="font-size:26px; font-weight:800; margin-top:10px;">
-                    Eleva tu trading<br>al siguiente nivel.
+                Eleva tu trading&lt;br&gt;al siguiente nivel.
                 </div>
-
                 <div style="color:#c8d3e0; margin:10px 0 20px 0;">
-                    Tu diario, tu auditor, tu ventaja.
+                Tu diario, tu auditor, tu ventaja.
                 </div>
-
                 <div style="line-height:2.1;">
-                    ✅ Track Record inteligente<br>
-                    🧠 Auditoría con IA<br>
-                    💭 Psicotrading y emociones<br>
-                    📊 Estadísticas avanzadas<br>
-                    📈 Análisis y proyecciones
+                ✅ Track Record inteligente&lt;br&gt;
+                🧠 Auditoría con IA&lt;br&gt;
+                💭 Psicotrading y emociones&lt;br&gt;
+                📊 Estadísticas avanzadas&lt;br&gt;
+                📈 Análisis y proyecciones
                 </div>
-
                 <div class="hero-quote">
-                    "Lo que no se mide, no se puede mejorar."<br>
-                    — Trading Pro
+                "Lo que no se mide, no se puede mejorar."&lt;br&gt;
+                — Trading Pro
                 </div>
-
-            </div>
-            """,
+                </div>
+                """
+            ).replace("&lt;br&gt;", "<br>"),
             unsafe_allow_html=True
         )
 
@@ -4844,31 +4842,19 @@ def render_calendario_economico():
         )
 
         st.markdown(
-            f"""
-            <div class="detected" style="
-                display:flex;
-                justify-content:space-between;
-                align-items:center;
-                margin-bottom:10px;
-            ">
+            textwrap.dedent(
+                f"""
+                <div class="detected" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <div>
-                    <b>{ev['evento']}</b><br>
-                    <span style="color:#8b98a8; font-size:12px;">
-                        {ev['pais']} · {ev['fecha']} {ev['hora']}
-                    </span>
+                <b>{ev['evento']}</b><br>
+                <span style="color:#8b98a8; font-size:12px;">{ev['pais']} · {ev['fecha']} {ev['hora']}</span>
                 </div>
-                <div style="
-                    color:{color};
-                    border:1px solid {color};
-                    border-radius:20px;
-                    padding:2px 10px;
-                    font-size:11px;
-                    font-weight:bold;
-                ">
-                    {ev['impacto']}
+                <div style="color:{color}; border:1px solid {color}; border-radius:20px; padding:2px 10px; font-size:11px; font-weight:bold;">
+                {ev['impacto']}
                 </div>
-            </div>
-            """,
+                </div>
+                """
+            ),
             unsafe_allow_html=True
         )
 
