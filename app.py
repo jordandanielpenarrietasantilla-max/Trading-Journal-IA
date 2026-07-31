@@ -1366,55 +1366,44 @@ No escribas ```json.
 # =========================================================
 
 def aplicar_resultado_ia(resultado):
+    """Aplica la lectura de IA al estado real y a los widgets visibles.
+
+    Streamlit conserva el valor de los widgets por su key. Por eso no basta
+    con cambiar trade_sl/trade_tp: también hay que actualizar las keys de
+    los number_input/selectbox/radio antes del rerun.
+    """
 
     if not resultado:
         return
 
-    # IMPORTANTE:
-    # Estos valores se escriben ANTES de construir
-    # los widgets del formulario en el siguiente rerun.
+    mapping = {
+        "asset": ("trade_asset", "trade_asset_widget"),
+        "direction": ("trade_direction", "trade_direction_widget"),
+        "entry": ("trade_entry", "trade_entry_widget"),
+        "sl": ("trade_sl", "trade_sl_widget"),
+        "tp": ("trade_tp", "trade_tp_widget"),
+        "timeframe": ("trade_timeframe", "trade_timeframe_widget"),
+    }
 
-    if resultado.get("asset"):
+    for source_key, (state_key, widget_key) in mapping.items():
+        value = resultado.get(source_key)
 
-        st.session_state[
-            "trade_asset"
-        ] = resultado["asset"]
+        if value is None or value == "":
+            continue
 
-    if resultado.get("direction"):
+        if source_key in {"entry", "sl", "tp"}:
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                continue
 
-        st.session_state[
-            "trade_direction"
-        ] = resultado["direction"]
+        st.session_state[state_key] = value
+        st.session_state[widget_key] = value
 
-    if resultado.get("entry") is not None:
-
-        st.session_state[
-            "trade_entry"
-        ] = float(
-            resultado["entry"]
-        )
-
-    if resultado.get("sl") is not None:
-
-        st.session_state[
-            "trade_sl"
-        ] = float(
-            resultado["sl"]
-        )
-
-    if resultado.get("tp") is not None:
-
-        st.session_state[
-            "trade_tp"
-        ] = float(
-            resultado["tp"]
-        )
-
-    if resultado.get("timeframe"):
-
-        st.session_state[
-            "trade_timeframe"
-        ] = resultado["timeframe"]
+    # Compatibilidad con versiones antiguas del formulario.
+    st.session_state["auto_entry"] = float(resultado.get("entry") or 0)
+    st.session_state["auto_sl"] = float(resultado.get("sl") or 0)
+    st.session_state["auto_tp"] = float(resultado.get("tp") or 0)
 
 
 # =========================================================
@@ -2227,7 +2216,7 @@ def aplicar_estilos():
     .ax-panel{border:1px solid var(--ax-line);border-radius:22px;background:linear-gradient(150deg,rgba(14,21,38,.82),rgba(7,11,22,.78));padding:18px 20px}.ax-panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.ax-panel-title{font-size:14px;font-weight:850;color:var(--ax-text)!important}.ax-panel-tag{font-size:9px;letter-spacing:1px;color:var(--ax-muted)!important}.ax-score-ring{width:124px;height:124px;border-radius:50%;display:grid;place-items:center;margin:8px auto 12px;background:conic-gradient(var(--ax-cyan) calc(var(--score)*1%),rgba(255,255,255,.07) 0);position:relative}.ax-score-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:#0b1020}.ax-score-number{z-index:1;font-size:34px;font-weight:950;color:var(--ax-text)!important}.ax-score-number small{font-size:11px;color:var(--ax-muted)!important}.ax-rule{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.055);font-size:11px}.ax-market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.ax-market{padding:13px;border-radius:16px;background:rgba(13,19,34,.68);border:1px solid var(--ax-line)}.ax-market-time{font-size:20px;font-weight:900;color:var(--ax-cyan)!important;margin:5px 0}.ax-open{color:var(--ax-green)!important}.ax-closed{color:var(--ax-red)!important}.ax-trade-row{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr .8fr;gap:10px;padding:13px 14px;border-radius:15px;background:rgba(12,18,32,.72);border:1px solid rgba(255,255,255,.055);margin-bottom:8px;font-size:11px}.ax-chip{display:inline-block;padding:4px 8px;border-radius:99px;background:rgba(79,124,255,.12);font-size:9px}.ax-empty{min-height:290px;display:grid;place-items:center;text-align:center;border:1px dashed rgba(67,232,255,.28);border-radius:20px}.ax-empty-title{font-size:17px;font-weight:850}.ax-empty-sub{font-size:12px;color:var(--ax-muted)!important;max-width:430px;margin:auto}
 
 
-    /* AXION PRIME X2 — PREMIUM PROP SIDEBAR */
+    /* AXION PRIME X3 — PREMIUM PROP SIDEBAR */
     section[data-testid="stSidebar"] {
         background:
             radial-gradient(circle at 15% 8%, rgba(82,102,255,.16), transparent 25%),
@@ -2261,6 +2250,38 @@ def aplicar_estilos():
 
 
 aplicar_estilos()
+
+# AXION PRIME X3 — Command Deck visual override
+st.markdown(
+    r"""
+    <style>
+    section[data-testid="stSidebar"] {
+      min-width: 320px !important; max-width: 320px !important;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(20,220,255,.13), transparent 28%),
+        radial-gradient(circle at 95% 35%, rgba(125,72,255,.12), transparent 30%),
+        linear-gradient(180deg,#060914 0%,#080b17 52%,#050711 100%) !important;
+      border-right:1px solid rgba(95,218,255,.18)!important;
+      box-shadow:24px 0 80px rgba(0,0,0,.35)!important;
+    }
+    section[data-testid="stSidebar"] > div {padding:14px 14px 22px!important;}
+    .x3-brand-shell{position:relative;display:flex;align-items:center;gap:11px;padding:10px 8px 16px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.07)}
+    .x3-brand-mark{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(145deg,#22e4ff,#405cff 55%,#a443ff);box-shadow:0 0 32px rgba(38,211,255,.35),inset 0 1px rgba(255,255,255,.5);font-weight:950;color:white;letter-spacing:-2px}
+    .x3-brand-mark span{font-size:18px}.x3-brand-name{font-weight:900;letter-spacing:.7px;font-size:15px}.x3-brand-kicker{font-size:8px;letter-spacing:1.7px;color:#65738d;margin-top:2px}.x3-pulse{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#20efb2;box-shadow:0 0 0 5px rgba(32,239,178,.08),0 0 15px #20efb2}
+    .x3-identity-card{display:flex;gap:12px;align-items:center;padding:13px;border-radius:18px;background:linear-gradient(145deg,rgba(19,27,49,.92),rgba(8,12,24,.96));border:1px solid rgba(84,205,255,.22);box-shadow:inset 0 1px rgba(255,255,255,.06),0 14px 40px rgba(0,0,0,.28);margin-bottom:12px}
+    .x3-avatar-ring{padding:2px;border-radius:16px;background:linear-gradient(150deg,#22e4ff,#7d4cff)}.x3-avatar{width:54px;height:54px;border-radius:14px;object-fit:cover;display:block}.x3-avatar-fallback{display:grid;place-items:center;background:#10182a;color:#fff;font-weight:900;font-size:22px}.x3-id-main{min-width:0;flex:1}.x3-id-row{display:flex;align-items:center;gap:7px}.x3-id-row b{font-size:13px}.x3-rank{font-size:8px;padding:3px 7px;border-radius:99px;background:rgba(255,199,50,.14);border:1px solid rgba(255,199,50,.35);color:#ffd369;font-weight:900;letter-spacing:.7px}.x3-email{font-size:9px;color:#74829b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:4px 0 8px}.x3-account-line{display:flex;justify-content:space-between;align-items:end}.x3-account-line span{font-size:13px;font-weight:850}.x3-account-line small{font-size:8px;color:#64728b}.x3-progress{height:4px;background:#141b2e;border-radius:99px;margin-top:6px;overflow:hidden}.x3-progress i{display:block;height:100%;background:linear-gradient(90deg,#22e4ff,#7d4cff);box-shadow:0 0 12px #22e4ff}
+    .x3-section-head{display:flex;justify-content:space-between;align-items:center;margin:15px 4px 7px}.x3-section-head span{font-size:9px;letter-spacing:1.5px;color:#5d6b83;font-weight:900}.x3-section-head em{font-style:normal;font-size:8px;color:#2ee6bc;border:1px solid rgba(46,230,188,.25);padding:2px 6px;border-radius:99px}
+    section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"]{gap:7px!important}
+    section[data-testid="stSidebar"] .stButton>button{min-height:43px!important;border-radius:13px!important;background:linear-gradient(145deg,rgba(18,25,44,.78),rgba(9,13,25,.88))!important;border:1px solid rgba(114,142,190,.14)!important;color:#aeb9cc!important;box-shadow:inset 0 1px rgba(255,255,255,.025)!important;transition:all .18s ease!important;justify-content:flex-start!important;padding:0 12px!important;font-size:11px!important}
+    section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] .stButton>button{min-height:68px!important;justify-content:center!important;text-align:center!important;white-space:pre-line!important;padding:8px 5px!important}
+    section[data-testid="stSidebar"] .stButton>button:hover{transform:translateY(-2px)!important;border-color:rgba(45,220,255,.38)!important;color:#fff!important;box-shadow:0 10px 25px rgba(0,0,0,.28),0 0 20px rgba(45,220,255,.08)!important}
+    section[data-testid="stSidebar"] .stButton>button[kind="primary"]{background:linear-gradient(135deg,rgba(31,222,255,.22),rgba(126,70,255,.22))!important;border-color:rgba(61,220,255,.50)!important;color:#fff!important;box-shadow:inset 0 1px rgba(255,255,255,.08),0 0 25px rgba(42,208,255,.12)!important}
+    .x3-status-grid{display:grid;grid-template-columns:1fr;gap:5px;padding:10px;border-radius:15px;background:rgba(8,13,25,.72);border:1px solid rgba(108,132,174,.13);margin-bottom:9px}.x3-status-grid>div{display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:7px;font-size:8px;letter-spacing:.7px;color:#78869d}.x3-status-grid b{font-size:8px;color:#b8c6da}.x3-status-grid i{width:6px;height:6px;border-radius:50%;display:block}.x3-status-grid .ok{background:#21edaf;box-shadow:0 0 8px #21edaf}.x3-status-grid .ai{background:#2bdcff;box-shadow:0 0 8px #2bdcff}.x3-status-grid .risk{background:#a36cff;box-shadow:0 0 8px #a36cff}
+    @media(max-width:900px){section[data-testid="stSidebar"]{min-width:285px!important;max-width:285px!important}}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 def render_metric_card(icono, label, valor, sub=""):
@@ -2674,7 +2695,7 @@ def render_auth():
 # =========================================================
 
 def render_sidebar(estado_sub):
-    """Sidebar premium tipo prop firm: compacto, jerárquico y visual."""
+    """Command Deck X3: navegación visual tipo terminal/prop firm."""
 
     with st.sidebar:
         user = st.session_state.user
@@ -2682,8 +2703,7 @@ def render_sidebar(estado_sub):
 
         if not st.session_state.get("prefs_cargadas"):
             st.session_state.reglas_disciplina = metadata.get(
-                "reglas_disciplina",
-                st.session_state.reglas_disciplina
+                "reglas_disciplina", st.session_state.reglas_disciplina
             )
             try:
                 st.session_state.capital_actual = float(
@@ -2696,115 +2716,140 @@ def render_sidebar(estado_sub):
                 pass
             st.session_state.prefs_cargadas = True
 
-        nombre_actual = metadata.get("username", st.session_state.nombre_trader)
+        nombre = metadata.get("username", st.session_state.nombre_trader)
         foto_b64 = metadata.get("avatar_b64", "")
         email = getattr(user, "email", "") or ""
         es_admin = "Admin" in estado_sub
+        badge = "FOUNDER" if es_admin else ("PRO" if "PRO" in estado_sub else "TRIAL")
 
         st.markdown(
-            f"""
-            <div class="ap-side-brand">
-                <div class="ap-orb">A</div>
-                <div>
-                    <div class="ap-brand-title">AXION PRIME</div>
-                    <div class="ap-brand-sub">PROP INTELLIGENCE OS</div>
-                </div>
+            """
+            <div class="x3-brand-shell">
+              <div class="x3-brand-mark"><span>AX</span></div>
+              <div>
+                <div class="x3-brand-name">AXION PRIME</div>
+                <div class="x3-brand-kicker">PERFORMANCE COMMAND OS · X3</div>
+              </div>
+              <div class="x3-pulse"></div>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
         avatar = convertir_imagen_display(foto_b64)
         avatar_html = (
-            f'<img class="ap-avatar" src="{avatar}">'
+            f'<img class="x3-avatar" src="{avatar}">'
             if avatar
-            else '<div class="ap-avatar ap-avatar-fallback">👤</div>'
+            else '<div class="x3-avatar x3-avatar-fallback">A</div>'
         )
-        badge = "FOUNDER" if es_admin else ("PRO" if "PRO" in estado_sub else "TRIAL")
+
+        progreso = min(
+            1.0,
+            max(0.0, st.session_state.capital_actual / max(st.session_state.capital_meta, 1)),
+        )
 
         st.markdown(
             f"""
-            <div class="ap-profile-card">
-                {avatar_html}
-                <div class="ap-profile-copy">
-                    <div class="ap-profile-name">{nombre_actual}</div>
-                    <div class="ap-profile-mail">{email}</div>
-                    <div class="ap-profile-meta">
-                        <span class="ap-badge">{badge}</span>
-                        <span class="ap-live-dot"></span> ONLINE
-                    </div>
+            <div class="x3-identity-card">
+              <div class="x3-avatar-ring">{avatar_html}</div>
+              <div class="x3-id-main">
+                <div class="x3-id-row"><b>{nombre}</b><span class="x3-rank">{badge}</span></div>
+                <div class="x3-email">{email}</div>
+                <div class="x3-account-line">
+                  <span>${st.session_state.capital_actual:,.0f}</span>
+                  <small>OBJ. ${st.session_state.capital_meta:,.0f}</small>
                 </div>
+                <div class="x3-progress"><i style="width:{progreso*100:.0f}%"></i></div>
+              </div>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
-        progreso = min(1.0, max(0.0, st.session_state.capital_actual / max(st.session_state.capital_meta, 1)))
         st.markdown(
-            f"""
-            <div class="ap-challenge-card">
-                <div class="ap-challenge-top"><span>ACCOUNT TARGET</span><b>{progreso*100:.0f}%</b></div>
-                <div class="ap-challenge-value">${st.session_state.capital_actual:,.0f} <small>/ ${st.session_state.capital_meta:,.0f}</small></div>
-                <div class="ap-progress"><span style="width:{progreso*100:.0f}%"></span></div>
-            </div>
-            """,
-            unsafe_allow_html=True
+            '<div class="x3-section-head"><span>MISSION CONTROL</span><em>LIVE</em></div>',
+            unsafe_allow_html=True,
         )
 
-        st.markdown('<div class="ap-nav-label">COMMAND CENTER</div>', unsafe_allow_html=True)
+        primary_items = [
+            ("◈", "Dashboard", "Pulse"),
+            ("＋", "Registrar Trade", "Execute"),
+            ("▦", "Track Record", "Journal"),
+            ("✦", "Chat IA", "Copilot"),
+        ]
 
-        nav_items = [
-            ("⌂", "Dashboard"),
-            ("＋", "Registrar Trade"),
-            ("◫", "Track Record"),
-            ("✦", "Chat IA"),
+        cols = st.columns(2, gap="small")
+        for idx, (icono, pagina, mini) in enumerate(primary_items):
+            with cols[idx % 2]:
+                activo = st.session_state.pagina_actual == pagina
+                if st.button(
+                    f"{icono} · {pagina}",
+                    key=f"nav_{pagina}",
+                    use_container_width=True,
+                    type="primary" if activo else "secondary",
+                    help=mini,
+                ):
+                    st.session_state.pagina_actual = pagina
+                    st.rerun()
+
+        st.markdown(
+            '<div class="x3-section-head"><span>INTELLIGENCE MODULES</span><em>08</em></div>',
+            unsafe_allow_html=True,
+        )
+
+        modules = [
             ("◉", "Psicotrading"),
             ("◎", "Análisis IA"),
             ("↗", "Proyecciones"),
             ("∑", "Lotaje"),
-            ("◷", "Calendario Económico")
+            ("◷", "Calendario Económico"),
         ]
-
         if es_admin:
-            nav_items.append(("◇", "Panel Admin"))
+            modules.append(("◇", "Panel Admin"))
 
-        for icono, pagina in nav_items:
-            activo = st.session_state.pagina_actual == pagina
-            etiqueta = f"{icono}   {pagina}"
-            if st.button(
-                etiqueta,
-                key=f"nav_{pagina}",
-                use_container_width=True,
-                type="primary" if activo else "secondary"
-            ):
-                st.session_state.pagina_actual = pagina
-                st.rerun()
-
-        st.markdown('<div class="ap-nav-label">ACCOUNT</div>', unsafe_allow_html=True)
-        for icono, pagina in [("⚙", "Perfil y Configuración"), ("◆", "Suscripción")]:
+        for icono, pagina in modules:
             activo = st.session_state.pagina_actual == pagina
             if st.button(
                 f"{icono}   {pagina}",
                 key=f"nav_{pagina}",
                 use_container_width=True,
-                type="primary" if activo else "secondary"
+                type="primary" if activo else "secondary",
             ):
                 st.session_state.pagina_actual = pagina
                 st.rerun()
 
         st.markdown(
-            f"""
-            <div class="ap-system-card">
-                <div><span class="ap-live-dot"></span> SUPABASE</div>
-                <div class="ap-system-value">CONNECTED</div>
-                <div><span class="ap-ai-dot"></span> AI ENGINE</div>
-                <div class="ap-system-value">READY</div>
+            '<div class="x3-section-head"><span>SYSTEM</span><em>SECURE</em></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """
+            <div class="x3-status-grid">
+              <div><i class="ok"></i><span>DATABASE</span><b>SYNCED</b></div>
+              <div><i class="ai"></i><span>VISION AI</span><b>READY</b></div>
+              <div><i class="risk"></i><span>RISK CORE</span><b>ARMED</b></div>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
-        if st.button("⇥   Cerrar sesión", key="logout", use_container_width=True):
+        account_cols = st.columns(2, gap="small")
+        for idx, (icono, pagina) in enumerate([
+            ("⚙", "Perfil y Configuración"),
+            ("◆", "Suscripción"),
+        ]):
+            with account_cols[idx]:
+                activo = st.session_state.pagina_actual == pagina
+                if st.button(
+                    f"{icono} {pagina.split()[0]}",
+                    key=f"nav_{pagina}",
+                    use_container_width=True,
+                    type="primary" if activo else "secondary",
+                ):
+                    st.session_state.pagina_actual = pagina
+                    st.rerun()
+
+        if st.button("⇥  TERMINAR SESIÓN", key="logout", use_container_width=True):
             try:
                 get_supabase_client().auth.sign_out()
             except Exception:
@@ -3090,7 +3135,7 @@ def render_nuevo_trade(
         textwrap.dedent(
             """
             <div class="ai-box">
-            <h4>🧠 AI Vision V9</h4>
+            <h4>🧠 VISION CORE X3</h4>
             Sube una captura de TradingView y la IA intentará
             leer directamente:
             <b>ACTIVO · DIRECCIÓN · ENTRY · SL · TP · TIMEFRAME</b>
