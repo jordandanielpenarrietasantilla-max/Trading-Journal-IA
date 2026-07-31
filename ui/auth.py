@@ -923,3 +923,227 @@ def render_auth() -> None:
             "</div>",
             unsafe_allow_html=True,
         )
+# =========================================================
+# PRESENTACIÓN DEL LOGIN
+# =========================================================
+
+def render_login_presentation() -> None:
+    st.markdown(
+        """
+        <div class="ax-hero" style="
+            min-height:610px;
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            padding:45px;
+        ">
+            <div style="
+                color:#25e5ff;
+                font-size:11px;
+                letter-spacing:2px;
+                font-weight:900;
+            ">
+                AXION PRIME · TRADING INTELLIGENCE
+            </div>
+
+            <div style="
+                font-size:58px;
+                line-height:1.05;
+                font-weight:950;
+                margin-top:25px;
+            ">
+                Opera con más
+                <br>
+                <span style="
+                    background:linear-gradient(
+                        90deg,
+                        #25e5ff,
+                        #768cff,
+                        #a146ff
+                    );
+                    -webkit-background-clip:text;
+                    -webkit-text-fill-color:transparent;
+                ">
+                    claridad.
+                </span>
+            </div>
+
+            <div style="
+                color:#9aa7c8;
+                font-size:16px;
+                line-height:1.7;
+                margin-top:25px;
+            ">
+                Convierte cada operación en inteligencia accionable.
+                Analiza tu disciplina, riesgo, rendimiento y emociones
+                desde un solo centro operativo.
+            </div>
+
+            <div style="
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:12px;
+                margin-top:32px;
+            ">
+                <div class="ax-card">📊 Track Record inteligente</div>
+                <div class="ax-card">🧠 Auditoría visual con IA</div>
+                <div class="ax-card">💭 Psicotrading medible</div>
+                <div class="ax-card">📈 Métricas profesionales</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# =========================================================
+# FORMULARIO DEL LOGIN
+# =========================================================
+
+def render_login_form() -> None:
+    st.markdown(
+        """
+        <div style="
+            font-size:38px;
+            font-weight:950;
+            color:#25e5ff;
+            margin-bottom:8px;
+        ">
+            Bienvenido de vuelta 👋
+        </div>
+
+        <div style="
+            color:#8d99ba;
+            font-size:13px;
+            margin-bottom:22px;
+        ">
+            Accede a tu centro de inteligencia de trading.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    login_tab, register_tab, reset_tab = st.tabs(
+        [
+            "Iniciar sesión",
+            "Crear cuenta",
+            "Recuperar",
+        ]
+    )
+
+    with login_tab:
+        email = st.text_input(
+            "Correo electrónico",
+            placeholder="trader@correo.com",
+            key="login_email",
+        )
+
+        password = st.text_input(
+            "Contraseña",
+            type="password",
+            key="login_password",
+        )
+
+        if st.button(
+            "⚡ Entrar a AXION",
+            use_container_width=True,
+            key="login_button",
+        ):
+            if not email or not password:
+                st.warning(
+                    "Completa el correo y la contraseña."
+                )
+            else:
+                try:
+                    with st.spinner(
+                        "Conectando con AXION..."
+                    ):
+                        payload = sign_in(
+                            email,
+                            password,
+                        )
+
+                    save_session(payload)
+                    st.success(
+                        "Sesión iniciada correctamente."
+                    )
+                    st.rerun()
+
+                except Exception as exc:
+                    st.error(
+                        f"No se pudo iniciar sesión: {exc}"
+                    )
+
+    with register_tab:
+        email = st.text_input(
+            "Correo para crear la cuenta",
+            key="register_email",
+        )
+
+        password = st.text_input(
+            "Nueva contraseña",
+            type="password",
+            key="register_password",
+        )
+
+        if st.button(
+            "Crear cuenta",
+            use_container_width=True,
+            key="register_button",
+        ):
+            if not email or len(password) < 6:
+                st.warning(
+                    "Introduce un correo y una contraseña "
+                    "de al menos 6 caracteres."
+                )
+            else:
+                try:
+                    payload = sign_up(
+                        email,
+                        password,
+                    )
+
+                    if payload.get("access_token"):
+                        save_session(payload)
+                        st.rerun()
+                    else:
+                        st.success(
+                            "Cuenta creada. Revisa tu correo "
+                            "para confirmar el registro."
+                        )
+
+                except Exception as exc:
+                    st.error(
+                        f"No se pudo crear la cuenta: {exc}"
+                    )
+
+    with reset_tab:
+        email = st.text_input(
+            "Correo registrado",
+            key="reset_email",
+        )
+
+        if st.button(
+            "Enviar recuperación",
+            use_container_width=True,
+            key="reset_button",
+        ):
+            if not email:
+                st.warning(
+                    "Introduce tu correo."
+                )
+            else:
+                try:
+                    reset_password(
+                        email,
+                        APP_URL,
+                    )
+
+                    st.success(
+                        "Enlace enviado. Revisa tu correo."
+                    )
+
+                except Exception as exc:
+                    st.error(
+                        f"No se pudo enviar el enlace: {exc}"
+                    )
