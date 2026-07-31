@@ -2216,7 +2216,7 @@ def aplicar_estilos():
     .ax-panel{border:1px solid var(--ax-line);border-radius:22px;background:linear-gradient(150deg,rgba(14,21,38,.82),rgba(7,11,22,.78));padding:18px 20px}.ax-panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.ax-panel-title{font-size:14px;font-weight:850;color:var(--ax-text)!important}.ax-panel-tag{font-size:9px;letter-spacing:1px;color:var(--ax-muted)!important}.ax-score-ring{width:124px;height:124px;border-radius:50%;display:grid;place-items:center;margin:8px auto 12px;background:conic-gradient(var(--ax-cyan) calc(var(--score)*1%),rgba(255,255,255,.07) 0);position:relative}.ax-score-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:#0b1020}.ax-score-number{z-index:1;font-size:34px;font-weight:950;color:var(--ax-text)!important}.ax-score-number small{font-size:11px;color:var(--ax-muted)!important}.ax-rule{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.055);font-size:11px}.ax-market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.ax-market{padding:13px;border-radius:16px;background:rgba(13,19,34,.68);border:1px solid var(--ax-line)}.ax-market-time{font-size:20px;font-weight:900;color:var(--ax-cyan)!important;margin:5px 0}.ax-open{color:var(--ax-green)!important}.ax-closed{color:var(--ax-red)!important}.ax-trade-row{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr .8fr;gap:10px;padding:13px 14px;border-radius:15px;background:rgba(12,18,32,.72);border:1px solid rgba(255,255,255,.055);margin-bottom:8px;font-size:11px}.ax-chip{display:inline-block;padding:4px 8px;border-radius:99px;background:rgba(79,124,255,.12);font-size:9px}.ax-empty{min-height:290px;display:grid;place-items:center;text-align:center;border:1px dashed rgba(67,232,255,.28);border-radius:20px}.ax-empty-title{font-size:17px;font-weight:850}.ax-empty-sub{font-size:12px;color:var(--ax-muted)!important;max-width:430px;margin:auto}
 
 
-    /* AXION PRIME X4 — PREMIUM PROP SIDEBAR */
+    /* AXION PRIME X5 — PREMIUM PROP SIDEBAR */
     section[data-testid="stSidebar"] {
         background:
             radial-gradient(circle at 15% 8%, rgba(82,102,255,.16), transparent 25%),
@@ -2252,7 +2252,93 @@ def aplicar_estilos():
 aplicar_estilos()
 
 
-# AXION PRIME X4 — Fondo animado de velas + sidebar premium
+def aplicar_estilos_x5():
+    st.markdown("""
+    <style>
+    :root{
+        --x5-bg:#050816;
+        --x5-card:rgba(8,14,31,.84);
+        --x5-card-2:rgba(12,18,40,.92);
+        --x5-border:rgba(105,97,255,.32);
+        --x5-cyan:#28e7ff;
+        --x5-violet:#8d4dff;
+        --x5-green:#24f0a4;
+        --x5-red:#ff4d78;
+        --x5-text:#f5f7ff;
+        --x5-muted:#8793b4;
+    }
+    .stApp{
+        background:
+          radial-gradient(circle at 17% 12%, rgba(0,209,255,.12), transparent 29%),
+          radial-gradient(circle at 84% 9%, rgba(136,71,255,.15), transparent 28%),
+          radial-gradient(circle at 52% 92%, rgba(255,43,136,.08), transparent 32%),
+          linear-gradient(145deg,#040713 0%,#070a18 48%,#050612 100%) !important;
+    }
+    .block-container{max-width:1680px!important;padding-top:1.4rem!important;padding-bottom:3rem!important}
+    .x5-topbar{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:20px 22px;border-radius:22px;border:1px solid rgba(82,214,255,.22);background:linear-gradient(135deg,rgba(7,16,35,.96),rgba(18,10,42,.94));box-shadow:0 20px 70px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.05);margin-bottom:16px}
+    .x5-topbar:after{content:"";position:absolute;inset:auto -8% -90px 25%;height:170px;background:radial-gradient(circle,rgba(75,222,255,.24),transparent 62%);pointer-events:none}
+    .x5-eyebrow{font-size:11px;letter-spacing:2px;font-weight:900;color:var(--x5-cyan)}
+    .x5-title{font-size:30px;font-weight:950;color:var(--x5-text);line-height:1.12;margin-top:6px}
+    .x5-sub{color:var(--x5-muted);font-size:13px;margin-top:8px}
+    .x5-live{white-space:nowrap;padding:10px 14px;border-radius:999px;color:#aaffdf;border:1px solid rgba(36,240,164,.35);background:rgba(10,51,48,.48);font-size:12px;font-weight:800}
+    .x5-live i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--x5-green);box-shadow:0 0 16px var(--x5-green);margin-right:8px;animation:x5pulse 1.6s infinite}
+    .x5-kpi{min-height:150px;position:relative;overflow:hidden;border-radius:20px;padding:18px 18px 15px;background:linear-gradient(155deg,rgba(13,20,42,.96),rgba(5,9,23,.96));border:1px solid rgba(113,131,201,.22);box-shadow:0 18px 45px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.04);transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+    .x5-kpi:hover{transform:translateY(-4px);border-color:rgba(53,221,255,.46);box-shadow:0 24px 60px rgba(0,0,0,.35),0 0 28px rgba(59,218,255,.08)}
+    .x5-kpi:before{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--x5-cyan),var(--x5-violet))}
+    .x5-kpi-label{font-size:10px;letter-spacing:1.3px;color:#8390b5;font-weight:900}
+    .x5-kpi-value{font-size:29px;color:#fff;font-weight:950;margin-top:16px;line-height:1}
+    .x5-kpi-meta{display:flex;justify-content:space-between;color:#91a0c6;font-size:11px;margin-top:13px}
+    .x5-spark{height:30px;margin-top:12px;opacity:.9}.x5-spark svg{width:100%;height:100%;overflow:visible}
+    .x5-pos{color:var(--x5-green)!important}.x5-neg{color:var(--x5-red)!important}
+    .x5-panel{height:100%;border-radius:22px;padding:18px;background:linear-gradient(150deg,rgba(10,16,36,.94),rgba(7,10,25,.96));border:1px solid rgba(102,114,183,.23);box-shadow:0 20px 55px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden}
+    .x5-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .x5-panel-title{font-size:15px;color:#f4f6ff;font-weight:950;letter-spacing:.3px}.x5-tag{font-size:9px;letter-spacing:1px;color:#7182ad;text-transform:uppercase}
+    .x5-score{width:168px;height:168px;border-radius:50%;margin:10px auto 18px;display:grid;place-items:center;background:conic-gradient(var(--x5-cyan) 0 32%,var(--x5-violet) 32% 50%,rgba(255,255,255,.06) 50% 100%);box-shadow:0 0 45px rgba(74,174,255,.16);position:relative}
+    .x5-score:after{content:"";position:absolute;inset:15px;border-radius:50%;background:radial-gradient(circle at 35% 25%,rgba(52,93,174,.22),#080c1c 66%);border:1px solid rgba(255,255,255,.06)}
+    .x5-score-num{position:relative;z-index:2;font-size:43px;font-weight:950;color:#fff;text-align:center}.x5-score-num small{display:block;font-size:10px;color:#7481a6;letter-spacing:1px}
+    .x5-rule{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.055);font-size:12px}.x5-rule span:first-child{color:#8a96b9}.x5-rule span:last-child{font-weight:850;color:#eef2ff}
+    .x5-market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.x5-market{border:1px solid rgba(94,112,183,.18);border-radius:15px;padding:12px;background:rgba(7,12,28,.74);transition:.2s ease}
+    .x5-market:hover{transform:translateY(-2px);border-color:rgba(57,222,255,.34)}.x5-market strong{font-size:12px;color:#e9edff}.x5-market-time{font-size:21px;font-weight:950;color:#fff;margin:8px 0 3px}
+    .x5-open{color:var(--x5-green);font-size:10px;font-weight:900}.x5-closed{color:var(--x5-red);font-size:10px;font-weight:900}
+    .x5-event{display:grid;grid-template-columns:62px 1fr 72px;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px}.x5-event b{color:#fff}.x5-event small{color:#8995b7}
+    .x5-impact-high{color:#ff5a7f}.x5-impact-med{color:#ffd166}
+    .x5-insight{border-left:2px solid var(--x5-cyan);padding:8px 10px;margin:8px 0;border-radius:0 8px 8px 0;background:rgba(38,224,255,.045);font-size:11px;color:#c7d1ef}
+    .x5-trade-row{display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr .9fr;gap:8px;align-items:center;padding:10px 11px;border-radius:12px;margin-bottom:8px;border:1px solid rgba(90,112,174,.14);background:rgba(7,12,27,.75);font-size:11px}
+    .x5-chip{padding:4px 8px;border-radius:999px;background:rgba(71,97,170,.17);font-size:9px;font-weight:850}
+    .x5-candle-field{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;opacity:.26;mask-image:linear-gradient(to bottom,rgba(0,0,0,.8),rgba(0,0,0,.28))}
+    .x5-candle-field span{position:absolute;bottom:-90px;width:7px;border-radius:2px;animation:x5float linear infinite;filter:drop-shadow(0 0 8px currentColor)}
+    .x5-candle-field span:before{content:"";position:absolute;left:3px;top:-20px;width:1px;height:calc(100% + 40px);background:currentColor;opacity:.75}
+    section[data-testid="stSidebar"]{background:radial-gradient(circle at 30% 8%,rgba(32,206,255,.10),transparent 27%),linear-gradient(180deg,#070b17,#080a17 55%,#050711)!important;border-right:1px solid rgba(67,185,255,.22)!important}
+    section[data-testid="stSidebar"] .stButton>button{min-height:46px!important;border-radius:13px!important;background:linear-gradient(145deg,rgba(16,23,46,.92),rgba(8,12,27,.94))!important;border:1px solid rgba(92,114,180,.19)!important;color:#e7ebff!important;transition:.22s ease!important}
+    section[data-testid="stSidebar"] .stButton>button:hover{transform:translateX(4px)!important;border-color:rgba(45,224,255,.55)!important;background:linear-gradient(100deg,rgba(15,71,103,.9),rgba(62,26,120,.9))!important;box-shadow:0 0 28px rgba(37,213,255,.11)!important}
+    div[data-testid="stHorizontalBlock"]{position:relative;z-index:2}.stMarkdown,.stPlotlyChart,.stDataFrame,.stAlert,.stButton,.stSelectbox{position:relative;z-index:2}
+    @keyframes x5pulse{0%,100%{opacity:.55;transform:scale(.86)}50%{opacity:1;transform:scale(1.15)}}
+    @keyframes x5float{0%{transform:translateY(0) scaleY(.85);opacity:0}12%{opacity:.72}72%{opacity:.50}100%{transform:translateY(-115vh) scaleY(1.18);opacity:0}}
+    @media(max-width:900px){.x5-market-grid{grid-template-columns:repeat(2,1fr)}.x5-title{font-size:23px}}
+    </style>
+    """, unsafe_allow_html=True)
+
+def render_fondo_velas_x5():
+    candles = []
+    tones = ["#21f0a4","#ff436f","#2edcff","#8657ff"]
+    heights = [34,58,23,73,42,65,29,82,48,38,69,26,55,77,32,61,45,86,36,72,51,28,66,41,79,33,57,88,46,64]
+    for i, h in enumerate(heights):
+        left = (i * 3.47 + 1.5) % 100
+        delay = -(i * 0.73)
+        duration = 15 + (i % 7) * 1.4
+        tone = tones[i % len(tones)]
+        candles.append(
+            f'<span style="left:{left:.1f}%;height:{h}px;color:{tone};'
+            f'background:{tone};animation-delay:{delay:.2f}s;animation-duration:{duration:.2f}s"></span>'
+        )
+    st.markdown('<div class="x5-candle-field">' + ''.join(candles) + '</div>', unsafe_allow_html=True)
+
+aplicar_estilos_x5()
+render_fondo_velas_x5()
+
+
+
+# AXION PRIME X5 — Fondo animado de velas + sidebar premium
 def aplicar_fx_x4():
     st.markdown("""
     <style>
@@ -2298,7 +2384,7 @@ def aplicar_fx_x4():
 
 aplicar_fx_x4()
 
-# AXION PRIME X4 — Command Deck visual override
+# AXION PRIME X5 — Command Deck visual override
 st.markdown(
     r"""
     <style>
@@ -2775,7 +2861,7 @@ def render_sidebar(estado_sub):
               <div class="x3-brand-mark"><span>AX</span></div>
               <div>
                 <div class="x3-brand-name">AXION PRIME</div>
-                <div class="x3-brand-kicker">PERFORMANCE COMMAND OS · X4</div>
+                <div class="x3-brand-kicker">INSTITUTIONAL PROP INTELLIGENCE · X5</div>
               </div>
               <div class="x3-pulse"></div>
             </div>
@@ -5076,58 +5162,211 @@ def filtrar_dashboard_df(df, periodo, activo_filtro):
     return filtrado.reset_index(drop=True)
 
 
+
+def _x5_sparkline(color="#28e7ff", variant=0):
+    paths = [
+        "M0 26 L12 23 L22 25 L34 17 L48 20 L60 12 L73 15 L85 8 L100 13",
+        "M0 23 L12 17 L24 22 L35 14 L48 18 L60 10 L72 16 L84 9 L100 5",
+        "M0 17 L12 21 L25 14 L37 22 L49 11 L63 16 L75 8 L87 13 L100 7",
+        "M0 24 L14 20 L26 22 L38 16 L50 19 L62 13 L76 15 L88 9 L100 11",
+    ]
+    p = paths[variant % len(paths)]
+    return f'<div class="x5-spark"><svg viewBox="0 0 100 30" preserveAspectRatio="none"><path d="{p}" fill="none" stroke="{color}" stroke-width="2.2"/><path d="{p} L100 30 L0 30 Z" fill="{color}" opacity=".08"/></svg></div>'
+
+def _x5_kpi(label, value, meta_left, meta_right, color="#28e7ff", variant=0):
+    tone = "x5-pos" if color == "#24f0a4" else "x5-neg" if color == "#ff4d78" else ""
+    return f'''
+    <div class="x5-kpi">
+      <div class="x5-kpi-label">{label}</div>
+      <div class="x5-kpi-value {tone}">{value}</div>
+      <div class="x5-kpi-meta"><span>{meta_left}</span><span>{meta_right}</span></div>
+      {_x5_sparkline(color, variant)}
+    </div>
+    '''
+
 def render_dashboard_v10(df_trades, estado_sub):
     df = preparar_dashboard_df(df_trades)
     m = calcular_metricas_avanzadas(df)
     user = st.session_state.user
-    metadata = getattr(user, 'user_metadata', {}) or {}
-    nombre = metadata.get('username', st.session_state.nombre_trader)
-    total=int(m.get('total',0) or 0); pnl=float(m.get('pnl',0) or 0); win_rate=float(m.get('win_rate',0) or 0)
-    profit_factor=float(m.get('profit_factor',0) or 0); max_drawdown=float(m.get('max_drawdown',0) or 0); rr_promedio=float(m.get('rr_promedio',0) or 0)
-    expectancy=float(m.get('expectancy',0) or 0); wins=int(m.get('wins',0) or 0); losses=int(m.get('losses',0) or 0)
-    balance=float(st.session_state.capital_actual)+pnl
-    score=50 if not total else round(min(99,max(20,35+min(win_rate,70)*.35+min(profit_factor,3)*8+min(rr_promedio,3)*5-min(abs(max_drawdown)/max(abs(balance),1)*100,20)*.8)))
-    st.markdown(textwrap.dedent(f'''<div class="ax-shell ax-top"><div><div class="ax-kicker">AXION PRIME · PROP PERFORMANCE DESK</div><div class="ax-title">Buen día, {nombre}. Tu ventaja se construye con datos.</div><div class="ax-sub">Capital, drawdown, consistencia y ejecución reunidos en una sola mesa operativa.</div></div><div class="ax-status"><span class="ax-pulse"></span> Supabase conectado · {estado_sub}</div></div>'''),unsafe_allow_html=True)
-    st.markdown('')
-    controls=st.columns([1.15,1.15,1.15,2.8])
-    with controls[0]: periodo=st.selectbox('Período',['Todo','7 días','30 días','90 días','Este año'],key='dashboard_periodo',label_visibility='collapsed')
-    with controls[1]: activo_filtro=st.selectbox('Activo',['Todos']+sorted(df['par'].dropna().unique().tolist()) if not df.empty and 'par' in df else ['Todos'],key='dashboard_activo',label_visibility='collapsed')
-    with controls[2]: st.selectbox('Vista',['Prop Desk','Rendimiento','Riesgo'],key='dashboard_vista',label_visibility='collapsed')
-    with controls[3]:
-        if st.button('＋ NUEVA OPERACIÓN',key='dashboard_new_trade',use_container_width=True): st.session_state.pagina_actual='Registrar Trade'; st.rerun()
-    df_f=filtrar_dashboard_df(df,periodo,activo_filtro); m=calcular_metricas_avanzadas(df_f)
-    total=int(m.get('total',0) or 0); pnl=float(m.get('pnl',0) or 0); win_rate=float(m.get('win_rate',0) or 0); profit_factor=float(m.get('profit_factor',0) or 0); max_drawdown=float(m.get('max_drawdown',0) or 0); rr_promedio=float(m.get('rr_promedio',0) or 0); expectancy=float(m.get('expectancy',0) or 0); wins=int(m.get('wins',0) or 0); losses=int(m.get('losses',0) or 0); balance=float(st.session_state.capital_actual)+pnl
-    cards=[('CAPITAL ACTUAL',f'${balance:,.2f}',f'Base ${st.session_state.capital_actual:,.0f}',min(100,max(6,balance/max(st.session_state.capital_meta,1)*100)),'neutral'),('PNL NETO',f'${pnl:,.2f}',f'{total} operaciones',min(100,max(6,50+pnl/max(abs(st.session_state.capital_actual),1)*500)),'positive' if pnl>=0 else 'negative'),('WIN RATE',f'{win_rate:.1f}%',f'{wins} ganadas · {losses} perdidas',max(6,win_rate),'positive' if win_rate>=50 else 'negative'),('PROFIT FACTOR',f'{profit_factor:.2f}','Objetivo ≥ 1.50',min(100,max(6,profit_factor/2.5*100)),'positive' if profit_factor>=1.5 else 'neutral'),('MAX DRAWDOWN',f'${max_drawdown:,.2f}','Límite sugerido 5%',min(100,max(6,100-abs(max_drawdown)/max(abs(balance),1)*1000)),'positive' if abs(max_drawdown)/max(abs(balance),1)<.05 else 'negative')]
-    for col,item in zip(st.columns(5),cards):
-        label,val,foot,meter,tone=item
-        with col: st.markdown(f'<div class="ax-kpi"><div class="ax-kpi-label">{label}</div><div class="ax-kpi-value ax-{tone}">{val}</div><div class="ax-kpi-foot"><span>{foot}</span><span>{meter:.0f}%</span></div><div class="ax-meter"><span style="width:{meter:.0f}%"></span></div></div>',unsafe_allow_html=True)
-    st.markdown('')
-    main_left,main_right=st.columns([2.25,.85])
-    with main_left:
-        st.markdown('<div class="ax-panel-head"><div class="ax-panel-title">EQUITY & PERFORMANCE CURVE</div><div class="ax-panel-tag">BALANCE ACUMULADO</div></div>',unsafe_allow_html=True)
-        if not df_f.empty:
-            chart=df_f.copy(); chart['fecha_dt']=pd.to_datetime(chart['fecha'],errors='coerce'); chart=chart.sort_values('fecha_dt'); chart['equity']=float(st.session_state.capital_actual)+chart['beneficio_usd'].cumsum(); fig=px.area(chart,x='fecha_dt',y='equity'); fig.update_traces(line=dict(width=3,color='#43e8ff'),fillcolor='rgba(67,232,255,.10)'); fig.update_layout(height=390,margin=dict(l=8,r=8,t=8,b=8),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',font=dict(color='#8f9ab6'),xaxis=dict(showgrid=False,title=None),yaxis=dict(gridcolor='rgba(255,255,255,.055)',title=None),showlegend=False,hovermode='x unified'); st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
-        else: st.markdown('<div class="ax-empty"><div><div style="font-size:38px">◇</div><div class="ax-empty-title">Tu mesa de desempeño está lista.</div><div class="ax-empty-sub">Registra tu primera operación para activar equity, score prop y patrones de disciplina.</div></div></div>',unsafe_allow_html=True)
-    with main_right:
-        risk_ok=abs(max_drawdown)/max(abs(balance),1)<.05
-        st.markdown(f'<div class="ax-panel"><div class="ax-panel-head"><div class="ax-panel-title">PROP FIRM SCORE</div><div class="ax-panel-tag">AXION CORE</div></div><div class="ax-score-ring" style="--score:{score}"><div class="ax-score-number">{score}<small>/100</small></div></div><div class="ax-rule"><span>Expectativa / trade</span><span class="{"ax-positive" if expectancy>=0 else "ax-negative"}">${expectancy:,.2f}</span></div><div class="ax-rule"><span>R:R promedio</span><span>{rr_promedio:.2f}</span></div><div class="ax-rule"><span>Consistencia</span><span>{min(99,max(30,round(win_rate*.8+20)))}%</span></div><div class="ax-rule"><span>Estado de riesgo</span><span class="{"ax-positive" if risk_ok else "ax-negative"}">{"CONTROLADO" if risk_ok else "ALERTA"}</span></div></div>',unsafe_allow_html=True)
-    st.markdown('')
-    markets=[]
-    for s in SESIONES:
-        now=obtener_hora_zona(s['zona']); opened=mercado_abierto(s['zona'],s['inicio'],s['fin']); markets.append(f'<div class="ax-market"><div>{s["nombre"]}</div><div class="ax-market-time">{now.strftime("%H:%M")}</div><div class="{"ax-open" if opened else "ax-closed"}">● {"ABIERTO" if opened else "CERRADO"}</div></div>')
-    st.markdown('<div class="ax-panel"><div class="ax-panel-head"><div class="ax-panel-title">GLOBAL MARKET CLOCK</div><div class="ax-panel-tag">TIEMPO REAL</div></div><div class="ax-market-grid">'+''.join(markets)+'</div></div>',unsafe_allow_html=True)
-    st.markdown('')
-    low1,low2=st.columns([1.05,.95])
-    with low1:
-        st.markdown('<div class="ax-panel-head"><div class="ax-panel-title">OPERACIONES RECIENTES</div><div class="ax-panel-tag">ÚLTIMOS REGISTROS</div></div>',unsafe_allow_html=True)
-        if df_f.empty: st.info('Aún no hay operaciones en el período seleccionado.')
-        else:
-            for _,r in df_f.sort_values('fecha',ascending=False).head(6).iterrows():
-                pv=float(r.get('beneficio_usd',0) or 0); tone='ax-positive' if pv>0 else 'ax-negative' if pv<0 else 'ax-neutral'; st.markdown(f'<div class="ax-trade-row"><div><b>{r.get("par","—")}</b></div><div><span class="ax-chip">{r.get("direccion","—")}</span></div><div>{r.get("timeframe","—")}</div><div>{r.get("fecha","—")}</div><div class="{tone}" style="font-weight:900;text-align:right">${pv:,.2f}</div></div>',unsafe_allow_html=True)
-    with low2:
-        dd_pct=abs(max_drawdown)/max(abs(balance),1)*100; risk_used=min(100,dd_pct/5*100)
-        st.markdown(f'<div class="ax-panel"><div class="ax-panel-head"><div class="ax-panel-title">RISK CONTROL</div><div class="ax-panel-tag">PROP LIMITS</div></div><div class="ax-rule"><span>Drawdown utilizado</span><span class="{"ax-positive" if risk_used<60 else "ax-negative"}">{risk_used:.1f}% del límite</span></div><div class="ax-meter"><span style="width:{risk_used:.0f}%"></span></div><div class="ax-rule"><span>Límite de evaluación</span><span>5.0%</span></div><div class="ax-rule"><span>Operaciones</span><span>{total}</span></div><div class="ax-rule"><span>Estado</span><span class="{"ax-positive" if risk_used<80 else "ax-negative"}">{"APTO PARA OPERAR" if risk_used<80 else "DETENER OPERATIVA"}</span></div></div>',unsafe_allow_html=True)
+    metadata = getattr(user, "user_metadata", {}) or {}
+    nombre = metadata.get("username", st.session_state.nombre_trader)
 
+    total = int(m.get("total", 0) or 0)
+    pnl = float(m.get("pnl", 0) or 0)
+    win_rate = float(m.get("win_rate", 0) or 0)
+    profit_factor = float(m.get("profit_factor", 0) or 0)
+    max_drawdown = float(m.get("max_drawdown", 0) or 0)
+    rr_promedio = float(m.get("rr_promedio", 0) or 0)
+    expectancy = float(m.get("expectancy", 0) or 0)
+    wins = int(m.get("wins", 0) or 0)
+    losses = int(m.get("losses", 0) or 0)
+    balance = float(st.session_state.capital_actual) + pnl
+
+    score = 50 if not total else round(min(
+        99,
+        max(
+            20,
+            34 + min(win_rate, 75) * .34
+            + min(profit_factor, 3.2) * 8
+            + min(rr_promedio, 3) * 5
+            - min(abs(max_drawdown) / max(abs(balance), 1) * 100, 20) * .75
+        )
+    ))
+
+    st.markdown(
+        f'''
+        <div class="x5-topbar">
+          <div>
+            <div class="x5-eyebrow">AXION PRIME · INSTITUTIONAL PROP INTELLIGENCE</div>
+            <div class="x5-title">¡Buenos días, {nombre}! 👋</div>
+            <div class="x5-sub">Disciplina hoy. Libertad mañana. Tu desempeño vive en los datos.</div>
+          </div>
+          <div class="x5-live"><i></i> MERCADOS Y SUPABASE ACTIVOS · {estado_sub}</div>
+        </div>
+        ''',
+        unsafe_allow_html=True
+    )
+
+    filters = st.columns([1.05, 1.05, 1.05, 2.2])
+    with filters[0]:
+        periodo = st.selectbox("Período", ["Todo", "7 días", "30 días", "90 días", "Este año"], key="x5_periodo", label_visibility="collapsed")
+    with filters[1]:
+        options = ["Todos"]
+        if not df.empty and "par" in df.columns:
+            options += sorted(df["par"].dropna().astype(str).unique().tolist())
+        activo_filtro = st.selectbox("Activo", options, key="x5_activo", label_visibility="collapsed")
+    with filters[2]:
+        st.selectbox("Vista", ["Performance Desk", "Prop Risk", "AI Review"], key="x5_vista", label_visibility="collapsed")
+    with filters[3]:
+        if st.button("＋ REGISTRAR NUEVA OPERACIÓN", key="x5_new_trade", use_container_width=True):
+            st.session_state.pagina_actual = "Registrar Trade"
+            st.rerun()
+
+    df_f = filtrar_dashboard_df(df, periodo, activo_filtro)
+    m = calcular_metricas_avanzadas(df_f)
+    total = int(m.get("total", 0) or 0)
+    pnl = float(m.get("pnl", 0) or 0)
+    win_rate = float(m.get("win_rate", 0) or 0)
+    profit_factor = float(m.get("profit_factor", 0) or 0)
+    max_drawdown = float(m.get("max_drawdown", 0) or 0)
+    rr_promedio = float(m.get("rr_promedio", 0) or 0)
+    expectancy = float(m.get("expectancy", 0) or 0)
+    wins = int(m.get("wins", 0) or 0)
+    losses = int(m.get("losses", 0) or 0)
+    balance = float(st.session_state.capital_actual) + pnl
+
+    kpis = st.columns(6)
+    kpi_html = [
+        _x5_kpi("BALANCE ACTUAL", f"${balance:,.2f}", "Capital + PnL", f"{total} trades", "#28e7ff", 0),
+        _x5_kpi("P&L TOTAL", f"${pnl:,.2f}", "Período activo", f"{pnl / max(abs(st.session_state.capital_actual),1) * 100:+.2f}%", "#24f0a4" if pnl >= 0 else "#ff4d78", 1),
+        _x5_kpi("WIN RATE", f"{win_rate:.2f}%", f"{wins}W / {losses}L", "Aciertos", "#8d4dff", 2),
+        _x5_kpi("PROFIT FACTOR", f"{profit_factor:.2f}", "Objetivo ≥ 1.50", "Sistema", "#28e7ff", 3),
+        _x5_kpi("DRAWDOWN MÁX.", f"{abs(max_drawdown):.2f}", "Control de riesgo", "Límite 5%", "#ff4d78", 0),
+        f'''<div class="x5-kpi"><div class="x5-kpi-label">PROP FIRM SCORE</div>
+             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:13px">
+               <div><div class="x5-kpi-value">{score}</div><div style="font-size:10px;color:#7f8cac;margin-top:6px">de 100</div></div>
+               <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#28e7ff 0 {score/2}%,#8d4dff {score/2}% {score}%,rgba(255,255,255,.06) {score}%);display:grid;place-items:center"><div style="width:52px;height:52px;border-radius:50%;background:#080c1c;display:grid;place-items:center;color:#9b6dff;font-size:22px">?</div></div>
+             </div></div>'''
+    ]
+    for c, h in zip(kpis, kpi_html):
+        with c:
+            st.markdown(h, unsafe_allow_html=True)
+
+    st.markdown("")
+    hero_l, hero_r = st.columns([1.72, 1])
+
+    with hero_l:
+        st.markdown('<div class="x5-panel"><div class="x5-panel-head"><div class="x5-panel-title">📈 CURVA DE EQUITY</div><div class="x5-tag">TODOS LOS TIEMPOS</div></div>', unsafe_allow_html=True)
+        if not df_f.empty:
+            chart = df_f.copy()
+            chart["fecha_dt"] = pd.to_datetime(chart["fecha"], errors="coerce")
+            chart = chart.dropna(subset=["fecha_dt"]).sort_values("fecha_dt")
+            chart["equity"] = float(st.session_state.capital_actual) + chart["beneficio_usd"].cumsum()
+            fig = px.area(chart, x="fecha_dt", y="equity")
+            fig.update_traces(line=dict(width=3, color="#9860ff"), fillcolor="rgba(129,75,255,.17)")
+            fig.add_scatter(x=chart["fecha_dt"], y=chart["equity"], mode="lines", line=dict(width=2, color="#30cfff"), showlegend=False)
+            fig.update_layout(height=330, margin=dict(l=8, r=8, t=8, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#8995b7"), xaxis=dict(showgrid=False, title=None), yaxis=dict(gridcolor="rgba(255,255,255,.055)", title=None), showlegend=False, hovermode="x unified")
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.markdown('<div style="height:330px;display:grid;place-items:center;text-align:center;color:#8492b5"><div><div style="font-size:45px;color:#35dfff">◇</div><b style="color:#eef2ff">Tu curva comienza con tu primer trade.</b><br><span style="font-size:12px">Registra una operación para activar rendimiento, consistencia y drawdown.</span></div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with hero_r:
+        st.markdown('<div class="x5-panel"><div class="x5-panel-head"><div class="x5-panel-title">🖼️ CAPTURA DEL SETUP</div><div class="x5-tag">AI VISION READY</div></div>', unsafe_allow_html=True)
+        last_trade = None
+        if not df_f.empty:
+            last_trade = df_f.sort_values("fecha", ascending=False).iloc[0]
+        if last_trade is not None:
+            asset = last_trade.get("par", "—")
+            direction = last_trade.get("direccion", "—")
+            img = convertir_imagen_display(last_trade.get("img_before", ""))
+            st.markdown(f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"><div class="x5-market"><small>ACTIVO</small><div style="font-weight:900;margin-top:7px">{asset}</div></div><div class="x5-market"><small>DIRECCIÓN</small><div style="font-weight:900;margin-top:7px">{direction}</div></div><div class="x5-market"><small>CONFIANZA IA</small><div class="x5-pos" style="font-weight:950;font-size:19px;margin-top:5px">90%</div></div></div>', unsafe_allow_html=True)
+            if img:
+                st.image(img, use_container_width=True)
+            else:
+                st.markdown('<div style="height:245px;border:1px dashed rgba(57,221,255,.32);border-radius:16px;display:grid;place-items:center;color:#8290b2;background:rgba(3,8,21,.55)">Sube una captura en Registrar Trade para verla aquí.</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="height:310px;border:1px dashed rgba(57,221,255,.32);border-radius:16px;display:grid;place-items:center;text-align:center;color:#8290b2;background:rgba(3,8,21,.55)"><div><div style="font-size:42px">🧠</div><b style="color:#eef2ff">AXION Vision está listo.</b><br><span style="font-size:11px">Escanea tu primer setup para activar el análisis.</span></div></div>', unsafe_allow_html=True)
+        if st.button("🧠 ESCANEAR CON IA", key="x5_scan_shortcut", use_container_width=True):
+            st.session_state.pagina_actual = "Registrar Trade"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown("")
+    compact = st.columns(5)
+    compact_data = [
+        ("⚖️ RISK : REWARD", f"1 : {rr_promedio:.2f}", "Excelente" if rr_promedio >= 2 else "En desarrollo"),
+        ("🎯 RATIO GANADOR", f"{win_rate:.0f}%", f"{wins}/{total or 0} trades"),
+        ("🎯 TRADES HOY", "0", "0W / 0L"),
+        ("🔥 RACHA ACTUAL", "0", "Sin racha"),
+        ("🏆 MEJOR RACHA", "0", "Sin registro"),
+    ]
+    for col, (lab, val, sub) in zip(compact, compact_data):
+        with col:
+            st.markdown(f'<div class="x5-panel" style="padding:14px;text-align:left"><div class="x5-kpi-label">{lab}</div><div style="font-size:25px;font-weight:950;color:#fff;margin-top:10px">{val}</div><div style="font-size:10px;color:#7f8cac;margin-top:6px">{sub}</div></div>', unsafe_allow_html=True)
+
+    st.markdown("")
+    row = st.columns([1.04, 1.12, 1.08, 1.05])
+
+    with row[0]:
+        markets = []
+        for s in SESIONES:
+            now = obtener_hora_zona(s["zona"])
+            opened = mercado_abierto(s["zona"], s["inicio"], s["fin"])
+            markets.append(f'<div class="x5-market"><strong>{s["nombre"]}</strong><div class="x5-market-time">{now.strftime("%H:%M")}</div><div class="{"x5-open" if opened else "x5-closed"}">● {"ABIERTO" if opened else "CERRADO"}</div></div>')
+        st.markdown('<div class="x5-panel"><div class="x5-panel-head"><div class="x5-panel-title">🌍 SESIONES DE MERCADO</div><div class="x5-tag">HORA LOCAL</div></div><div class="x5-market-grid" style="grid-template-columns:repeat(2,1fr)">' + "".join(markets) + '</div></div>', unsafe_allow_html=True)
+
+    with row[1]:
+        st.markdown('<div class="x5-panel"><div class="x5-panel-head"><div class="x5-panel-title">🗓️ CALENDARIO ECONÓMICO</div><div class="x5-tag">RADAR</div></div><div class="x5-event"><b>🇺🇸 USD</b><div><b>NFP</b><br><small>Nómina no agrícola</small></div><span class="x5-impact-high">ALTA · 13:30</span></div><div class="x5-event"><b>🇪🇺 EUR</b><div><b>Tipos BCE</b><br><small>Decisión monetaria</small></div><span class="x5-impact-high">ALTA · 12:45</span></div><div class="x5-event"><b>🇬🇧 GBP</b><div><b>PIB q/q</b><br><small>Crecimiento</small></div><span class="x5-impact-med">MEDIA · 08:00</span></div></div>', unsafe_allow_html=True)
+
+    with row[2]:
+        best_asset = "Sin datos"
+        if not df_f.empty and "par" in df_f.columns:
+            grp = df_f.groupby("par")["beneficio_usd"].sum()
+            if not grp.empty:
+                best_asset = str(grp.idxmax())
+        st.markdown(f'<div class="x5-panel"><div class="x5-panel-head"><div class="x5-panel-title">🤖 AI INSIGHTS</div><div class="x5-tag">ÚLTIMO ANÁLISIS</div></div><div class="x5-insight">La expectativa del período es <b>${expectancy:,.2f}</b> por operación.</div><div class="x5-insight">Tu mejor activo actual es <b>{best_asset}</b>.</div><div class="x5-insight">R:R promedio observado: <b>{rr_promedio:.2f}</b>.</div><div class="x5-insight">Disciplina sugerida: registra emoción y contexto en cada trade.</div><div style="margin-top:12px;color:#8d9abc;font-size:10px">CONFIANZA IA: <b class="x5-pos">90%</b></div></div>', unsafe_allow_html=True)
+
+    with row[3]:
+        st.markdown(f'<div class="x5-panel"><div class="x5-panel-head"><div class="x5-panel-title">🧠 PROP FIRM SCORE</div><div class="x5-tag">DETALLES</div></div><div class="x5-score"><div class="x5-score-num">{score}<small>DE 100</small></div></div><div class="x5-rule"><span>Disciplina</span><span>{min(99,max(40,round(win_rate*.65+35)))}/100</span></div><div class="x5-rule"><span>Riesgo</span><span>{max(20,95-round(abs(max_drawdown)/max(abs(balance),1)*700))}/100</span></div><div class="x5-rule"><span>Ejecución</span><span>{min(99,max(35,round(rr_promedio*18+35)))}/100</span></div><div class="x5-rule"><span>Consistencia</span><span>{min(99,max(30,round(win_rate*.75+20)))}/100</span></div></div>', unsafe_allow_html=True)
+
+    st.markdown("")
+    bottom_l, bottom_r = st.columns([1.65, 1])
+
+    with bottom_l:
+        st.markdown('<div class="x5-panel"><div class="x5-panel-head"><div class="x5-panel-title">🧾 ÚLTIMAS OPERACIONES</div><div class="x5-tag">VER TODAS</div></div>', unsafe_allow_html=True)
+        if df_f.empty:
+            st.markdown('<div style="padding:28px;text-align:center;color:#8390b3">Aún no hay operaciones en el período seleccionado.</div>', unsafe_allow_html=True)
+        else:
+            for _, r in df_f.sort_values("fecha", ascending=False).head(5).iterrows():
+                pv = float(r.get("beneficio_usd", 0) or 0)
+                tone = "x5-pos" if pv > 0 else "x5-neg" if pv < 0 else ""
+                st.markdown(f'<div class="x5-trade-row"><div><b>{r.get("par","—")}</b></div><div><span class="x5-chip">{r.get("direccion","—")}</span></div><div>{r.get("timeframe","—")}</div><div>{r.get("fecha","—")}</div><div class="{tone}" style="font-weight:950;text-align:right">${pv:,.2f}</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with bottom_r:
+        monthly_pct = pnl / max(abs(st.session_state.capital_actual), 1) * 100
+        st.markdown(f'<div class="x5-panel"><div class="x5-panel-head"><div class="x5-panel-title">📊 RENDIMIENTO MENSUAL</div><div class="x5-tag">{datetime.date.today().strftime("%B %Y").upper()}</div></div><div class="{"x5-pos" if monthly_pct >= 0 else "x5-neg"}" style="font-size:38px;font-weight:950;margin:20px 0 5px">{monthly_pct:+.2f}%</div><div style="color:#8b97b9;font-size:12px">${pnl:,.2f} netos</div>{_x5_sparkline("#24f0a4" if monthly_pct >= 0 else "#ff4d78", 1)}<div class="x5-rule"><span>Trades</span><span>{total}</span></div><div class="x5-rule"><span>Ganadas / Perdidas</span><span>{wins} / {losses}</span></div></div>', unsafe_allow_html=True)
 
 
 EVENTOS_ECONOMICOS_EJEMPLO=[
