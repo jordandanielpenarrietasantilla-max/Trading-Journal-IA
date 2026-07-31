@@ -7,11 +7,16 @@ import streamlit as st
 from core.api import list_trades
 from core.config import validate_config
 from core.metrics import prepare_df
+from core.profile import (
+    get_profile_capital,
+    get_profile_name,
+)
 from core.state import init_state
 from core.styles import apply_styles
 
 from ui.auth import render_auth
 from ui.dashboard import render_dashboard
+from ui.profile import render_profile
 from ui.sidebar import render_sidebar
 from ui.track_record import render_track_record
 from ui.trades import render_register_trade
@@ -45,8 +50,8 @@ st.set_page_config(
 
 def initialize_application() -> None:
     """
-    Valida la configuración, crea el estado inicial
-    y aplica los estilos globales.
+    Valida la configuración, prepara el estado de Streamlit
+    y aplica los estilos visuales de AXION PRIME.
     """
 
     validate_config()
@@ -55,107 +60,129 @@ def initialize_application() -> None:
 
 
 # =========================================================
-# UTILIDADES DEL USUARIO
+# AUTENTICACIÓN
 # =========================================================
 
 
-def _user_value(
-    user: Any,
-    key: str,
-    default: Any = None,
-) -> Any:
+def user_is_authenticated() -> bool:
     """
-    Lee un valor del usuario tanto si viene como diccionario
-    como si viene como objeto.
+    Comprueba si existe una sesión autenticada.
     """
 
-    if user is None:
-        return default
-
-    if isinstance(user, dict):
-        return user.get(
-            key,
-            default,
+    return bool(
+        st.session_state.get(
+            "authenticated",
+            False,
         )
-
-    return getattr(
-        user,
-        key,
-        default,
     )
 
 
-def _user_metadata() -> dict[str, Any]:
+def render_login_if_required() -> None:
     """
-    Obtiene los metadatos del usuario autenticado.
+    Muestra el login cuando no existe una sesión activa.
     """
+
+    if user_is_authenticated():
+        return
+
+    render_auth()
+    st.stop()
+
+
+# =========================================================
+# DATOS DEL USUARIO
+# =========================================================
+
+
+def get_trader_name() -> str:
+    """
+    Obtiene el nombre del perfil.
+
+    Usa core.profile para mantener compatibilidad
+    con el editor de perfil.
+    """
+
+    try:
+        trader_name = str(
+            get_profile_name()
+            or ""
+        ).strip()
+
+        if trader_name:
+            return trader_name
+
+    except Exception:
+        pass
+
+    session_name = str(
+        st.session_state.get(
+            "nombre_trader",
+            "",
+        )
+        or ""
+    ).strip()
+
+    if session_name:
+        return session_name
 
     user = st.session_state.get(
         "user",
         {},
     )
 
-    metadata = _user_value(
-        user,
-        "user_metadata",
-        {},
-    )
+    if isinstance(user, dict):
+        metadata = user.get(
+            "user_metadata",
+            {},
+        )
 
-    if isinstance(metadata, dict):
-        return metadata
+        if isinstance(metadata, dict):
+            possible_names = [
+                metadata.get("username"),
+                metadata.get("full_name"),
+                metadata.get("display_name"),
+                metadata.get("name"),
+                metadata.get("nombre"),
+                metadata.get("nombre_trader"),
+            ]
 
-    return {}
+            for value in possible_names:
+                clean_value = str(
+                    value or ""
+                ).strip()
 
-
-def get_trader_name() -> str:
-    """
-    Busca el nombre del trader en distintas claves
-    compatibles con versiones anteriores.
-    """
-
-    metadata = _user_metadata()
-
-    possible_names = [
-        metadata.get("username"),
-        metadata.get("full_name"),
-        metadata.get("display_name"),
-        metadata.get("name"),
-        metadata.get("nombre"),
-        metadata.get("nombre_trader"),
-        st.session_state.get("nombre_trader"),
-    ]
-
-    for value in possible_names:
-        clean_value = str(
-            value or ""
-        ).strip()
-
-        if clean_value:
-            return clean_value
+                if clean_value:
+                    return clean_value
 
     return "Trader Pro"
 
 
 def get_initial_capital() -> float:
     """
-    Devuelve el capital inicial de forma segura.
+    Obtiene el capital actual del perfil.
     """
 
     try:
         return float(
-            st.session_state.get(
-                "capital_actual",
-                10000.0,
-            )
-            or 10000.0
+            get_profile_capital()
         )
 
-    except (TypeError, ValueError):
-        return 10000.0
+    except Exception:
+        try:
+            return float(
+                st.session_state.get(
+                    "capital_actual",
+                    10000.0,
+                )
+                or 10000.0
+            )
+
+        except (TypeError, ValueError):
+            return 10000.0
 
 
 # =========================================================
-# DIAGNÓSTICO SEGURO DE SUPABASE
+# DIAGNÓSTICO SEGURO
 # =========================================================
 
 
@@ -163,8 +190,9 @@ def _safe_length(
     value: Any,
 ) -> int:
     """
-    Devuelve el tamaño de una variable sin mostrar
-    su contenido.
+    Devuelve únicamente el tamaño de un valor.
+
+    Nunca muestra claves ni tokens.
     """
 
     if value is None:
@@ -183,11 +211,19 @@ def render_supabase_diagnostics(
     error: Exception,
 ) -> None:
     """
-    Muestra información segura para localizar un encabezado
-    excesivamente grande.
-
-    Nunca imprime claves ni tokens completos.
+    Muestra un diagnóstico seguro cuando falla la carga
+    de operaciones.
     """
+
+    error_message = str(
+        error or "Error desconocido"
+    ).strip()
+
+    if len(error_message) > 1800:
+        error_message = (
+            error_message[:1800]
+            + "\n\n[Mensaje recortado]"
+        )
 
     try:
         supabase_key = st.secrets.get(
@@ -213,16 +249,6 @@ def render_supabase_diagnostics(
         {},
     )
 
-    error_message = str(
-        error or "Error desconocido"
-    )
-
-    if len(error_message) > 1800:
-        error_message = (
-            error_message[:1800]
-            + "\n\n[Mensaje recortado]"
-        )
-
     st.error(
         "No se pudieron cargar los trades desde Supabase."
     )
@@ -245,22 +271,22 @@ def render_supabase_diagnostics(
         )
 
         st.caption(
-            "Este diagnóstico solo muestra tamaños. "
-            "No expone claves, tokens ni información sensible."
+            "Este diagnóstico solamente muestra tamaños. "
+            "No expone claves, tokens ni datos sensibles."
         )
 
 
 # =========================================================
-# CARGAR TRADES
+# CARGAR OPERACIONES
 # =========================================================
 
 
 def load_trades() -> list[dict[str, Any]]:
     """
-    Carga las operaciones del usuario.
+    Carga los trades del usuario desde Supabase.
 
-    Si Supabase falla, mantiene la aplicación funcionando
-    con una lista vacía y muestra el diagnóstico.
+    Si ocurre un error, devuelve una lista vacía para
+    mantener la aplicación disponible.
     """
 
     try:
@@ -295,35 +321,36 @@ def load_trades() -> list[dict[str, Any]]:
         return []
 
 
-# =========================================================
-# AUTENTICACIÓN
-# =========================================================
-
-
-def user_is_authenticated() -> bool:
+def prepare_trades_dataframe(
+    trades: list[dict[str, Any]],
+):
     """
-    Verifica el estado de autenticación de forma segura.
+    Convierte los trades en un DataFrame preparado.
     """
 
-    return bool(
-        st.session_state.get(
-            "authenticated",
-            False,
+    try:
+        return prepare_df(
+            trades
         )
-    )
 
+    except Exception as exc:
+        st.error(
+            "No se pudieron preparar los datos "
+            "de las operaciones."
+        )
 
-def render_login_if_required() -> None:
-    """
-    Muestra el login y detiene la ejecución cuando
-    no existe una sesión autenticada.
-    """
+        with st.expander(
+            "Ver detalle técnico",
+            expanded=False,
+        ):
+            st.code(
+                str(exc),
+                language="text",
+            )
 
-    if user_is_authenticated():
-        return
-
-    render_auth()
-    st.stop()
+        return prepare_df(
+            []
+        )
 
 
 # =========================================================
@@ -336,7 +363,7 @@ def render_current_page(
     trader_name: str,
 ) -> None:
     """
-    Renderiza la página seleccionada en el sidebar.
+    Renderiza la sección seleccionada en el sidebar.
     """
 
     page = st.session_state.get(
@@ -378,6 +405,9 @@ def render_current_page(
     elif page == "Lotaje":
         render_lotage()
 
+    elif page == "Modificar perfil":
+        render_profile()
+
     else:
         st.session_state.page = "Dashboard"
         st.rerun()
@@ -401,25 +431,9 @@ def main() -> None:
 
     trades = load_trades()
 
-    try:
-        df = prepare_df(
-            trades
-        )
-
-    except Exception as exc:
-        st.error(
-            "No se pudieron preparar los datos "
-            "de las operaciones."
-        )
-
-        st.code(
-            str(exc),
-            language="text",
-        )
-
-        df = prepare_df(
-            []
-        )
+    df = prepare_trades_dataframe(
+        trades
+    )
 
     trader_name = get_trader_name()
 
