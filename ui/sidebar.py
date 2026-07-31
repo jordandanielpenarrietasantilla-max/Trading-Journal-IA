@@ -9,18 +9,19 @@ from core.state import clear_auth
 
 
 # =========================================================
-# AXION PRIME X10 PRO
-# PANEL LATERAL
+# AXION PRIME X10
+# SIDEBAR PROFESIONAL
 # =========================================================
 
-NAVIGATION_MAIN = [
+
+MAIN_NAVIGATION = [
     ("📊", "Dashboard"),
     ("➕", "Registrar Trade"),
     ("📕", "Track Record"),
     ("🤖", "Chat IA"),
 ]
 
-NAVIGATION_ADVANCED = [
+ADVANCED_NAVIGATION = [
     ("🧠", "Psicotrading"),
     ("🔍", "Análisis IA"),
     ("📈", "Proyecciones"),
@@ -28,112 +29,68 @@ NAVIGATION_ADVANCED = [
 ]
 
 
-# =========================================================
-# DATOS DEL USUARIO
-# =========================================================
-
-def _get_user_value(
+def _user_value(
     user: Any,
     key: str,
     default: Any = "",
 ) -> Any:
-    """
-    Permite leer usuarios recibidos como diccionario
-    o como objeto de Supabase.
-    """
-
     if user is None:
         return default
 
     if isinstance(user, dict):
         return user.get(key, default)
 
-    return getattr(
-        user,
-        key,
-        default,
-    )
+    return getattr(user, key, default)
 
 
-def _get_user_metadata(
-    user: Any,
-) -> dict:
-    """
-    Obtiene user_metadata de manera segura.
-    """
+def _user_metadata() -> dict[str, Any]:
+    user = st.session_state.get("user")
 
-    metadata = _get_user_value(
+    metadata = _user_value(
         user,
         "user_metadata",
         {},
     )
 
-    if isinstance(metadata, dict):
-        return metadata
-
-    return {}
+    return metadata if isinstance(metadata, dict) else {}
 
 
-def _get_email() -> str:
-    """
-    Devuelve el correo del usuario autenticado.
-    """
-
-    user = st.session_state.get(
-        "user"
-    )
-
-    email = _get_user_value(
-        user,
-        "email",
-        "",
-    )
+def _email() -> str:
+    user = st.session_state.get("user")
 
     return str(
-        email or ""
+        _user_value(
+            user,
+            "email",
+            "",
+        )
+        or ""
     ).strip()
 
 
-def _get_display_name() -> str:
-    """
-    Devuelve el nombre visible del trader.
-    """
-
-    user = st.session_state.get(
-        "user"
-    )
-
-    metadata = _get_user_metadata(
-        user
-    )
+def _trader_name() -> str:
+    metadata = _user_metadata()
 
     possible_names = [
         metadata.get("username"),
         metadata.get("full_name"),
         metadata.get("name"),
-        st.session_state.get(
-            "nombre_trader"
-        ),
+        st.session_state.get("nombre_trader"),
     ]
 
     for value in possible_names:
-
         if value:
             return str(value)
 
     return "Trader Pro"
 
 
-def _get_initials(
+def _initials(
     name: str,
 ) -> str:
-    """
-    Crea iniciales para el avatar.
-    """
-
     words = [
         word
-        for word in name.strip().split()
+        for word in name.split()
         if word
     ]
 
@@ -150,11 +107,7 @@ def _get_initials(
 
 
 def _is_admin() -> bool:
-    """
-    Comprueba si el usuario es el administrador.
-    """
-
-    email = _get_email().lower()
+    email = _email().lower()
 
     return bool(
         ADMIN_EMAIL
@@ -163,104 +116,34 @@ def _is_admin() -> bool:
     )
 
 
-# =========================================================
-# CAMBIAR PÁGINA
-# =========================================================
-
 def _navigate(
     page_name: str,
 ) -> None:
-    """
-    Cambia la página activa.
-    """
-
-    st.session_state.page = (
-        page_name
-    )
-
+    st.session_state.page = page_name
     st.rerun()
 
 
-def _render_navigation_button(
-    icon: str,
-    page_name: str,
-) -> None:
-    """
-    Renderiza cada botón de navegación.
-    """
-
-    current_page = st.session_state.get(
-        "page",
-        "Dashboard",
-    )
-
-    is_active = (
-        current_page == page_name
-    )
-
-    label = (
-        f"{icon}  {page_name}"
-    )
-
-    button_type = (
-        "primary"
-        if is_active
-        else "secondary"
-    )
-
-    if st.button(
-        label,
-        key=f"nav_{page_name}",
-        use_container_width=True,
-        type=button_type,
-    ):
-
-        _navigate(
-            page_name
-        )
-
-
-# =========================================================
-# MARCA AXION
-# =========================================================
-
 def _render_brand() -> None:
-
-    st.markdown(
+    st.html(
         """
         <div class="ax-brand">
-
-            <div class="ax-logo">
-                A
-            </div>
+            <div class="ax-logo">A</div>
 
             <div>
                 <b>AXION PRIME</b>
-
-                <small>
-                    PERFORMANCE COMMAND OS · X10
-                </small>
+                <small>PERFORMANCE COMMAND OS · X10</small>
             </div>
 
+            <div class="ax-brand-online"></div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
-
-# =========================================================
-# PERFIL
-# =========================================================
 
 def _render_profile() -> None:
-
-    name = _get_display_name()
-
-    email = _get_email()
-
-    initials = _get_initials(
-        name
-    )
+    name = _trader_name()
+    email = _email()
+    initials = _initials(name)
 
     capital = float(
         st.session_state.get(
@@ -288,407 +171,151 @@ def _render_profile() -> None:
         else 0.0
     )
 
-    role = (
-        "FOUNDER"
-        if _is_admin()
-        else "TRADER"
-    )
+    role = "FOUNDER" if _is_admin() else "TRADER"
 
-    role_color = (
-        "#ffd740"
-        if _is_admin()
-        else "#25e5ff"
-    )
-
-    st.markdown(
+    st.html(
         f"""
         <div class="ax-profile">
-
-            <div
-                style="
-                    display:flex;
-                    align-items:center;
-                    gap:13px;
-                "
-            >
-
-                <div
-                    style="
-                        width:60px;
-                        height:60px;
-                        min-width:60px;
-                        border-radius:50%;
-                        display:grid;
-                        place-items:center;
-                        font-size:18px;
-                        font-weight:950;
-                        color:white;
-
-                        background:
-                            linear-gradient(
-                                145deg,
-                                #25e5ff,
-                                #218cff,
-                                #a146ff
-                            );
-
-                        border:
-                            3px solid
-                            rgba(
-                                255,
-                                255,
-                                255,
-                                0.15
-                            );
-
-                        box-shadow:
-                            0 0 25px
-                            rgba(
-                                37,
-                                229,
-                                255,
-                                0.35
-                            ),
-                            0 0 38px
-                            rgba(
-                                161,
-                                70,
-                                255,
-                                0.25
-                            );
-                    "
-                >
+            <div class="ax-profile-top">
+                <div class="ax-profile-avatar">
                     {initials}
                 </div>
 
-                <div
-                    style="
-                        min-width:0;
-                        flex:1;
-                    "
-                >
-
-                    <div
-                        style="
-                            display:flex;
-                            align-items:center;
-                            gap:8px;
-                            flex-wrap:wrap;
-                        "
-                    >
-
-                        <strong
-                            style="
-                                color:white;
-                                font-size:14px;
-                            "
-                        >
-                            {name}
-                        </strong>
-
-                        <span
-                            style="
-                                padding:3px 7px;
-                                border-radius:999px;
-                                font-size:7px;
-                                font-weight:950;
-                                color:#050713;
-                                background:{role_color};
-                                letter-spacing:.7px;
-                            "
-                        >
-                            {role}
-                        </span>
-
+                <div class="ax-profile-identity">
+                    <div class="ax-profile-name-row">
+                        <strong>{name}</strong>
+                        <span class="ax-profile-role">{role}</span>
                     </div>
 
-                    <div
-                        style="
-                            color:#687594;
-                            font-size:8px;
-                            margin-top:5px;
-                            overflow:hidden;
-                            text-overflow:ellipsis;
-                            white-space:nowrap;
-                        "
-                    >
+                    <div class="ax-profile-email">
                         {email}
                     </div>
-
                 </div>
-
             </div>
 
-            <div
-                style="
-                    margin-top:16px;
-                    display:flex;
-                    justify-content:space-between;
-                    align-items:flex-end;
-                "
-            >
-
+            <div class="ax-profile-capital-row">
                 <div>
-
-                    <div
-                        style="
-                            color:white;
-                            font-size:20px;
-                            font-weight:950;
-                        "
-                    >
+                    <div class="ax-profile-capital">
                         ${capital:,.2f}
                     </div>
 
-                    <div
-                        style="
-                            color:#25e5ff;
-                            font-size:7px;
-                            letter-spacing:1.4px;
-                            font-weight:900;
-                            margin-top:4px;
-                        "
-                    >
+                    <div class="ax-profile-capital-label">
                         CAPITAL ACTUAL
                     </div>
-
                 </div>
 
+                <div class="ax-profile-target">
+                    META ${target:,.0f}
+                </div>
+            </div>
+
+            <div class="ax-progress-track">
                 <div
-                    style="
-                        color:#7c89aa;
-                        font-size:8px;
-                    "
-                >
-                    Meta ${target:,.0f}
-                </div>
-
+                    class="ax-progress-value"
+                    style="width:{progress:.1f}%"
+                ></div>
             </div>
 
-            <div
-                style="
-                    margin-top:11px;
-                    height:5px;
-                    overflow:hidden;
-                    border-radius:999px;
-                    background:#18213d;
-                "
-            >
-
-                <div
-                    style="
-                        width:{progress:.1f}%;
-                        height:100%;
-                        border-radius:999px;
-
-                        background:
-                            linear-gradient(
-                                90deg,
-                                #25e5ff,
-                                #218cff,
-                                #a146ff
-                            );
-
-                        box-shadow:
-                            0 0 12px
-                            rgba(
-                                37,
-                                229,
-                                255,
-                                .5
-                            );
-                    "
-                >
-                </div>
-
+            <div class="ax-progress-labels">
+                <span>{progress:.1f}% DE LA META</span>
+                <span>${target:,.0f}</span>
             </div>
-
-            <div
-                style="
-                    display:flex;
-                    justify-content:space-between;
-                    color:#6f7d9e;
-                    font-size:7px;
-                    margin-top:6px;
-                "
-            >
-
-                <span>
-                    {progress:.1f}% DE LA META
-                </span>
-
-                <span>
-                    ${target:,.0f}
-                </span>
-
-            </div>
-
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-# =========================================================
-# ESTADO DEL SISTEMA
-# =========================================================
-
-def _render_system_status() -> None:
-
-    st.markdown(
-        '<div class="ax-section">SYSTEM</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
         """
-        <div
-            class="ax-card"
-            style="
-                padding:14px;
-                font-size:10px;
-            "
-        >
-
-            <div
-                style="
-                    display:flex;
-                    justify-content:space-between;
-                    margin-bottom:12px;
-                "
-            >
-
-                <span>
-                    🟢 Base de Datos
-                </span>
-
-                <span
-                    style="
-                        color:#00ff88;
-                        font-weight:900;
-                    "
-                >
-                    CONECTADO
-                </span>
-
-            </div>
-
-            <div
-                style="
-                    display:flex;
-                    justify-content:space-between;
-                    margin-bottom:12px;
-                "
-            >
-
-                <span>
-                    🤖 AI Engine
-                </span>
-
-                <span
-                    style="
-                        color:#00ff88;
-                        font-weight:900;
-                    "
-                >
-                    ACTIVO
-                </span>
-
-            </div>
-
-            <div
-                style="
-                    display:flex;
-                    justify-content:space-between;
-                "
-            >
-
-                <span>
-                    ⚡ Risk Core
-                </span>
-
-                <span
-                    style="
-                        color:#00ff88;
-                        font-weight:900;
-                    "
-                >
-                    PROTEGIDO
-                </span>
-
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True,
     )
 
 
-# =========================================================
-# CERRAR SESIÓN
-# =========================================================
-
-def _render_logout() -> None:
-
-    st.markdown(
-        "<div style='height:12px'></div>",
-        unsafe_allow_html=True,
+def _navigation_button(
+    icon: str,
+    page_name: str,
+) -> None:
+    current_page = st.session_state.get(
+        "page",
+        "Dashboard",
     )
+
+    active = current_page == page_name
 
     if st.button(
-        "🚪  Cerrar sesión",
-        key="sidebar_logout",
+        f"{icon}  {page_name}",
+        key=f"sidebar_nav_{page_name}",
         use_container_width=True,
+        type="primary" if active else "secondary",
     ):
-
-        clear_auth()
-
-        st.rerun()
+        _navigate(page_name)
 
 
-# =========================================================
-# SIDEBAR COMPLETO
-# =========================================================
+def _render_system_status() -> None:
+    st.html(
+        """
+        <div class="ax-section-title">
+            SISTEMA
+        </div>
+
+        <div class="ax-system-card">
+            <div class="ax-system-row">
+                <span>🟢 Base de datos</span>
+                <b>CONECTADO</b>
+            </div>
+
+            <div class="ax-system-row">
+                <span>🤖 AI Engine</span>
+                <b>ACTIVO</b>
+            </div>
+
+            <div class="ax-system-row">
+                <span>⚡ Risk Core</span>
+                <b>PROTEGIDO</b>
+            </div>
+        </div>
+        """
+    )
+
 
 def render_sidebar() -> None:
-    """
-    Renderiza el panel lateral completo.
-    """
-
     with st.sidebar:
-
         _render_brand()
-
         _render_profile()
 
-        st.markdown(
-            '<div class="ax-section">'
-            'NAVEGACIÓN PRINCIPAL'
-            '</div>',
-            unsafe_allow_html=True,
+        st.html(
+            """
+            <div class="ax-section-title">
+                NAVEGACIÓN PRINCIPAL
+            </div>
+            """
         )
 
-        for icon, page_name in NAVIGATION_MAIN:
-
-            _render_navigation_button(
+        for icon, page_name in MAIN_NAVIGATION:
+            _navigation_button(
                 icon,
                 page_name,
             )
 
-        st.markdown(
-            '<div class="ax-section">'
-            'INTELIGENCIA AVANZADA'
-            '</div>',
-            unsafe_allow_html=True,
+        st.html(
+            """
+            <div class="ax-section-title">
+                INTELIGENCIA AVANZADA
+            </div>
+            """
         )
 
-        for icon, page_name in NAVIGATION_ADVANCED:
-
-            _render_navigation_button(
+        for icon, page_name in ADVANCED_NAVIGATION:
+            _navigation_button(
                 icon,
                 page_name,
             )
 
         _render_system_status()
 
-        _render_logout()
+        st.html(
+            "<div style='height:12px'></div>"
+        )
+
+        if st.button(
+            "🚪 Cerrar sesión",
+            key="sidebar_logout",
+            use_container_width=True,
+            type="secondary",
+        ):
+            clear_auth()
+            st.rerun()
