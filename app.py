@@ -2216,7 +2216,7 @@ def aplicar_estilos():
     .ax-panel{border:1px solid var(--ax-line);border-radius:22px;background:linear-gradient(150deg,rgba(14,21,38,.82),rgba(7,11,22,.78));padding:18px 20px}.ax-panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.ax-panel-title{font-size:14px;font-weight:850;color:var(--ax-text)!important}.ax-panel-tag{font-size:9px;letter-spacing:1px;color:var(--ax-muted)!important}.ax-score-ring{width:124px;height:124px;border-radius:50%;display:grid;place-items:center;margin:8px auto 12px;background:conic-gradient(var(--ax-cyan) calc(var(--score)*1%),rgba(255,255,255,.07) 0);position:relative}.ax-score-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:#0b1020}.ax-score-number{z-index:1;font-size:34px;font-weight:950;color:var(--ax-text)!important}.ax-score-number small{font-size:11px;color:var(--ax-muted)!important}.ax-rule{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.055);font-size:11px}.ax-market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.ax-market{padding:13px;border-radius:16px;background:rgba(13,19,34,.68);border:1px solid var(--ax-line)}.ax-market-time{font-size:20px;font-weight:900;color:var(--ax-cyan)!important;margin:5px 0}.ax-open{color:var(--ax-green)!important}.ax-closed{color:var(--ax-red)!important}.ax-trade-row{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr .8fr;gap:10px;padding:13px 14px;border-radius:15px;background:rgba(12,18,32,.72);border:1px solid rgba(255,255,255,.055);margin-bottom:8px;font-size:11px}.ax-chip{display:inline-block;padding:4px 8px;border-radius:99px;background:rgba(79,124,255,.12);font-size:9px}.ax-empty{min-height:290px;display:grid;place-items:center;text-align:center;border:1px dashed rgba(67,232,255,.28);border-radius:20px}.ax-empty-title{font-size:17px;font-weight:850}.ax-empty-sub{font-size:12px;color:var(--ax-muted)!important;max-width:430px;margin:auto}
 
 
-    /* AXION PRIME X3 — PREMIUM PROP SIDEBAR */
+    /* AXION PRIME X4 — PREMIUM PROP SIDEBAR */
     section[data-testid="stSidebar"] {
         background:
             radial-gradient(circle at 15% 8%, rgba(82,102,255,.16), transparent 25%),
@@ -2251,7 +2251,54 @@ def aplicar_estilos():
 
 aplicar_estilos()
 
-# AXION PRIME X3 — Command Deck visual override
+
+# AXION PRIME X4 — Fondo animado de velas + sidebar premium
+def aplicar_fx_x4():
+    st.markdown("""
+    <style>
+    .stApp::before{
+      content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.18;
+      background:
+        linear-gradient(rgba(55,230,255,.035) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,230,255,.035) 1px,transparent 1px),
+        radial-gradient(circle at 82% 18%,rgba(139,92,246,.13),transparent 28%),
+        radial-gradient(circle at 18% 78%,rgba(34,211,238,.10),transparent 28%);
+      background-size:48px 48px,48px 48px,auto,auto;animation:axGrid 18s linear infinite}
+    @keyframes axGrid{to{background-position:48px 48px,48px 48px,0 0,0 0}}
+    .ax-candle-tape{position:fixed;right:2vw;bottom:1vh;width:min(760px,58vw);height:230px;
+      pointer-events:none;z-index:0;opacity:.20;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 18%,#000)}
+    .ax-candle-track{position:absolute;inset:0;display:flex;align-items:center;gap:13px;animation:axTape 22s linear infinite}
+    @keyframes axTape{to{transform:translateX(-48%)}}
+    .ax-candle{position:relative;width:9px;height:var(--h);flex:0 0 9px}
+    .ax-candle:before{content:"";position:absolute;left:4px;top:-18px;bottom:-18px;width:1px;background:currentColor}
+    .ax-candle:after{content:"";position:absolute;inset:0;border-radius:2px;background:currentColor;box-shadow:0 0 14px currentColor}
+    .ax-up{color:#2ee6a6;transform:translateY(var(--y))}.ax-down{color:#ff4d7d;transform:translateY(var(--y))}
+    section[data-testid="stSidebar"]{background:linear-gradient(180deg,#07111c,#080914 48%,#060811)!important}
+    section[data-testid="stSidebar"] div.stButton>button{
+      background:linear-gradient(135deg,rgba(16,28,48,.96),rgba(13,15,32,.96))!important;
+      border:1px solid rgba(87,138,205,.22)!important;color:#eaf5ff!important;min-height:44px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 8px 24px rgba(0,0,0,.15)!important}
+    section[data-testid="stSidebar"] div.stButton>button:hover{
+      transform:translateY(-1px);border-color:rgba(45,226,255,.65)!important;
+      background:linear-gradient(135deg,rgba(11,94,120,.34),rgba(92,50,180,.28))!important;
+      box-shadow:0 0 22px rgba(45,226,255,.12)!important}
+    section[data-testid="stSidebar"] div.stButton>button p{color:#eaf5ff!important;font-weight:700!important}
+    [data-testid="stAppViewContainer"]>.main{position:relative;z-index:1}
+    </style>""",unsafe_allow_html=True)
+    hs=[34,58,42,76,48,91,63,37,70,53,85,44,66,96,52,74,40,88,60,47,79,55,93,43,
+        62,82,49,72,39,89,57,68,45,95,51,77,36,84,59,46,73,54,90,41,64,80,50,71]
+    ys=[35,18,43,7,29,-2,14,40,9,26,-6,31,12,-10,24,4,38,-4,16,33,2,22,-8,36,
+        11,-3,28,6,41,-7,20,1,32,-11,25,5,39,-5,17,30,8,21,-9,34,13,0,27,10]
+    cs=[]
+    for i,(h,y) in enumerate(zip(hs,ys)):
+        cls="ax-up" if i%3!=1 else "ax-down"
+        cs.append(f'<span class="ax-candle {cls}" style="--h:{h}px;--y:{y}px"></span>')
+    tape="".join(cs+cs)
+    st.markdown(f'<div class="ax-candle-tape"><div class="ax-candle-track">{tape}</div></div>',unsafe_allow_html=True)
+
+aplicar_fx_x4()
+
+# AXION PRIME X4 — Command Deck visual override
 st.markdown(
     r"""
     <style>
@@ -2728,7 +2775,7 @@ def render_sidebar(estado_sub):
               <div class="x3-brand-mark"><span>AX</span></div>
               <div>
                 <div class="x3-brand-name">AXION PRIME</div>
-                <div class="x3-brand-kicker">PERFORMANCE COMMAND OS · X3</div>
+                <div class="x3-brand-kicker">PERFORMANCE COMMAND OS · X4</div>
               </div>
               <div class="x3-pulse"></div>
             </div>
@@ -2772,10 +2819,10 @@ def render_sidebar(estado_sub):
         )
 
         primary_items = [
-            ("◈", "Dashboard", "Pulse"),
-            ("＋", "Registrar Trade", "Execute"),
-            ("▦", "Track Record", "Journal"),
-            ("✦", "Chat IA", "Copilot"),
+            ("📊", "Dashboard", "Pulse"),
+            ("➕", "Registrar Trade", "Execute"),
+            ("📒", "Track Record", "Journal"),
+            ("🤖", "Chat IA", "Copilot"),
         ]
 
         cols = st.columns(2, gap="small")
@@ -2798,14 +2845,14 @@ def render_sidebar(estado_sub):
         )
 
         modules = [
-            ("◉", "Psicotrading"),
-            ("◎", "Análisis IA"),
-            ("↗", "Proyecciones"),
-            ("∑", "Lotaje"),
-            ("◷", "Calendario Económico"),
+            ("🧠", "Psicotrading"),
+            ("🔍", "Análisis IA"),
+            ("📈", "Proyecciones"),
+            ("🧮", "Lotaje"),
+            ("🗓️", "Calendario Económico"),
         ]
         if es_admin:
-            modules.append(("◇", "Panel Admin"))
+            modules.append(("🛡️", "Panel Admin"))
 
         for icono, pagina in modules:
             activo = st.session_state.pagina_actual == pagina
@@ -5080,6 +5127,59 @@ def render_dashboard_v10(df_trades, estado_sub):
     with low2:
         dd_pct=abs(max_drawdown)/max(abs(balance),1)*100; risk_used=min(100,dd_pct/5*100)
         st.markdown(f'<div class="ax-panel"><div class="ax-panel-head"><div class="ax-panel-title">RISK CONTROL</div><div class="ax-panel-tag">PROP LIMITS</div></div><div class="ax-rule"><span>Drawdown utilizado</span><span class="{"ax-positive" if risk_used<60 else "ax-negative"}">{risk_used:.1f}% del límite</span></div><div class="ax-meter"><span style="width:{risk_used:.0f}%"></span></div><div class="ax-rule"><span>Límite de evaluación</span><span>5.0%</span></div><div class="ax-rule"><span>Operaciones</span><span>{total}</span></div><div class="ax-rule"><span>Estado</span><span class="{"ax-positive" if risk_used<80 else "ax-negative"}">{"APTO PARA OPERAR" if risk_used<80 else "DETENER OPERATIVA"}</span></div></div>',unsafe_allow_html=True)
+
+
+
+EVENTOS_ECONOMICOS_EJEMPLO=[
+ {"pais":"🇺🇸 USD","evento":"Nóminas no agrícolas (NFP)","fecha":"Próximo viernes","hora":"08:30 NY","impacto":"Alto"},
+ {"pais":"🇺🇸 USD","evento":"Decisión de tipos de la Fed","fecha":"Próxima reunión","hora":"14:00 NY","impacto":"Alto"},
+ {"pais":"🇪🇺 EUR","evento":"IPC zona euro","fecha":"Próxima publicación","hora":"11:00 CET","impacto":"Medio"},
+ {"pais":"🇬🇧 GBP","evento":"PIB mensual Reino Unido","fecha":"Próxima publicación","hora":"07:00 UK","impacto":"Medio"}]
+
+def render_calendario_economico():
+    st.markdown("### 🗓️ Radar Macroeconómico")
+    st.caption("Eventos demostrativos hasta conectar una API económica en tiempo real.")
+    cols=st.columns(2)
+    for i,ev in enumerate(EVENTOS_ECONOMICOS_EJEMPLO):
+        color="#ff5c7c" if ev["impacto"]=="Alto" else "#ffd166"
+        html=(f'<div style="background:linear-gradient(145deg,rgba(14,27,48,.94),rgba(14,12,32,.94));'
+              f'border:1px solid rgba(90,150,220,.22);border-radius:18px;padding:18px;margin-bottom:14px">'
+              f'<div style="display:flex;justify-content:space-between"><b>{ev["pais"]}</b>'
+              f'<span style="color:{color};border:1px solid {color};border-radius:999px;padding:3px 10px">{ev["impacto"].upper()}</span></div>'
+              f'<div style="font-size:20px;font-weight:900;margin:15px 0 8px">{ev["evento"]}</div>'
+              f'<div style="color:#8fa6c4">📅 {ev["fecha"]} &nbsp; ⏱️ {ev["hora"]}</div></div>')
+        with cols[i%2]: st.markdown(html,unsafe_allow_html=True)
+
+def render_admin_panel():
+    st.markdown("### 🛡️ Command Center — Administración")
+    admin_client=get_supabase_admin_client()
+    if admin_client is None:
+        st.info("Para gestionar usuarios PRO agrega SUPABASE_SERVICE_KEY en Streamlit Secrets. No publiques esa clave.")
+        c1,c2,c3=st.columns(3); c1.metric("Usuarios","—"); c2.metric("PRO activos","—"); c3.metric("Estado","Modo seguro")
+        return
+    try:
+        r=admin_client.auth.admin.list_users()
+        usuarios=r if isinstance(r,list) else getattr(r,"users",[])
+    except Exception as e:
+        st.error(f"❌ No se pudo cargar usuarios: {e}"); return
+    vip=sum(bool((getattr(u,"user_metadata",{}) or {}).get("es_vip",False)) for u in usuarios)
+    c1,c2,c3=st.columns(3); c1.metric("Usuarios",len(usuarios)); c2.metric("PRO",vip); c3.metric("Conversión",f"{(vip/len(usuarios)*100 if usuarios else 0):.1f}%")
+    for u in usuarios:
+        email=getattr(u,"email","") or ""
+        if ADMIN_EMAIL and email.lower()==ADMIN_EMAIL.lower(): continue
+        md=getattr(u,"user_metadata",{}) or {}; es_vip=bool(md.get("es_vip",False))
+        with st.expander(f"{'💎' if es_vip else '👤'} {email}"):
+            a,b=st.columns([2,1])
+            with a:
+                st.write(f"**ID:** {getattr(u,'id','')}"); st.write(f"**Plan:** {'PRO' if es_vip else 'FREE / TRIAL'}")
+            with b:
+                label=("🔻 Desactivar PRO" if es_vip else "✅ Activar PRO")
+                if st.button(label,key=f"vip_{getattr(u,'id',email)}"):
+                    try:
+                        nuevo=dict(md); nuevo["es_vip"]=not es_vip
+                        admin_client.auth.admin.update_user_by_id(getattr(u,"id",""),{"user_metadata":nuevo})
+                        st.success("Usuario actualizado."); st.rerun()
+                    except Exception as e: st.error(f"❌ Error: {e}")
 
 
 def render_dashboard():
