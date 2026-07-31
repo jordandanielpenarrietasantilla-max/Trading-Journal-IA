@@ -1,6 +1,7 @@
-streamlit
-pandas
-requests
-pillow
-supabase
-plotly
+streamlit>=1.41,<2
+supabase>=2.10,<3
+pandas>=2.1,<3
+numpy>=1.26,<3
+plotly>=5.24,<7
+Pillow>=10,<13
+requests>=2.31,<3
