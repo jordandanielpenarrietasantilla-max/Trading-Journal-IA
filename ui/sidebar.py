@@ -17,7 +17,7 @@ from core.state import clear_auth
 
 # =========================================================
 # AXION PRIME X10 PRO
-# SIDEBAR COMPLETO
+# SIDEBAR PRINCIPAL
 # =========================================================
 
 
@@ -35,50 +35,26 @@ ADVANCED_NAVIGATION = [
     ("🧮", "Lotaje"),
 ]
 
-SETTINGS_NAVIGATION = [
-    ("⚙️", "Modificar perfil"),
-]
-
 
 # =========================================================
-# UTILIDADES DEL USUARIO
+# UTILIDADES
 # =========================================================
 
 
-def _user_value(
-    user: Any,
-    key: str,
-    default: Any = "",
-) -> Any:
+def _current_user() -> dict[str, Any]:
     """
-    Lee valores tanto de diccionarios como de objetos.
+    Devuelve el usuario autenticado guardado en sesión.
     """
 
-    if user is None:
-        return default
-
-    if isinstance(user, dict):
-        return user.get(
-            key,
-            default,
-        )
-
-    return getattr(
-        user,
-        key,
-        default,
-    )
-
-
-def _current_user() -> Any:
-    """
-    Devuelve el usuario autenticado.
-    """
-
-    return st.session_state.get(
+    user = st.session_state.get(
         "user",
         {},
     )
+
+    if isinstance(user, dict):
+        return user
+
+    return {}
 
 
 def _email() -> str:
@@ -88,34 +64,33 @@ def _email() -> str:
 
     user = _current_user()
 
-    value = _user_value(
-        user,
-        "email",
-        "",
-    )
-
     return str(
-        value or ""
+        user.get(
+            "email",
+            "",
+        )
+        or ""
     ).strip()
 
 
 def _trader_name() -> str:
     """
-    Devuelve el nombre actual del trader.
+    Obtiene el nombre del perfil.
     """
 
     try:
-        profile_name = get_profile_name()
+        value = str(
+            get_profile_name()
+            or ""
+        ).strip()
 
-        if profile_name:
-            return str(
-                profile_name
-            ).strip()
+        if value:
+            return value
 
     except Exception:
         pass
 
-    session_name = str(
+    value = str(
         st.session_state.get(
             "nombre_trader",
             "",
@@ -123,15 +98,15 @@ def _trader_name() -> str:
         or ""
     ).strip()
 
-    if session_name:
-        return session_name
+    if value:
+        return value
 
     return "Trader Pro"
 
 
 def _capital_actual() -> float:
     """
-    Devuelve el capital actual del perfil.
+    Obtiene el capital actual.
     """
 
     try:
@@ -155,7 +130,7 @@ def _capital_actual() -> float:
 
 def _capital_meta() -> float:
     """
-    Devuelve la meta de capital.
+    Obtiene la meta de capital.
     """
 
     try:
@@ -179,19 +154,19 @@ def _capital_meta() -> float:
 
 def _avatar_url() -> str:
     """
-    Devuelve únicamente una URL válida y pequeña.
+    Obtiene solamente una URL pequeña del avatar.
 
-    Nunca muestra imágenes Base64 dentro del token.
+    Nunca acepta imágenes Base64.
     """
 
     try:
-        avatar = str(
+        value = str(
             get_avatar_url()
             or ""
         ).strip()
 
     except Exception:
-        avatar = str(
+        value = str(
             st.session_state.get(
                 "avatar_url",
                 "",
@@ -199,25 +174,23 @@ def _avatar_url() -> str:
             or ""
         ).strip()
 
-    if not avatar:
+    if not value:
         return ""
 
-    if avatar.startswith(
-        "data:"
-    ):
+    if value.startswith("data:"):
         return ""
 
-    if len(avatar) > 3000:
+    if len(value) > 3000:
         return ""
 
-    return avatar
+    return value
 
 
 def _initials(
     name: str,
 ) -> str:
     """
-    Genera iniciales cuando el perfil no tiene fotografía.
+    Genera iniciales cuando el usuario no tiene fotografía.
     """
 
     words = [
@@ -240,7 +213,7 @@ def _initials(
 
 def _is_admin() -> bool:
     """
-    Verifica si el usuario coincide con ADMIN_EMAIL.
+    Comprueba si el usuario es administrador.
     """
 
     current_email = _email().lower()
@@ -260,7 +233,7 @@ def _navigate(
     page_name: str,
 ) -> None:
     """
-    Cambia la página seleccionada.
+    Cambia de pantalla dentro de la aplicación.
     """
 
     st.session_state.page = page_name
@@ -268,13 +241,13 @@ def _navigate(
 
 
 # =========================================================
-# LOGOTIPO
+# MARCA
 # =========================================================
 
 
 def _render_brand() -> None:
     """
-    Muestra la identidad principal de AXION.
+    Renderiza la marca AXION PRIME.
     """
 
     st.html(
@@ -286,9 +259,7 @@ def _render_brand() -> None:
             </div>
 
             <div>
-                <b>
-                    AXION PRIME
-                </b>
+                <b>AXION PRIME</b>
 
                 <small>
                     PERFORMANCE COMMAND OS · X10
@@ -311,13 +282,13 @@ def _avatar_html(
     trader_name: str,
 ) -> str:
     """
-    Construye la foto del perfil o las iniciales.
+    Devuelve la fotografía o las iniciales.
     """
 
     avatar_url = _avatar_url()
 
     if avatar_url:
-        safe_avatar_url = html.escape(
+        safe_url = html.escape(
             avatar_url,
             quote=True,
         )
@@ -325,8 +296,8 @@ def _avatar_html(
         return f"""
         <div class="ax-profile-avatar ax-profile-photo">
             <img
-                src="{safe_avatar_url}"
-                alt="Foto del perfil"
+                src="{safe_url}"
+                alt="Foto de perfil"
                 loading="lazy"
             >
         </div>
@@ -346,25 +317,17 @@ def _avatar_html(
 
 
 # =========================================================
-# TARJETA DEL PERFIL
+# PERFIL
 # =========================================================
 
 
 def _render_profile() -> None:
     """
-    Muestra el perfil, capital y fotografía.
+    Renderiza la tarjeta del usuario y el botón para editar.
     """
 
     trader_name = _trader_name()
     email = _email()
-
-    safe_name = html.escape(
-        trader_name
-    )
-
-    safe_email = html.escape(
-        email
-    )
 
     capital_actual = _capital_actual()
     capital_meta = _capital_meta()
@@ -390,6 +353,14 @@ def _render_profile() -> None:
         "FOUNDER"
         if _is_admin()
         else "TRADER"
+    )
+
+    safe_name = html.escape(
+        trader_name
+    )
+
+    safe_email = html.escape(
+        email
     )
 
     avatar = _avatar_html(
@@ -473,9 +444,14 @@ def _render_profile() -> None:
 
     if st.button(
         "⚙️ Modificar perfil",
-        key="sidebar_edit_profile_top",
+        key="sidebar_modify_profile",
         use_container_width=True,
-        type="secondary",
+        type=(
+            "primary"
+            if st.session_state.get("page")
+            == "Modificar perfil"
+            else "secondary"
+        ),
     ):
         _navigate(
             "Modificar perfil"
@@ -483,7 +459,7 @@ def _render_profile() -> None:
 
 
 # =========================================================
-# NAVEGACIÓN
+# BOTONES DE NAVEGACIÓN
 # =========================================================
 
 
@@ -492,7 +468,7 @@ def _navigation_button(
     page_name: str,
 ) -> None:
     """
-    Muestra un botón de navegación.
+    Renderiza un botón del menú.
     """
 
     current_page = st.session_state.get(
@@ -500,23 +476,21 @@ def _navigation_button(
         "Dashboard",
     )
 
-    is_active = (
+    active = (
         current_page
         == page_name
     )
 
-    clicked = st.button(
+    if st.button(
         f"{icon}  {page_name}",
-        key=f"sidebar_nav_{page_name}",
+        key=f"sidebar_navigation_{page_name}",
         use_container_width=True,
         type=(
             "primary"
-            if is_active
+            if active
             else "secondary"
         ),
-    )
-
-    if clicked:
+    ):
         _navigate(
             page_name
         )
@@ -527,17 +501,13 @@ def _render_navigation_section(
     items: list[tuple[str, str]],
 ) -> None:
     """
-    Muestra una sección completa del menú.
+    Renderiza un grupo del menú.
     """
-
-    safe_title = html.escape(
-        title
-    )
 
     st.html(
         f"""
         <div class="ax-section-title">
-            {safe_title}
+            {html.escape(title)}
         </div>
         """
     )
@@ -556,7 +526,7 @@ def _render_navigation_section(
 
 def _render_system_status() -> None:
     """
-    Muestra el estado visual del sistema.
+    Muestra el estado visual de los servicios.
     """
 
     st.html(
@@ -568,33 +538,18 @@ def _render_system_status() -> None:
         <div class="ax-system-card">
 
             <div class="ax-system-row">
-                <span>
-                    🟢 Base de datos
-                </span>
-
-                <b>
-                    CONECTADO
-                </b>
+                <span>🟢 Base de datos</span>
+                <b>CONECTADO</b>
             </div>
 
             <div class="ax-system-row">
-                <span>
-                    🤖 AI Engine
-                </span>
-
-                <b>
-                    ACTIVO
-                </b>
+                <span>🤖 AI Engine</span>
+                <b>ACTIVO</b>
             </div>
 
             <div class="ax-system-row">
-                <span>
-                    ⚡ Risk Core
-                </span>
-
-                <b>
-                    PROTEGIDO
-                </b>
+                <span>⚡ Risk Core</span>
+                <b>PROTEGIDO</b>
             </div>
 
         </div>
@@ -609,33 +564,36 @@ def _render_system_status() -> None:
 
 def _logout() -> None:
     """
-    Limpia la autenticación local.
+    Limpia completamente la sesión.
     """
 
     try:
         clear_auth()
 
     except Exception:
-        keys_to_delete = [
-            "access_token",
-            "refresh_token",
-            "user",
-            "authenticated",
-            "page",
-            "avatar_url",
-        ]
+        pass
 
-        for key in keys_to_delete:
-            st.session_state.pop(
-                key,
-                None,
-            )
+    keys_to_remove = [
+        "access_token",
+        "refresh_token",
+        "user",
+        "authenticated",
+        "page",
+        "avatar_url",
+        "nombre_trader",
+    ]
+
+    for key in keys_to_remove:
+        st.session_state.pop(
+            key,
+            None,
+        )
 
     st.rerun()
 
 
 # =========================================================
-# SIDEBAR PRINCIPAL
+# SIDEBAR COMPLETO
 # =========================================================
 
 
@@ -658,11 +616,6 @@ def render_sidebar() -> None:
         _render_navigation_section(
             "INTELIGENCIA AVANZADA",
             ADVANCED_NAVIGATION,
-        )
-
-        _render_navigation_section(
-            "CONFIGURACIÓN",
-            SETTINGS_NAVIGATION,
         )
 
         _render_system_status()
