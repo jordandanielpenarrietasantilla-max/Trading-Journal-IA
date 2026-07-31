@@ -662,7 +662,11 @@ defaults = {
 
     # FIX #2: bandera para saber si ya cargamos
     # reglas/capital desde el backend en esta sesión
-    "prefs_cargadas": False
+    "prefs_cargadas": False,
+
+    # V9.1: página actualmente seleccionada en el
+    # menú lateral de navegación
+    "pagina_actual": "Dashboard"
 }
 
 
@@ -1954,6 +1958,70 @@ def aplicar_estilos():
         color: #c8d3e0 !important;
     }
 
+    /* ---- V9.1: menú lateral de navegación ---- */
+
+    section[data-testid="stSidebar"] .stButton > button {
+
+        background: transparent !important;
+        color: #c8d3e0 !important;
+        border: none !important;
+        border-radius: 8px !important;
+        text-align: left !important;
+        justify-content: flex-start !important;
+        font-weight: 500 !important;
+        padding: 8px 10px !important;
+        box-shadow: none !important;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button:hover {
+
+        background: rgba(0,242,254,.10) !important;
+        color: #00f2fe !important;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button p {
+
+        text-align: left !important;
+        font-size: 14px !important;
+    }
+
+    .nav-active > button {
+
+        background: linear-gradient(
+            90deg,
+            rgba(0,210,255,.18),
+            rgba(41,98,255,.05)
+        ) !important;
+
+        color: #00f2fe !important;
+        font-weight: 700 !important;
+        border-left: 3px solid #00f2fe !important;
+    }
+
+    .nav-section-label {
+
+        color: #5c6b80 !important;
+        font-size: 11px;
+        letter-spacing: .8px;
+        text-transform: uppercase;
+        margin: 14px 0 4px 4px;
+        font-weight: 700;
+    }
+
+    .plan-box {
+
+        background: linear-gradient(
+            135deg,
+            rgba(0,210,255,.15),
+            rgba(41,98,255,.15)
+        );
+
+        border: 1px solid rgba(0,242,254,.35);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-top: 10px;
+    }
+
     </style>
 
     """
@@ -2004,95 +2072,55 @@ def render_paywall():
     with col1:
 
         st.markdown(
-            f"""
-            <div class="paywall-card">
-
+            textwrap.dedent(
+                f"""
+                <div class="paywall-card">
                 <h3>🟡 Suscripción Mensual</h3>
-
                 <h2>$5.00 USD</h2>
-
-                <p>
-                    Luego $2.50 USD / mes
-                </p>
-
+                <p>Luego $2.50 USD / mes</p>
                 <hr>
-
                 <p>
-                    ✔️ Acceso ilimitado<br>
-                    ✔️ Track Record<br>
-                    ✔️ Auditoría IA<br>
-                    ✔️ Psicotrading<br>
-                    ✔️ Sin contrato
+                ✔️ Acceso ilimitado<br>
+                ✔️ Track Record<br>
+                ✔️ Auditoría IA<br>
+                ✔️ Psicotrading<br>
+                ✔️ Sin contrato
                 </p>
-
-                <a href="{LINK_BINANCE_INSCRIPCION}"
-                   target="_blank">
-
-                    <button style="
-                        background:#f0b90b;
-                        color:#000;
-                        border:none;
-                        padding:14px;
-                        border-radius:8px;
-                        font-weight:bold;
-                        width:100%;
-                    ">
-
-                        🟡 Pagar con Binance Pay
-
-                    </button>
-
+                <a href="{LINK_BINANCE_INSCRIPCION}" target="_blank">
+                <button style="background:#f0b90b; color:#000; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%;">
+                🟡 Pagar con Binance Pay
+                </button>
                 </a>
-
-            </div>
-            """,
+                </div>
+                """
+            ),
             unsafe_allow_html=True
         )
 
     with col2:
 
         st.markdown(
-            f"""
-            <div class="paywall-card">
-
+            textwrap.dedent(
+                f"""
+                <div class="paywall-card">
                 <h3>💎 Acceso Anual</h3>
-
                 <h2>$20.00 USD</h2>
-
-                <p>
-                    Ahorra frente al plan mensual
-                </p>
-
+                <p>Ahorra frente al plan mensual</p>
                 <hr>
-
                 <p>
-                    🌟 1 año completo<br>
-                    🔒 Pago único<br>
-                    🎁 Actualizaciones futuras<br>
-                    🧠 IA prioritaria
+                🌟 1 año completo<br>
+                🔒 Pago único<br>
+                🎁 Actualizaciones futuras<br>
+                🧠 IA prioritaria
                 </p>
-
-                <a href="{LINK_BINANCE_ANUAL}"
-                   target="_blank">
-
-                    <button style="
-                        background:#00f2fe;
-                        color:#000;
-                        border:none;
-                        padding:14px;
-                        border-radius:8px;
-                        font-weight:bold;
-                        width:100%;
-                    ">
-
-                        💎 Pagar $20 USD
-
-                    </button>
-
+                <a href="{LINK_BINANCE_ANUAL}" target="_blank">
+                <button style="background:#00f2fe; color:#000; border:none; padding:14px; border-radius:8px; font-weight:bold; width:100%;">
+                💎 Pagar $20 USD
+                </button>
                 </a>
-
-            </div>
-            """,
+                </div>
+                """
+            ),
             unsafe_allow_html=True
         )
 
@@ -2121,26 +2149,15 @@ def render_paywall():
         )
 
         st.markdown(
-            f"""
-            <a href="{LINK_TELEGRAM_SOPORTE}"
-               target="_blank">
-
-                <button style="
-                    background:#0088cc;
-                    color:white;
-                    border:none;
-                    padding:12px;
-                    border-radius:8px;
-                    font-weight:bold;
-                    width:100%;
-                ">
-
-                    💬 Enviar comprobante
-
+            textwrap.dedent(
+                f"""
+                <a href="{LINK_TELEGRAM_SOPORTE}" target="_blank">
+                <button style="background:#0088cc; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; width:100%;">
+                💬 Enviar comprobante
                 </button>
-
-            </a>
-            """,
+                </a>
+                """
+            ),
             unsafe_allow_html=True
         )
 
@@ -2636,254 +2653,97 @@ def render_sidebar(estado_sub):
                 f"⏳ {estado_sub}"
             )
 
-        with st.expander(
-            "⚙️ Modificar Perfil"
-        ):
+        st.markdown(
+            '<div class="nav-section-label">NAVEGACIÓN</div>',
+            unsafe_allow_html=True
+        )
 
-            nuevo_nombre = st.text_input(
-                "Nombre",
-                value=nombre_actual,
-                key="profile_name"
+        nav_items = [
+            ("📊", "Dashboard"),
+            ("➕", "Registrar Trade"),
+            ("📅", "Track Record"),
+            ("💬", "Chat IA"),
+            ("📓", "Psicotrading"),
+            ("🤖", "Análisis IA"),
+            ("📈", "Proyecciones"),
+            ("🧮", "Lotaje"),
+            ("🗓️", "Calendario Económico")
+        ]
+
+        if "Admin" in estado_sub:
+
+            nav_items.append(
+                ("🛡️", "Panel Admin")
             )
 
-            nueva_foto = st.file_uploader(
-                "Nueva foto",
-                type=[
-                    "jpg",
-                    "jpeg",
-                    "png",
-                    "webp"
-                ],
-                key="profile_photo"
+        for icono, nombre_pagina in nav_items:
+
+            activo = (
+                st.session_state.pagina_actual
+                == nombre_pagina
             )
 
-            st.caption(
-                "💡 La foto se guarda como base64 dentro del "
-                "perfil de Supabase. Con fotos muy grandes, "
-                "algunas configuraciones pueden rechazar el "
-                "guardado; si eso pasa, usa una imagen más "
-                "pequeña o pásate a Supabase Storage."
+            etiqueta = (
+                f"▸ {icono}  {nombre_pagina}"
+                if activo
+                else f"{icono}  {nombre_pagina}"
             )
 
             if st.button(
-                "Guardar perfil",
-                key="save_profile"
+                etiqueta,
+                key=f"nav_{nombre_pagina}",
+                use_container_width=True
             ):
 
-                try:
-
-                    nueva_foto_b64 = foto_b64
-
-                    if nueva_foto:
-
-                        nueva_foto_b64 = (
-                            base64.b64encode(
-                                nueva_foto.getvalue()
-                            ).decode("utf-8")
-                        )
-
-                    client = (
-                        get_supabase_client()
-                    )
-
-                    result = (
-                        client
-                        .auth
-                        .update_user(
-                            {
-                                "data": {
-                                    "username":
-                                        nuevo_nombre,
-                                    "avatar_b64":
-                                        nueva_foto_b64
-                                }
-                            }
-                        )
-                    )
-
-                    st.session_state.user = (
-                        result.user
-                    )
-
-                    st.session_state.nombre_trader = (
-                        nuevo_nombre
-                    )
-
-                    st.rerun()
-
-                except Exception as e:
-
-                    st.error(
-                        f"❌ Error actualizando perfil: {e}"
-                    )
-
-        st.markdown("---")
-
-        st.markdown(
-            "### 🎯 Meta de Cuenta"
-        )
-
-        cap_actual = (
-            st.session_state.capital_actual
-        )
-
-        cap_meta = (
-            st.session_state.capital_meta
-        )
-
-        progreso = (
-            min(
-                1.0,
-                max(
-                    0.0,
-                    cap_actual / cap_meta
+                st.session_state.pagina_actual = (
+                    nombre_pagina
                 )
-            )
-            if cap_meta > 0
-            else 0
-        )
-
-        st.markdown(
-            f"**Capital:** "
-            f"${cap_actual:,.2f} / "
-            f"${cap_meta:,.2f}"
-        )
-
-        st.progress(
-            progreso
-        )
-
-        with st.expander(
-            "🔧 Configurar meta"
-        ):
-
-            st.number_input(
-                "Capital actual ($)",
-                value=float(cap_actual),
-                step=100.0,
-                key="sidebar_capital"
-            )
-
-            st.number_input(
-                "Meta ($)",
-                value=float(cap_meta),
-                step=500.0,
-                key="sidebar_meta"
-            )
-
-            st.session_state.capital_actual = (
-                st.session_state.sidebar_capital
-            )
-
-            st.session_state.capital_meta = (
-                st.session_state.sidebar_meta
-            )
-
-            # FIX #2: antes esto nunca se guardaba en ningún
-            # lado más que en session_state -> se perdía al
-            # reiniciar la app. Ahora hay un botón explícito
-            # que lo persiste en el perfil del usuario.
-            if st.button(
-                "💾 Guardar meta",
-                key="save_meta"
-            ):
-
-                try:
-
-                    client = get_supabase_client()
-
-                    result = client.auth.update_user(
-                        {
-                            "data": {
-                                "capital_actual":
-                                    st.session_state.capital_actual,
-                                "capital_meta":
-                                    st.session_state.capital_meta
-                            }
-                        }
-                    )
-
-                    st.session_state.user = result.user
-
-                    st.success(
-                        "Meta guardada."
-                    )
-
-                except Exception as e:
-
-                    st.error(
-                        f"❌ No se pudo guardar la meta: {e}"
-                    )
-
-        st.markdown("---")
-
-        st.markdown(
-            "### 🌎 Sesiones de Trading"
-        )
-
-        for sesion in SESIONES:
-
-            render_sesion(
-                sesion["nombre"],
-                sesion["zona"],
-                sesion["inicio"],
-                sesion["fin"]
-            )
-
-        st.markdown("---")
-
-        st.markdown(
-            "### 🎯 Mis Reglas"
-        )
-
-        with st.expander(
-            "✏️ Editar reglas"
-        ):
-
-            nuevas_reglas = st.text_area(
-                "Reglas",
-                value=st.session_state.reglas_disciplina,
-                height=150,
-                key="rules_editor"
-            )
-
-            if st.button(
-                "Guardar reglas",
-                key="save_rules"
-            ):
-
-                st.session_state.reglas_disciplina = (
-                    nuevas_reglas
-                )
-
-                # FIX #2: antes solo se guardaba en
-                # session_state y desaparecía al reiniciar
-                # la app. Ahora se persiste en el perfil.
-                try:
-
-                    client = get_supabase_client()
-
-                    result = client.auth.update_user(
-                        {
-                            "data": {
-                                "reglas_disciplina":
-                                    nuevas_reglas
-                            }
-                        }
-                    )
-
-                    st.session_state.user = result.user
-
-                except Exception as e:
-
-                    st.error(
-                        f"❌ No se pudieron guardar las reglas: {e}"
-                    )
 
                 st.rerun()
 
         st.markdown(
-            st.session_state.reglas_disciplina
+            '<div class="nav-section-label">CUENTA</div>',
+            unsafe_allow_html=True
+        )
+
+        for icono, nombre_pagina in [
+            ("👤", "Perfil y Configuración"),
+            ("💳", "Suscripción")
+        ]:
+
+            activo = (
+                st.session_state.pagina_actual
+                == nombre_pagina
+            )
+
+            etiqueta = (
+                f"▸ {icono}  {nombre_pagina}"
+                if activo
+                else f"{icono}  {nombre_pagina}"
+            )
+
+            if st.button(
+                etiqueta,
+                key=f"nav_{nombre_pagina}",
+                use_container_width=True
+            ):
+
+                st.session_state.pagina_actual = (
+                    nombre_pagina
+                )
+
+                st.rerun()
+
+        st.markdown(
+            textwrap.dedent(
+                f"""
+                <div class="plan-box">
+                <b>Plan actual</b><br>
+                <span style="font-size:12px; color:#8b98a8;">{estado_sub}</span>
+                </div>
+                """
+            ),
+            unsafe_allow_html=True
         )
 
         st.markdown("---")
@@ -2911,8 +2771,263 @@ def render_sidebar(estado_sub):
             st.session_state.pop("supabase_session", None)
             st.session_state.pop("supabase_client", None)
             st.session_state.prefs_cargadas = False
+            st.session_state.pagina_actual = "Dashboard"
 
             st.rerun()
+
+
+# =========================================================
+# 24B. PÁGINA: PERFIL Y CONFIGURACIÓN (V9.1)
+# =========================================================
+#
+# Antes este contenido (foto/nombre, meta de cuenta y reglas
+# de disciplina) vivía todo apretado en el sidebar. Ahora es
+# una página completa dentro del área principal, igual que en
+# la referencia visual, y el sidebar queda solo con el menú.
+
+def render_perfil_configuracion():
+
+    user = st.session_state.user
+
+    metadata = (
+        getattr(user, "user_metadata", {}) or {}
+    )
+
+    nombre_actual = metadata.get(
+        "username",
+        st.session_state.nombre_trader
+    )
+
+    foto_b64 = metadata.get(
+        "avatar_b64",
+        ""
+    )
+
+    st.markdown(
+        "## 👤 Perfil y Configuración"
+    )
+
+    col_izq, col_der = st.columns(2)
+
+    with col_izq:
+
+        st.markdown(
+            "### ✏️ Datos del perfil"
+        )
+
+        nuevo_nombre = st.text_input(
+            "Nombre",
+            value=nombre_actual,
+            key="profile_name"
+        )
+
+        nueva_foto = st.file_uploader(
+            "Nueva foto",
+            type=["jpg", "jpeg", "png", "webp"],
+            key="profile_photo"
+        )
+
+        st.caption(
+            "💡 La foto se guarda como base64 dentro del "
+            "perfil de Supabase. Con fotos muy grandes, "
+            "algunas configuraciones pueden rechazar el "
+            "guardado; si eso pasa, usa una imagen más "
+            "pequeña o pásate a Supabase Storage."
+        )
+
+        if st.button(
+            "💾 Guardar perfil",
+            key="save_profile"
+        ):
+
+            try:
+
+                nueva_foto_b64 = foto_b64
+
+                if nueva_foto:
+
+                    nueva_foto_b64 = (
+                        base64.b64encode(
+                            nueva_foto.getvalue()
+                        ).decode("utf-8")
+                    )
+
+                client = get_supabase_client()
+
+                result = client.auth.update_user(
+                    {
+                        "data": {
+                            "username": nuevo_nombre,
+                            "avatar_b64": nueva_foto_b64
+                        }
+                    }
+                )
+
+                st.session_state.user = result.user
+
+                st.session_state.nombre_trader = (
+                    nuevo_nombre
+                )
+
+                st.success("Perfil actualizado.")
+
+                st.rerun()
+
+            except Exception as e:
+
+                st.error(
+                    f"❌ Error actualizando perfil: {e}"
+                )
+
+    with col_der:
+
+        st.markdown(
+            "### 🎯 Meta de Cuenta"
+        )
+
+        cap_actual = st.session_state.capital_actual
+
+        cap_meta = st.session_state.capital_meta
+
+        progreso = (
+            min(1.0, max(0.0, cap_actual / cap_meta))
+            if cap_meta > 0
+            else 0
+        )
+
+        st.markdown(
+            f"**Capital:** ${cap_actual:,.2f} / "
+            f"${cap_meta:,.2f}"
+        )
+
+        st.progress(progreso)
+
+        st.number_input(
+            "Capital actual ($)",
+            value=float(cap_actual),
+            step=100.0,
+            key="sidebar_capital"
+        )
+
+        st.number_input(
+            "Meta ($)",
+            value=float(cap_meta),
+            step=500.0,
+            key="sidebar_meta"
+        )
+
+        st.session_state.capital_actual = (
+            st.session_state.sidebar_capital
+        )
+
+        st.session_state.capital_meta = (
+            st.session_state.sidebar_meta
+        )
+
+        if st.button(
+            "💾 Guardar meta",
+            key="save_meta"
+        ):
+
+            try:
+
+                client = get_supabase_client()
+
+                result = client.auth.update_user(
+                    {
+                        "data": {
+                            "capital_actual":
+                                st.session_state.capital_actual,
+                            "capital_meta":
+                                st.session_state.capital_meta
+                        }
+                    }
+                )
+
+                st.session_state.user = result.user
+
+                st.success("Meta guardada.")
+
+            except Exception as e:
+
+                st.error(
+                    f"❌ No se pudo guardar la meta: {e}"
+                )
+
+    st.markdown("---")
+
+    st.markdown(
+        "### 📜 Mis Reglas de Disciplina"
+    )
+
+    nuevas_reglas = st.text_area(
+        "Reglas",
+        value=st.session_state.reglas_disciplina,
+        height=180,
+        key="rules_editor"
+    )
+
+    if st.button(
+        "💾 Guardar reglas",
+        key="save_rules"
+    ):
+
+        st.session_state.reglas_disciplina = nuevas_reglas
+
+        try:
+
+            client = get_supabase_client()
+
+            result = client.auth.update_user(
+                {
+                    "data": {
+                        "reglas_disciplina": nuevas_reglas
+                    }
+                }
+            )
+
+            st.session_state.user = result.user
+
+            st.success("Reglas guardadas.")
+
+        except Exception as e:
+
+            st.error(
+                f"❌ No se pudieron guardar las reglas: {e}"
+            )
+
+
+# =========================================================
+# 24C. PÁGINA: SUSCRIPCIÓN (V9.1)
+# =========================================================
+
+def render_suscripcion_page(estado_sub):
+
+    st.markdown(
+        "## 💳 Suscripción"
+    )
+
+    if (
+        "PRO" in estado_sub
+        or "Admin" in estado_sub
+    ):
+
+        st.success(
+            f"Tu plan actual: **{estado_sub}**"
+        )
+
+        st.caption(
+            "Ya tienes acceso completo a todas las "
+            "herramientas de la plataforma."
+        )
+
+    else:
+
+        st.info(
+            f"Tu plan actual: **{estado_sub}**"
+        )
+
+        render_paywall()
 
 
 # =========================================================
@@ -2929,18 +3044,16 @@ def render_nuevo_trade(
     )
 
     st.markdown(
-        """
-        <div class="ai-box">
-
-        <h4>🧠 AI Vision V9</h4>
-
-        Sube una captura de TradingView y la IA intentará
-        leer directamente:
-
-        <b>ACTIVO · DIRECCIÓN · ENTRY · SL · TP · TIMEFRAME</b>
-
-        </div>
-        """,
+        textwrap.dedent(
+            """
+            <div class="ai-box">
+            <h4>🧠 AI Vision V9</h4>
+            Sube una captura de TradingView y la IA intentará
+            leer directamente:
+            <b>ACTIVO · DIRECCIÓN · ENTRY · SL · TP · TIMEFRAME</b>
+            </div>
+            """
+        ),
         unsafe_allow_html=True
     )
 
@@ -5069,157 +5182,197 @@ def render_dashboard():
             errors="coerce"
         ).fillna(0)
 
-    st.markdown(
-        "## ⚡ AI Trading Journal & Auditor V9"
-    )
-
-    st.caption(
-        "Sistema de journaling + IA visual + disciplina + Track Record"
-    )
-
-    # -----------------------------------------------------
-    # V9: fila de tarjetas de métricas estilo SaaS
-    # -----------------------------------------------------
-
-    pnl_total = (
-        float(df_trades["beneficio_usd"].sum())
-        if not df_trades.empty
-        else 0.0
-    )
-
-    total_trades = len(df_trades)
-
-    wins_top = (
-        len(df_trades[df_trades["beneficio_usd"] > 0])
-        if not df_trades.empty
-        else 0
-    )
-
-    win_rate_top = (
-        (wins_top / total_trades * 100)
-        if total_trades
-        else 0.0
-    )
-
-    mc1, mc2, mc3, mc4 = st.columns(4)
-
-    with mc1:
-
-        render_metric_card(
-            "💰",
-            "Balance Actual",
-            f"${st.session_state.capital_actual:,.2f}",
-            "Capital de trading"
-        )
-
-    with mc2:
-
-        render_metric_card(
-            "🎯",
-            "Meta",
-            f"${st.session_state.capital_meta:,.2f}",
-            "Objetivo de cuenta"
-        )
-
-    with mc3:
-
-        render_metric_card(
-            "📈",
-            "P&L Total",
-            f"${pnl_total:,.2f}",
-            f"{total_trades} trades"
-        )
-
-    with mc4:
-
-        render_metric_card(
-            "🏆",
-            "Win Rate",
-            f"{win_rate_top:.1f}%",
-            "Porcentaje de aciertos"
-        )
-
-    st.markdown("")
-
-    # -----------------------------------------------------
-    # V9: pestañas (Admin y Calendario son nuevas)
-    # -----------------------------------------------------
-
     es_admin = "Admin" in estado_sub
 
-    tab_labels = [
-        "➕ Registrar Trade",
-        "📅 Track Record",
-        "💬 Chat IA",
-        "🧮 Lotaje",
-        "🤖 Análisis IA",
-        "📈 Proyecciones",
-        "📓 Psicotrading",
-        "🗓️ Calendario Económico",
-        "📊 Dashboard"
+    pagina = st.session_state.pagina_actual
+
+    # Si por algún motivo quedó seleccionada una página que ya
+    # no aplica (ej. Panel Admin y dejaste de ser admin), vuelve
+    # al Dashboard en vez de romper.
+    paginas_validas = [
+        "Dashboard",
+        "Registrar Trade",
+        "Track Record",
+        "Chat IA",
+        "Psicotrading",
+        "Análisis IA",
+        "Proyecciones",
+        "Lotaje",
+        "Calendario Económico",
+        "Perfil y Configuración",
+        "Suscripción"
     ]
 
     if es_admin:
 
-        tab_labels.append(
-            "🛡️ Panel Admin"
+        paginas_validas.append(
+            "Panel Admin"
         )
 
-    tabs = st.tabs(
-        tab_labels
+    if pagina not in paginas_validas:
+
+        pagina = "Dashboard"
+
+        st.session_state.pagina_actual = "Dashboard"
+
+    st.markdown(
+        f"## ⚡ {pagina}"
     )
 
-    with tabs[0]:
+    if pagina == "Dashboard":
+
+        st.caption(
+            "Sistema de journaling + IA visual + disciplina + "
+            "Track Record"
+        )
+
+        # -------------------------------------------------
+        # V9: fila de tarjetas de métricas estilo SaaS
+        # -------------------------------------------------
+
+        pnl_total = (
+            float(df_trades["beneficio_usd"].sum())
+            if not df_trades.empty
+            else 0.0
+        )
+
+        total_trades = len(df_trades)
+
+        wins_top = (
+            len(df_trades[df_trades["beneficio_usd"] > 0])
+            if not df_trades.empty
+            else 0
+        )
+
+        win_rate_top = (
+            (wins_top / total_trades * 100)
+            if total_trades
+            else 0.0
+        )
+
+        mc1, mc2, mc3, mc4 = st.columns(4)
+
+        with mc1:
+
+            render_metric_card(
+                "💰",
+                "Balance Actual",
+                f"${st.session_state.capital_actual:,.2f}",
+                "Capital de trading"
+            )
+
+        with mc2:
+
+            render_metric_card(
+                "🎯",
+                "Meta",
+                f"${st.session_state.capital_meta:,.2f}",
+                "Objetivo de cuenta"
+            )
+
+        with mc3:
+
+            render_metric_card(
+                "📈",
+                "P&L Total",
+                f"${pnl_total:,.2f}",
+                f"{total_trades} trades"
+            )
+
+        with mc4:
+
+            render_metric_card(
+                "🏆",
+                "Win Rate",
+                f"{win_rate_top:.1f}%",
+                "Porcentaje de aciertos"
+            )
+
+        st.markdown("")
+
+        # -------------------------------------------------
+        # V9.1: Sesiones de Mercado + evolución de balance,
+        # igual que en la referencia visual
+        # -------------------------------------------------
+
+        col_ses, col_graf = st.columns(
+            [1, 1.4]
+        )
+
+        with col_ses:
+
+            st.markdown(
+                "#### 🌎 Sesiones de Mercado"
+            )
+
+            for sesion in SESIONES:
+
+                render_sesion(
+                    sesion["nombre"],
+                    sesion["zona"],
+                    sesion["inicio"],
+                    sesion["fin"]
+                )
+
+        with col_graf:
+
+            render_dashboard_stats(
+                df_trades
+            )
+
+    elif pagina == "Registrar Trade":
 
         render_nuevo_trade(
             user_id,
             df_trades
         )
 
-    with tabs[1]:
+    elif pagina == "Track Record":
 
         render_track_record(
             df_trades,
             user_id
         )
 
-    with tabs[2]:
+    elif pagina == "Chat IA":
 
         render_chat_ia(
             df_trades
         )
 
-    with tabs[3]:
-
-        render_lotaje()
-
-    with tabs[4]:
-
-        render_analisis_ia()
-
-    with tabs[5]:
-
-        render_proyecciones()
-
-    with tabs[6]:
+    elif pagina == "Psicotrading":
 
         render_psicotrading()
 
-    with tabs[7]:
+    elif pagina == "Análisis IA":
+
+        render_analisis_ia()
+
+    elif pagina == "Proyecciones":
+
+        render_proyecciones()
+
+    elif pagina == "Lotaje":
+
+        render_lotaje()
+
+    elif pagina == "Calendario Económico":
 
         render_calendario_economico()
 
-    with tabs[8]:
+    elif pagina == "Perfil y Configuración":
 
-        render_dashboard_stats(
-            df_trades
+        render_perfil_configuracion()
+
+    elif pagina == "Suscripción":
+
+        render_suscripcion_page(
+            estado_sub
         )
 
-    if es_admin:
+    elif pagina == "Panel Admin" and es_admin:
 
-        with tabs[9]:
-
-            render_admin_panel()
+        render_admin_panel()
 
 
 # =========================================================
