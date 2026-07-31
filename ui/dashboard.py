@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import datetime
 from typing import Any
 
 import pandas as pd
 import streamlit as st
 
 
-def _number(
+# =========================================================
+# AXION PRIME X10
+# DASHBOARD PRINCIPAL
+# =========================================================
+
+
+def _safe_float(
     value: Any,
     default: float = 0.0,
 ) -> float:
@@ -19,10 +26,10 @@ def _number(
 def _money(
     value: Any,
 ) -> str:
-    return f"${_number(value):,.2f}"
+    return f"${_safe_float(value):,.2f}"
 
 
-def _prepare_dashboard_df(
+def _prepare_df(
     df: pd.DataFrame,
 ) -> pd.DataFrame:
     if df is None or df.empty:
@@ -46,6 +53,14 @@ def _prepare_dashboard_df(
     else:
         result["fecha_dt"] = pd.NaT
 
+    if "created_at" in result.columns:
+        result["created_at_dt"] = pd.to_datetime(
+            result["created_at"],
+            errors="coerce",
+        )
+    else:
+        result["created_at_dt"] = result["fecha_dt"]
+
     return result
 
 
@@ -53,50 +68,294 @@ def _metric_card(
     title: str,
     value: str,
     subtitle: str,
-    color: str,
+    accent: str,
+    footer: str = "",
 ) -> None:
-    st.markdown(
+    st.html(
         f"""
-        <div class="ax-card" style="min-height:145px;">
-            <div style="
-                color:#7f8bad;
-                font-size:9px;
-                font-weight:900;
-                letter-spacing:1.4px;
-            ">
+        <div class="ax-metric-card">
+            <div class="ax-metric-label">
                 {title}
             </div>
 
-            <div style="
-                color:{color};
-                font-size:28px;
-                font-weight:950;
-                margin-top:16px;
-            ">
+            <div
+                class="ax-metric-value"
+                style="color:{accent}"
+            >
                 {value}
             </div>
 
-            <div style="
-                color:#8290b1;
-                font-size:10px;
-                margin-top:12px;
-            ">
-                {subtitle}
+            <div class="ax-metric-bottom">
+                <span>{subtitle}</span>
+                <span>{footer}</span>
             </div>
 
-            <div style="
-                height:3px;
-                border-radius:999px;
-                margin-top:18px;
-                background:linear-gradient(
-                    90deg,
-                    {color},
-                    #9146ff
-                );
-            "></div>
+            <div
+                class="ax-metric-line"
+                style="
+                    background:linear-gradient(
+                        90deg,
+                        {accent},
+                        #9146ff
+                    )
+                "
+            ></div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
+    )
+
+
+def _render_header(
+    trader_name: str,
+) -> None:
+    current_date = datetime.datetime.now().strftime(
+        "%d %b %Y"
+    ).upper()
+
+    st.html(
+        f"""
+        <section class="ax-dashboard-hero">
+            <div>
+                <div class="ax-dashboard-eyebrow">
+                    AXION PRIME · PERFORMANCE COMMAND OS
+                </div>
+
+                <h1>
+                    ¡Buenos días, {trader_name}! 👋
+                </h1>
+
+                <p>
+                    Disciplina hoy, libertad mañana.
+                    Tu desempeño vive en los datos.
+                </p>
+            </div>
+
+            <div class="ax-dashboard-status-area">
+                <div class="ax-dashboard-date">
+                    {current_date}
+                </div>
+
+                <div class="ax-market-status">
+                    <span></span>
+                    MERCADOS ACTIVOS
+                </div>
+            </div>
+        </section>
+        """
+    )
+
+
+def _equity_chart(
+    data: pd.DataFrame,
+    initial_capital: float,
+) -> None:
+    st.html(
+        """
+        <div class="ax-panel-title">
+            <strong>📈 CURVA DE EQUITY</strong>
+            <span>BALANCE ACUMULADO</span>
+        </div>
+        """
+    )
+
+    if data.empty:
+        st.html(
+            """
+            <div class="ax-empty-panel">
+                <div class="ax-empty-icon">◇</div>
+
+                <strong>
+                    Tu curva comienza con tu primer trade
+                </strong>
+
+                <p>
+                    Registra una operación para activar
+                    rendimiento, consistencia y drawdown.
+                </p>
+            </div>
+            """
+        )
+        return
+
+    chart_data = data.copy()
+
+    chart_data = chart_data.dropna(
+        subset=["fecha_dt"]
+    )
+
+    chart_data = chart_data.sort_values(
+        "fecha_dt"
+    )
+
+    if chart_data.empty:
+        st.info(
+            "No existen fechas válidas para construir la curva."
+        )
+        return
+
+    chart_data["equity"] = (
+        initial_capital
+        + chart_data["beneficio_usd"].cumsum()
+    )
+
+    chart_data = chart_data.set_index(
+        "fecha_dt"
+    )
+
+    st.line_chart(
+        chart_data["equity"],
+        use_container_width=True,
+        height=360,
+    )
+
+
+def _setup_panel(
+    data: pd.DataFrame,
+) -> None:
+    st.html(
+        """
+        <div class="ax-panel-title">
+            <strong>🖼️ CAPTURA DEL SETUP</strong>
+            <span>AI VISION READY</span>
+        </div>
+        """
+    )
+
+    if data.empty:
+        st.html(
+            """
+            <div class="ax-empty-panel ax-setup-empty">
+                <div class="ax-empty-icon">🧠</div>
+
+                <strong>
+                    AXION Vision está listo
+                </strong>
+
+                <p>
+                    Escanea tu primer setup para activar el análisis.
+                </p>
+            </div>
+            """
+        )
+
+        if st.button(
+            "🧠 ESCANEAR PRIMER SETUP",
+            key="dashboard_scan_first",
+            use_container_width=True,
+        ):
+            st.session_state.page = "Registrar Trade"
+            st.rerun()
+
+        return
+
+    ordered = data.sort_values(
+        [
+            "fecha_dt",
+            "created_at_dt",
+        ],
+        ascending=False,
+    )
+
+    last_trade = ordered.iloc[0]
+
+    image_value = (
+        last_trade.get("img_before")
+        or last_trade.get("img_after")
+        or ""
+    )
+
+    info_columns = st.columns(3)
+
+    info_columns[0].metric(
+        "Activo",
+        str(
+            last_trade.get(
+                "par",
+                "Sin activo",
+            )
+        ),
+    )
+
+    info_columns[1].metric(
+        "Dirección",
+        str(
+            last_trade.get(
+                "direccion",
+                "-",
+            )
+        ),
+    )
+
+    info_columns[2].metric(
+        "PnL",
+        _money(
+            last_trade.get(
+                "beneficio_usd"
+            )
+        ),
+    )
+
+    if image_value:
+        st.image(
+            image_value,
+            use_container_width=True,
+        )
+    else:
+        st.html(
+            """
+            <div class="ax-image-placeholder">
+                📷 El último trade no tiene captura guardada
+            </div>
+            """
+        )
+
+
+def _recent_trades(
+    data: pd.DataFrame,
+) -> None:
+    st.html(
+        """
+        <div class="ax-panel-title">
+            <strong>🧾 ÚLTIMAS OPERACIONES</strong>
+            <span>HISTORIAL RECIENTE</span>
+        </div>
+        """
+    )
+
+    if data.empty:
+        st.info(
+            "Todavía no existen operaciones."
+        )
+        return
+
+    recent = data.sort_values(
+        [
+            "fecha_dt",
+            "created_at_dt",
+        ],
+        ascending=False,
+    ).head(8)
+
+    display_columns = [
+        column
+        for column in [
+            "fecha",
+            "par",
+            "direccion",
+            "precio_entrada",
+            "stop_loss",
+            "take_profit",
+            "rr",
+            "resultado",
+            "beneficio_usd",
+        ]
+        if column in recent.columns
+    ]
+
+    st.dataframe(
+        recent[display_columns],
+        use_container_width=True,
+        hide_index=True,
     )
 
 
@@ -105,10 +364,6 @@ def render_dashboard(
     trader_name: str = "Trader Pro",
     initial_capital: float | None = None,
 ) -> None:
-    """
-    Dashboard principal de AXION PRIME.
-    """
-
     if initial_capital is None:
         initial_capital = float(
             st.session_state.get(
@@ -117,33 +372,41 @@ def render_dashboard(
             )
         )
 
-    data = _prepare_dashboard_df(df)
+    data = _prepare_df(df)
 
-    total_trades = len(data)
+    total = len(data)
 
-    pnl_total = (
+    pnl = (
         float(data["beneficio_usd"].sum())
         if not data.empty
         else 0.0
     )
 
-    balance = initial_capital + pnl_total
+    balance = initial_capital + pnl
 
     wins = (
-        int((data["beneficio_usd"] > 0).sum())
+        int(
+            (
+                data["beneficio_usd"] > 0
+            ).sum()
+        )
         if not data.empty
         else 0
     )
 
     losses = (
-        int((data["beneficio_usd"] < 0).sum())
+        int(
+            (
+                data["beneficio_usd"] < 0
+            ).sum()
+        )
         if not data.empty
         else 0
     )
 
     win_rate = (
-        wins / total_trades * 100
-        if total_trades > 0
+        wins / total * 100
+        if total > 0
         else 0.0
     )
 
@@ -177,37 +440,34 @@ def render_dashboard(
         else 0.0
     )
 
-    st.markdown(
-        f"""
-        <div class="ax-hero">
-            <div style="
-                color:#25e5ff;
-                font-size:9px;
-                font-weight:950;
-                letter-spacing:2px;
-            ">
-                AXION PRIME · PERFORMANCE COMMAND OS
-            </div>
-
-            <div class="ax-title">
-                ¡Buenos días, {trader_name}! 👋
-            </div>
-
-            <div class="ax-sub">
-                Disciplina hoy, libertad mañana.
-                Tu desempeño vive en los datos.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    score = min(
+        100,
+        max(
+            0,
+            round(
+                50
+                + win_rate * 0.25
+                + min(
+                    profit_factor,
+                    3,
+                ) * 8
+            ),
+        ),
     )
 
-    top_left, top_right = st.columns(
-        [3, 2]
+    _render_header(trader_name)
+
+    filter_columns = st.columns(
+        [
+            1,
+            1,
+            1,
+            2,
+        ]
     )
 
-    with top_left:
-        period = st.selectbox(
+    with filter_columns[0]:
+        st.selectbox(
             "Período",
             [
                 "Todo",
@@ -219,158 +479,107 @@ def render_dashboard(
             key="dashboard_period",
         )
 
-    with top_right:
+    with filter_columns[1]:
+        st.selectbox(
+            "Activo",
+            ["Todos"],
+            label_visibility="collapsed",
+            key="dashboard_asset",
+        )
+
+    with filter_columns[2]:
+        st.selectbox(
+            "Vista",
+            [
+                "Performance Desk",
+                "Risk Desk",
+                "Psychology Desk",
+            ],
+            label_visibility="collapsed",
+            key="dashboard_view",
+        )
+
+    with filter_columns[3]:
         if st.button(
             "＋ REGISTRAR NUEVA OPERACIÓN",
-            use_container_width=True,
             key="dashboard_new_trade",
+            use_container_width=True,
         ):
             st.session_state.page = "Registrar Trade"
             st.rerun()
 
-    cards = st.columns(5)
+    metric_columns = st.columns(5)
 
-    with cards[0]:
+    with metric_columns[0]:
         _metric_card(
             "BALANCE ACTUAL",
             _money(balance),
-            f"{total_trades} operaciones",
+            "Capital + PnL",
             "#ffffff",
+            f"{total} trades",
         )
 
-    with cards[1]:
+    with metric_columns[1]:
         pnl_color = (
             "#00ff88"
-            if pnl_total >= 0
+            if pnl >= 0
             else "#ff1744"
         )
 
         _metric_card(
             "P&L TOTAL",
-            _money(pnl_total),
+            _money(pnl),
             "Resultado acumulado",
             pnl_color,
+            "",
         )
 
-    with cards[2]:
+    with metric_columns[2]:
         _metric_card(
             "WIN RATE",
             f"{win_rate:.1f}%",
-            f"{wins} ganadas · {losses} perdidas",
+            f"{wins}W / {losses}L",
             "#25e5ff",
+            "Aciertos",
         )
 
-    with cards[3]:
+    with metric_columns[3]:
         _metric_card(
             "PROFIT FACTOR",
             f"{profit_factor:.2f}",
-            "Objetivo recomendado ≥ 1.50",
+            "Objetivo ≥ 1.50",
             "#9146ff",
+            "Sistema",
         )
 
-    with cards[4]:
-        score = min(
-            100,
-            max(
-                0,
-                round(
-                    50
-                    + win_rate * 0.25
-                    + min(profit_factor, 3) * 8
-                ),
-            ),
-        )
-
+    with metric_columns[4]:
         _metric_card(
             "PROP FIRM SCORE",
             str(score),
-            "Puntuación AXION",
+            "de 100",
             "#00ff88",
+            "AXION",
         )
 
-    st.markdown("## 📈 Curva de equity")
+    chart_left, chart_right = st.columns(
+        [
+            1.65,
+            1,
+        ],
+        gap="large",
+    )
 
-    if data.empty:
-        st.markdown(
-            """
-            <div class="ax-card" style="
-                min-height:330px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                text-align:center;
-            ">
-                <div>
-                    <div style="
-                        font-size:42px;
-                        color:#25e5ff;
-                    ">
-                        ◇
-                    </div>
-
-                    <div style="
-                        font-size:18px;
-                        font-weight:900;
-                        margin-top:14px;
-                    ">
-                        Tu curva comienza con tu primer trade
-                    </div>
-
-                    <div style="
-                        color:#8290b1;
-                        font-size:11px;
-                        margin-top:8px;
-                    ">
-                        Registra una operación para activar
-                        métricas, estadísticas y Track Record.
-                    </div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+    with chart_left:
+        _equity_chart(
+            data,
+            initial_capital,
         )
 
-        return
+    with chart_right:
+        _setup_panel(data)
 
-    chart_data = data.copy()
-
-    chart_data = chart_data.sort_values(
-        "fecha_dt"
+    st.html(
+        "<div style='height:14px'></div>"
     )
 
-    chart_data["equity"] = (
-        initial_capital
-        + chart_data["beneficio_usd"].cumsum()
-    )
-
-    chart_data = chart_data.set_index(
-        "fecha_dt"
-    )
-
-    st.line_chart(
-        chart_data["equity"],
-        use_container_width=True,
-    )
-
-    st.markdown("## 🧾 Últimas operaciones")
-
-    display_columns = [
-        column
-        for column in [
-            "fecha",
-            "par",
-            "direccion",
-            "precio_entrada",
-            "stop_loss",
-            "take_profit",
-            "resultado",
-            "beneficio_usd",
-        ]
-        if column in data.columns
-    ]
-
-    st.dataframe(
-        data.tail(10)[display_columns],
-        use_container_width=True,
-        hide_index=True,
-    )
+    _recent_trades(data)
