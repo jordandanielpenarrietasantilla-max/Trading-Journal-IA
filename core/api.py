@@ -631,3 +631,203 @@ def test_connection() -> bool:
     except Exception:
 
         return False
+        # =========================================================
+# AUTENTICACIÓN CON SUPABASE
+# =========================================================
+
+def _auth_headers() -> dict[str, str]:
+    """
+    Cabeceras para Supabase Auth.
+    """
+
+    return {
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "application/json",
+    }
+
+
+def _auth_response(
+    response: requests.Response,
+    action: str,
+) -> dict[str, Any]:
+    """
+    Valida y convierte una respuesta de Supabase Auth.
+    """
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
+
+    if response.status_code >= 400:
+        message = (
+            payload.get("msg")
+            or payload.get("message")
+            or payload.get("error_description")
+            or payload.get("error")
+            or response.text
+            or f"Error HTTP {response.status_code}"
+        )
+
+        raise ApiError(
+            f"{action}: {message}"
+        )
+
+    if not isinstance(payload, dict):
+        raise ApiError(
+            f"{action}: Supabase devolvió "
+            "una respuesta inesperada."
+        )
+
+    return payload
+
+
+def sign_in(
+    email: str,
+    password: str,
+) -> dict[str, Any]:
+    """
+    Inicia sesión con correo y contraseña.
+    """
+
+    clean_email = str(email).strip().lower()
+    clean_password = str(password)
+
+    if not clean_email or not clean_password:
+        raise ApiError(
+            "Correo y contraseña obligatorios."
+        )
+
+    try:
+        response = requests.post(
+            (
+                f"{SUPABASE_URL.rstrip('/')}"
+                "/auth/v1/token"
+                "?grant_type=password"
+            ),
+            headers=_auth_headers(),
+            json={
+                "email": clean_email,
+                "password": clean_password,
+            },
+            timeout=45,
+        )
+
+    except requests.Timeout as exc:
+        raise ApiError(
+            "Supabase tardó demasiado en responder."
+        ) from exc
+
+    except requests.ConnectionError as exc:
+        raise ApiError(
+            "No se pudo conectar con Supabase Auth."
+        ) from exc
+
+    return _auth_response(
+        response,
+        "No se pudo iniciar sesión",
+    )
+
+
+def sign_up(
+    email: str,
+    password: str,
+) -> dict[str, Any]:
+    """
+    Crea una cuenta con correo y contraseña.
+    """
+
+    clean_email = str(email).strip().lower()
+    clean_password = str(password)
+
+    if not clean_email:
+        raise ApiError(
+            "El correo es obligatorio."
+        )
+
+    if len(clean_password) < 6:
+        raise ApiError(
+            "La contraseña debe tener "
+            "al menos 6 caracteres."
+        )
+
+    try:
+        response = requests.post(
+            (
+                f"{SUPABASE_URL.rstrip('/')}"
+                "/auth/v1/signup"
+            ),
+            headers=_auth_headers(),
+            json={
+                "email": clean_email,
+                "password": clean_password,
+            },
+            timeout=45,
+        )
+
+    except requests.Timeout as exc:
+        raise ApiError(
+            "Supabase tardó demasiado en responder."
+        ) from exc
+
+    except requests.ConnectionError as exc:
+        raise ApiError(
+            "No se pudo conectar con Supabase Auth."
+        ) from exc
+
+    return _auth_response(
+        response,
+        "No se pudo crear la cuenta",
+    )
+
+
+def reset_password(
+    email: str,
+    redirect_url: str = "",
+) -> dict[str, Any]:
+    """
+    Envía el correo de recuperación de contraseña.
+    """
+
+    clean_email = str(email).strip().lower()
+    clean_redirect = str(
+        redirect_url or ""
+    ).strip()
+
+    if not clean_email:
+        raise ApiError(
+            "El correo es obligatorio."
+        )
+
+    body: dict[str, Any] = {
+        "email": clean_email,
+    }
+
+    if clean_redirect:
+        body["redirect_to"] = clean_redirect
+
+    try:
+        response = requests.post(
+            (
+                f"{SUPABASE_URL.rstrip('/')}"
+                "/auth/v1/recover"
+            ),
+            headers=_auth_headers(),
+            json=body,
+            timeout=45,
+        )
+
+    except requests.Timeout as exc:
+        raise ApiError(
+            "Supabase tardó demasiado en responder."
+        ) from exc
+
+    except requests.ConnectionError as exc:
+        raise ApiError(
+            "No se pudo conectar con Supabase Auth."
+        ) from exc
+
+    return _auth_response(
+        response,
+        "No se pudo enviar la recuperación",
+    )
