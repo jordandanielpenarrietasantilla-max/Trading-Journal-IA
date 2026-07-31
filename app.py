@@ -936,87 +936,123 @@ def _insertar_trade_rest(data, access_token):
     return payload
 
 
+
+def _guardar_trade_rpc(client, data):
+    """Llama a una función segura de Supabase que usa auth.uid()."""
+    params = {
+        "p_fecha": data.get("fecha"),
+        "p_par": data.get("par"),
+        "p_direccion": data.get("direccion"),
+        "p_precio_entrada": data.get("precio_entrada"),
+        "p_stop_loss": data.get("stop_loss"),
+        "p_take_profit": data.get("take_profit"),
+        "p_rr": data.get("rr"),
+        "p_timeframe": data.get("timeframe"),
+        "p_resultado": data.get("resultado"),
+        "p_emocion": data.get("emocion"),
+        "p_notas_emocionales": data.get("notas_emocionales"),
+        "p_beneficio_usd": data.get("beneficio_usd"),
+        "p_trades_cant": data.get("trades_cant", 1),
+        "p_img_before": data.get("img_before"),
+        "p_img_after": data.get("img_after"),
+    }
+
+    response = client.rpc("axion_save_trade", params).execute()
+    payload = getattr(response, "data", None)
+
+    if isinstance(payload, list) and payload:
+        return payload[0]
+
+    if isinstance(payload, dict):
+        return payload
+
+    if isinstance(payload, str) and payload:
+        return {"id": payload}
+
+    raise RuntimeError("La función axion_save_trade no devolvió el trade.")
+
+
 def guardar_trade_supabase(user_id, trade_data):
-    """Guarda y verifica el trade con doble vía: SDK + REST autenticado."""
+    """
+    X9: guardado en tres capas.
+    1) RPC segura con auth.uid().
+    2) INSERT normal del SDK.
+    3) REST autenticado.
+    """
     access_token, refresh_token = _obtener_tokens_sesion()
 
-    if not access_token:
-        st.error(
-            "❌ La sesión venció o no tiene token. "
-            "Cierra sesión, vuelve a entrar e intenta nuevamente."
+    if not access_token or not refresh_token:
+        st.session_state["save_error_detail"] = (
+            "La sesión no tiene tokens válidos. "
+            "Cierra sesión y vuelve a ingresar."
         )
         return False
 
     data = dict(trade_data)
     data["user_id"] = str(user_id)
-
     errores = []
 
-    # Vía 1: SDK oficial.
     try:
         client = get_supabase_client()
+        session_result = client.auth.set_session(
+            access_token,
+            refresh_token,
+        )
 
-        if refresh_token:
-            session_result = client.auth.set_session(
-                access_token,
-                refresh_token,
+        refreshed = getattr(session_result, "session", None)
+        if refreshed:
+            access_token = (
+                getattr(refreshed, "access_token", None)
+                or access_token
             )
-            refreshed = getattr(session_result, "session", None)
-            if refreshed:
-                access_token = (
-                    getattr(refreshed, "access_token", None)
-                    or access_token
-                )
-                refresh_token = (
-                    getattr(refreshed, "refresh_token", None)
-                    or refresh_token
-                )
-                st.session_state.supabase_session = {
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                }
+            refresh_token = (
+                getattr(refreshed, "refresh_token", None)
+                or refresh_token
+            )
+            st.session_state.supabase_session = {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+            }
 
-        result = client.table("trades").insert(data).execute()
-        filas = getattr(result, "data", None) or []
-
-        if filas:
-            trade_id = filas[0].get("id")
+        # Capa principal: función SQL controlada.
+        try:
+            inserted = _guardar_trade_rpc(client, data)
+            trade_id = inserted.get("id") if isinstance(inserted, dict) else None
             st.session_state.last_saved_trade_id = trade_id
+            st.session_state["save_error_detail"] = ""
             return True
+        except Exception as rpc_error:
+            errores.append(f"RPC: {rpc_error}")
 
-        errores.append("El SDK no devolvió la fila insertada.")
+        # Respaldo 1: insert normal.
+        try:
+            result = client.table("trades").insert(data).execute()
+            rows = getattr(result, "data", None) or []
+            if rows:
+                st.session_state.last_saved_trade_id = rows[0].get("id")
+                st.session_state["save_error_detail"] = ""
+                return True
+            errores.append("SDK: no devolvió la fila insertada.")
+        except Exception as sdk_error:
+            errores.append(f"SDK: {sdk_error}")
 
-    except Exception as e:
-        errores.append(f"SDK: {e}")
+        # Respaldo 2: REST.
+        try:
+            rows = _insertar_trade_rest(data, access_token)
+            st.session_state.last_saved_trade_id = (
+                rows[0].get("id")
+                if rows and isinstance(rows[0], dict)
+                else None
+            )
+            st.session_state["save_error_detail"] = ""
+            return True
+        except Exception as rest_error:
+            errores.append(f"REST: {rest_error}")
 
-    # Vía 2: REST directo, útil cuando el SDK pierde el JWT durante un rerun.
-    try:
-        filas = _insertar_trade_rest(data, access_token)
-        trade_id = filas[0].get("id") if isinstance(filas[0], dict) else None
-        st.session_state.last_saved_trade_id = trade_id
-        return True
+    except Exception as session_error:
+        errores.append(f"Sesión: {session_error}")
 
-    except Exception as e:
-        errores.append(f"REST: {e}")
-
-    mensaje = " | ".join(errores)
-    st.error(f"❌ El trade no pudo guardarse. {mensaje}")
-
-    lower = mensaje.lower()
-    if "row-level security" in lower or "42501" in lower:
-        st.warning(
-            "La política RLS de INSERT está bloqueando el registro. "
-            "Ejecuta el archivo SQL X7 incluido."
-        )
-    elif "column" in lower or "schema cache" in lower:
-        st.warning(
-            "La tabla trades no tiene todas las columnas que usa el formulario."
-        )
-    elif "jwt" in lower or "token" in lower or "session" in lower:
-        st.warning(
-            "La sesión de Supabase no es válida. Cierra sesión y vuelve a ingresar."
-        )
-
+    st.session_state["save_error_detail"] = " | ".join(errores)
     return False
 
 
@@ -2326,7 +2362,7 @@ def aplicar_estilos():
     .ax-panel{border:1px solid var(--ax-line);border-radius:22px;background:linear-gradient(150deg,rgba(14,21,38,.82),rgba(7,11,22,.78));padding:18px 20px}.ax-panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.ax-panel-title{font-size:14px;font-weight:850;color:var(--ax-text)!important}.ax-panel-tag{font-size:9px;letter-spacing:1px;color:var(--ax-muted)!important}.ax-score-ring{width:124px;height:124px;border-radius:50%;display:grid;place-items:center;margin:8px auto 12px;background:conic-gradient(var(--ax-cyan) calc(var(--score)*1%),rgba(255,255,255,.07) 0);position:relative}.ax-score-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:#0b1020}.ax-score-number{z-index:1;font-size:34px;font-weight:950;color:var(--ax-text)!important}.ax-score-number small{font-size:11px;color:var(--ax-muted)!important}.ax-rule{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.055);font-size:11px}.ax-market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.ax-market{padding:13px;border-radius:16px;background:rgba(13,19,34,.68);border:1px solid var(--ax-line)}.ax-market-time{font-size:20px;font-weight:900;color:var(--ax-cyan)!important;margin:5px 0}.ax-open{color:var(--ax-green)!important}.ax-closed{color:var(--ax-red)!important}.ax-trade-row{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr .8fr;gap:10px;padding:13px 14px;border-radius:15px;background:rgba(12,18,32,.72);border:1px solid rgba(255,255,255,.055);margin-bottom:8px;font-size:11px}.ax-chip{display:inline-block;padding:4px 8px;border-radius:99px;background:rgba(79,124,255,.12);font-size:9px}.ax-empty{min-height:290px;display:grid;place-items:center;text-align:center;border:1px dashed rgba(67,232,255,.28);border-radius:20px}.ax-empty-title{font-size:17px;font-weight:850}.ax-empty-sub{font-size:12px;color:var(--ax-muted)!important;max-width:430px;margin:auto}
 
 
-    /* AXION PRIME X8 — PREMIUM PROP SIDEBAR */
+    /* AXION PRIME X9 — PREMIUM PROP SIDEBAR */
     section[data-testid="stSidebar"] {
         background:
             radial-gradient(circle at 15% 8%, rgba(82,102,255,.16), transparent 25%),
@@ -2430,7 +2466,7 @@ def aplicar_estilos_x5():
 
 def render_fondo_velas_x5():
     candles = []
-    tones = ["#21f0a4","#ff436f","#2edcff","#8657ff"]
+    tones = ["#00ff88","#ff1744","#00e676","#ff003c"]
     heights = [34,58,23,73,42,65,29,82,48,38,69,26,55,77,32,61,45,86,36,72,51,28,66,41,79,33,57,88,46,64]
     for i, h in enumerate(heights):
         left = (i * 3.47 + 1.5) % 100
@@ -2613,6 +2649,126 @@ def aplicar_estilos_x8():
 aplicar_estilos_x8()
 
 
+def aplicar_estilos_x9():
+    st.markdown("""
+    <style>
+    /* Fondo y velas japonesas mucho más visibles */
+    .x5-candle-field{
+        opacity:.62 !important;
+        mix-blend-mode:screen;
+        filter:saturate(1.55) contrast(1.12);
+    }
+    .x5-candle-field span{
+        width:9px !important;
+        border-radius:2px !important;
+        filter:drop-shadow(0 0 9px currentColor)
+               drop-shadow(0 0 18px currentColor) !important;
+    }
+    .x5-candle-field span:before{
+        left:4px !important;
+        opacity:1 !important;
+        box-shadow:0 0 8px currentColor;
+    }
+
+    /* Cabecera con ticker de velas */
+    .x5-topbar{
+        min-height:126px;
+        background:
+          linear-gradient(90deg,rgba(4,12,27,.97),rgba(11,8,32,.90)),
+          repeating-linear-gradient(90deg,transparent 0 48px,rgba(255,255,255,.018) 49px 50px) !important;
+        overflow:hidden;
+    }
+    .x5-topbar:before{
+        content:"";
+        position:absolute;
+        left:27%;
+        right:4%;
+        bottom:14px;
+        height:78px;
+        opacity:.42;
+        background:
+          linear-gradient(90deg,
+            transparent 0 3%,
+            #00ff88 3% 3.7%, transparent 3.7% 7%,
+            #ff1744 7% 7.8%, transparent 7.8% 11%,
+            #00e676 11% 12%, transparent 12% 17%,
+            #ff1744 17% 17.8%, transparent 17.8% 22%,
+            #00ff88 22% 22.8%, transparent 22.8% 27%,
+            #ff1744 27% 28%, transparent 28% 34%,
+            #00e676 34% 35%, transparent 35% 41%,
+            #ff1744 41% 41.8%, transparent 41.8% 48%,
+            #00ff88 48% 49%, transparent 49% 56%,
+            #ff1744 56% 57%, transparent 57% 64%,
+            #00e676 64% 65%, transparent 65% 73%,
+            #ff1744 73% 74%, transparent 74% 82%,
+            #00ff88 82% 83%, transparent 83% 91%,
+            #ff1744 91% 92%, transparent 92%);
+        filter:drop-shadow(0 0 10px rgba(0,255,136,.75));
+        animation:x9Ticker 8s linear infinite alternate;
+        pointer-events:none;
+    }
+
+    /* Sidebar de nivel prop firm */
+    section[data-testid="stSidebar"]{
+        box-shadow:18px 0 55px rgba(0,0,0,.30);
+    }
+    section[data-testid="stSidebar"] .stButton > button{
+        border-radius:12px !important;
+        min-height:49px !important;
+        letter-spacing:.1px;
+    }
+    .ax8-profile{
+        border-color:rgba(52,221,255,.36) !important;
+        box-shadow:0 0 38px rgba(38,204,255,.07),0 20px 55px rgba(0,0,0,.30) !important;
+    }
+    .ax8-avatar-ring{
+        box-shadow:0 0 16px #24dcff,0 0 35px rgba(122,65,255,.42) !important;
+    }
+
+    /* Tarjetas y paneles más densos */
+    .x5-kpi{
+        background:
+          radial-gradient(circle at 80% 15%,rgba(93,56,255,.10),transparent 34%),
+          linear-gradient(155deg,rgba(8,17,36,.98),rgba(5,8,21,.98)) !important;
+        border-color:rgba(75,107,184,.34) !important;
+    }
+    .x5-panel{
+        border-color:rgba(77,102,185,.33) !important;
+        background:
+          radial-gradient(circle at 90% 0%,rgba(88,46,255,.08),transparent 32%),
+          linear-gradient(150deg,rgba(7,15,32,.98),rgba(5,8,20,.98)) !important;
+    }
+
+    /* Estado de guardado */
+    .x9-save-ok{
+        border:1px solid rgba(26,239,153,.35);
+        background:rgba(9,74,54,.43);
+        color:#a7ffda;
+        border-radius:14px;
+        padding:13px 15px;
+        font-weight:850;
+        margin:8px 0 14px;
+    }
+    .x9-save-error{
+        border:1px solid rgba(255,55,95,.35);
+        background:rgba(85,13,35,.48);
+        color:#ffc2cf;
+        border-radius:14px;
+        padding:13px 15px;
+        margin:8px 0 14px;
+    }
+
+    @keyframes x9Ticker{
+        from{transform:translateX(-10px) scaleY(.80)}
+        to{transform:translateX(18px) scaleY(1.10)}
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+aplicar_estilos_x9()
+
+
+
 
 def aplicar_refuerzo_visual_x6():
     st.markdown("""
@@ -2663,7 +2819,7 @@ aplicar_refuerzo_visual_x6()
 
 
 
-# AXION PRIME X8 — Fondo animado de velas + sidebar premium
+# AXION PRIME X9 — Fondo animado de velas + sidebar premium
 def aplicar_fx_x4():
     st.markdown("""
     <style>
@@ -2709,7 +2865,7 @@ def aplicar_fx_x4():
 
 aplicar_fx_x4()
 
-# AXION PRIME X8 — Command Deck visual override
+# AXION PRIME X9 — Command Deck visual override
 st.markdown(
     r"""
     <style>
@@ -3181,7 +3337,7 @@ def render_sidebar(estado_sub):
                 <div class="ax8-logo">A</div>
                 <div>
                     <div class="ax8-brand-name">AXION PRIME</div>
-                    <div class="ax8-brand-sub">PERFORMANCE COMMAND OS · X8</div>
+                    <div class="ax8-brand-sub">PERFORMANCE COMMAND OS · X9</div>
                 </div>
                 <div class="ax8-online"></div>
             </div>
@@ -4141,19 +4297,17 @@ def render_nuevo_trade(
                         )
                 }
 
-                if guardar_trade_supabase(
-                    user_id,
-                    data
-                ):
-
-                    st.success(
-                        "✅ Trade guardado correctamente."
+                if guardar_trade_supabase(user_id, data):
+                    st.markdown(
+                        '<div class="x9-save-ok">'
+                        '✅ Operación guardada y confirmada en Supabase.'
+                        '</div>',
+                        unsafe_allow_html=True,
                     )
 
                     st.session_state.selected_trade_day = str(fecha)
-
-                    # Limpiar tanto el estado lógico como los widgets visibles.
                     limpiar_formulario_trade()
+
                     for widget_key in [
                         "trade_asset_widget",
                         "trade_direction_widget",
@@ -4169,6 +4323,21 @@ def render_nuevo_trade(
 
                     st.session_state.pagina_actual = "Track Record"
                     st.rerun()
+                else:
+                    detalle = st.session_state.get(
+                        "save_error_detail",
+                        "Supabase rechazó la operación sin entregar detalles.",
+                    )
+                    st.markdown(
+                        f'<div class="x9-save-error">'
+                        f'<b>❌ No se guardó la operación.</b><br>{detalle}'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.warning(
+                        "Ejecuta el SQL X9 en Supabase y luego "
+                        "cierra sesión y vuelve a entrar."
+                    )
 
 
 # =========================================================
