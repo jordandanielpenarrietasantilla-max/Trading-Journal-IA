@@ -876,38 +876,108 @@ def guardar_trade_supabase(
     user_id,
     trade_data
 ):
+    """Guarda un trade usando explícitamente la sesión autenticada.
+
+    La verificación extra evita falsos positivos cuando RLS rechaza el insert
+    o cuando el cliente perdió el token después de un rerun de Streamlit.
+    """
+    ultimo_error = None
 
     for intento in (1, 2):
-
         try:
-
             client = get_supabase_client()
 
+            tokens = st.session_state.get("supabase_session") or {}
+            access_token = tokens.get("access_token")
+            refresh_token = tokens.get("refresh_token")
+
+            if not access_token or not refresh_token:
+                raise RuntimeError(
+                    "La sesión de Supabase no está disponible. "
+                    "Cierra sesión y vuelve a ingresar."
+                )
+
+            # Restaurar el JWT antes de cada escritura protegida por RLS.
+            client.auth.set_session(access_token, refresh_token)
+
+            auth_response = client.auth.get_user()
+            auth_user = getattr(auth_response, "user", None)
+            auth_user_id = str(getattr(auth_user, "id", "") or "")
+
+            if not auth_user_id:
+                raise RuntimeError(
+                    "Supabase no pudo validar el usuario autenticado."
+                )
+
+            if auth_user_id != str(user_id):
+                raise RuntimeError(
+                    "La sesión activa no coincide con el propietario del trade."
+                )
+
             data = dict(trade_data)
+            data["user_id"] = auth_user_id
 
-            data["user_id"] = user_id
+            response = (
+                client
+                .table("trades")
+                .insert(data)
+                .execute()
+            )
 
-            client.table(
-                "trades"
-            ).insert(data).execute()
+            filas = getattr(response, "data", None) or []
+            if not filas:
+                raise RuntimeError(
+                    "Supabase no confirmó la inserción. Revisa las políticas RLS "
+                    "y las columnas de la tabla trades."
+                )
+
+            # Verificación inmediata: confirma que la fila realmente existe.
+            trade_id = filas[0].get("id") if isinstance(filas[0], dict) else None
+            if trade_id:
+                verify = (
+                    client
+                    .table("trades")
+                    .select("id,user_id")
+                    .eq("id", trade_id)
+                    .eq("user_id", auth_user_id)
+                    .limit(1)
+                    .execute()
+                )
+                if not (getattr(verify, "data", None) or []):
+                    raise RuntimeError(
+                        "El trade fue enviado, pero no pudo verificarse después del guardado."
+                    )
 
             return True
 
         except Exception as e:
+            ultimo_error = e
 
-            if intento == 1 and _es_error_de_conexion(e):
-
+            if intento == 1 and (_es_error_de_conexion(e) or "session" in str(e).lower()):
                 _forzar_reconexion_supabase()
-
-                time.sleep(0.6)
-
+                time.sleep(0.7)
                 continue
 
-            st.error(
-                f"❌ Error guardando operación: {e}"
-            )
+            mensaje = str(e)
+            st.error(f"❌ No se pudo guardar el trade: {mensaje}")
+
+            if "row-level security" in mensaje.lower() or "rls" in mensaje.lower():
+                st.info(
+                    "La tabla trades está bloqueando la escritura. "
+                    "La política INSERT debe usar: auth.uid() = user_id."
+                )
+            elif "column" in mensaje.lower() or "schema cache" in mensaje.lower():
+                st.info(
+                    "La tabla trades no coincide con el formulario. "
+                    "Revisa que existan fecha, par, direccion, precio_entrada, "
+                    "stop_loss, take_profit, rr, timeframe, resultado, emocion, "
+                    "notas_emocionales, beneficio_usd, trades_cant, img_before e img_after."
+                )
 
             return False
+
+    st.error(f"❌ No se pudo guardar el trade: {ultimo_error}")
+    return False
 
 
 def actualizar_trade_supabase(
@@ -2216,7 +2286,7 @@ def aplicar_estilos():
     .ax-panel{border:1px solid var(--ax-line);border-radius:22px;background:linear-gradient(150deg,rgba(14,21,38,.82),rgba(7,11,22,.78));padding:18px 20px}.ax-panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.ax-panel-title{font-size:14px;font-weight:850;color:var(--ax-text)!important}.ax-panel-tag{font-size:9px;letter-spacing:1px;color:var(--ax-muted)!important}.ax-score-ring{width:124px;height:124px;border-radius:50%;display:grid;place-items:center;margin:8px auto 12px;background:conic-gradient(var(--ax-cyan) calc(var(--score)*1%),rgba(255,255,255,.07) 0);position:relative}.ax-score-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:#0b1020}.ax-score-number{z-index:1;font-size:34px;font-weight:950;color:var(--ax-text)!important}.ax-score-number small{font-size:11px;color:var(--ax-muted)!important}.ax-rule{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.055);font-size:11px}.ax-market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.ax-market{padding:13px;border-radius:16px;background:rgba(13,19,34,.68);border:1px solid var(--ax-line)}.ax-market-time{font-size:20px;font-weight:900;color:var(--ax-cyan)!important;margin:5px 0}.ax-open{color:var(--ax-green)!important}.ax-closed{color:var(--ax-red)!important}.ax-trade-row{display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr .8fr;gap:10px;padding:13px 14px;border-radius:15px;background:rgba(12,18,32,.72);border:1px solid rgba(255,255,255,.055);margin-bottom:8px;font-size:11px}.ax-chip{display:inline-block;padding:4px 8px;border-radius:99px;background:rgba(79,124,255,.12);font-size:9px}.ax-empty{min-height:290px;display:grid;place-items:center;text-align:center;border:1px dashed rgba(67,232,255,.28);border-radius:20px}.ax-empty-title{font-size:17px;font-weight:850}.ax-empty-sub{font-size:12px;color:var(--ax-muted)!important;max-width:430px;margin:auto}
 
 
-    /* AXION PRIME X5 — PREMIUM PROP SIDEBAR */
+    /* AXION PRIME X6 — PREMIUM PROP SIDEBAR */
     section[data-testid="stSidebar"] {
         background:
             radial-gradient(circle at 15% 8%, rgba(82,102,255,.16), transparent 25%),
@@ -2336,9 +2406,56 @@ def render_fondo_velas_x5():
 aplicar_estilos_x5()
 render_fondo_velas_x5()
 
+def aplicar_refuerzo_visual_x6():
+    st.markdown("""
+    <style>
+    /* Sidebar inspirado en prop firms premium */
+    section[data-testid="stSidebar"]{
+        min-width:300px!important;max-width:300px!important;
+        box-shadow:18px 0 70px rgba(0,0,0,.34)!important;
+    }
+    section[data-testid="stSidebar"]:before{
+        content:"";position:absolute;inset:0;pointer-events:none;
+        background:
+          linear-gradient(rgba(37,219,255,.035) 1px,transparent 1px),
+          linear-gradient(90deg,rgba(37,219,255,.035) 1px,transparent 1px);
+        background-size:30px 30px;mask-image:linear-gradient(to bottom,#000,transparent 78%);
+    }
+    section[data-testid="stSidebar"] .stButton>button{
+        justify-content:flex-start!important;text-align:left!important;padding-left:18px!important;
+        font-size:13px!important;font-weight:800!important;letter-spacing:.15px!important;
+    }
+    section[data-testid="stSidebar"] .stButton>button:focus{
+        border-color:#5b63ff!important;box-shadow:0 0 0 1px #3fe4ff,0 0 28px rgba(92,74,255,.22)!important;
+    }
+    /* Cabecera con una banda de velas más parecida a la referencia */
+    .x5-topbar{
+        min-height:126px!important;padding:25px 28px!important;
+        background:
+          linear-gradient(90deg,rgba(5,11,27,.96),rgba(10,8,31,.84)),
+          repeating-linear-gradient(90deg,transparent 0 36px,rgba(34,225,255,.035) 37px 38px)!important;
+    }
+    .x5-topbar:before{
+        content:"";position:absolute;left:26%;right:7%;top:8px;height:100px;opacity:.30;
+        background:
+          linear-gradient(90deg,transparent 0 2%,#24f0a4 2% 2.5%,transparent 2.5% 6%,#ff4d78 6% 6.7%,transparent 6.7% 11%,#28e7ff 11% 11.6%,transparent 11.6% 16%,#8d4dff 16% 16.6%,transparent 16.6% 22%,#24f0a4 22% 22.7%,transparent 22.7% 29%,#ff4d78 29% 29.5%,transparent 29.5% 37%,#24f0a4 37% 37.8%,transparent 37.8% 47%,#8d4dff 47% 47.7%,transparent 47.7% 59%,#28e7ff 59% 59.8%,transparent 59.8% 71%,#ff4d78 71% 71.7%,transparent 71.7% 84%,#24f0a4 84% 84.8%,transparent 84.8%);
+        filter:drop-shadow(0 0 8px rgba(53,225,255,.45));
+        transform:skewY(-4deg);pointer-events:none;
+    }
+    .x5-kpi{min-height:142px!important}.x5-kpi-value{font-size:27px!important}
+    .x5-panel{border-color:rgba(92,79,255,.28)!important}
+    div[data-testid="stFileUploader"]{border-radius:16px!important;overflow:hidden}
+    .stForm{border:1px solid rgba(76,210,255,.17)!important;border-radius:20px!important;padding:18px!important;background:rgba(7,12,28,.44)!important}
+    @media(max-width:1100px){section[data-testid="stSidebar"]{min-width:260px!important;max-width:260px!important}}
+    </style>
+    """, unsafe_allow_html=True)
+
+aplicar_refuerzo_visual_x6()
 
 
-# AXION PRIME X5 — Fondo animado de velas + sidebar premium
+
+
+# AXION PRIME X6 — Fondo animado de velas + sidebar premium
 def aplicar_fx_x4():
     st.markdown("""
     <style>
@@ -2384,7 +2501,7 @@ def aplicar_fx_x4():
 
 aplicar_fx_x4()
 
-# AXION PRIME X5 — Command Deck visual override
+# AXION PRIME X6 — Command Deck visual override
 st.markdown(
     r"""
     <style>
@@ -2861,7 +2978,7 @@ def render_sidebar(estado_sub):
               <div class="x3-brand-mark"><span>AX</span></div>
               <div>
                 <div class="x3-brand-name">AXION PRIME</div>
-                <div class="x3-brand-kicker">INSTITUTIONAL PROP INTELLIGENCE · X5</div>
+                <div class="x3-brand-kicker">PROP FIRM INTELLIGENCE · X6</div>
               </div>
               <div class="x3-pulse"></div>
             </div>
