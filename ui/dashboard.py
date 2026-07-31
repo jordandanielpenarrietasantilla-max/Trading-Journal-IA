@@ -1,1817 +1,642 @@
 from __future__ import annotations
 
+import datetime
+import html
+from typing import Any
+
+import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
+from ui.dashboard_styles import apply_dashboard_styles
 
-# =========================================================
-# AXION PRIME X10 PRO
-# ESTILOS EXCLUSIVOS DEL DASHBOARD
-# =========================================================
 
+GREEN = "#00F58A"
+RED = "#FF1744"
+CYAN = "#20DDF5"
+BLUE = "#367CFF"
+PURPLE = "#8B4DFF"
+WHITE = "#F6F8FF"
+MUTED = "#8E9AB8"
 
-DASHBOARD_CSS = """
-<style>
 
-/* ========================================================
-   VARIABLES DEL COMMAND CENTER
-   ======================================================== */
-
-:root {
-    --axd-bg: #020611;
-    --axd-bg-soft: #050b18;
-    --axd-panel: rgba(5, 13, 29, 0.97);
-    --axd-panel-soft: rgba(8, 17, 38, 0.95);
-
-    --axd-border: rgba(57, 104, 180, 0.34);
-    --axd-border-soft: rgba(70, 100, 166, 0.22);
-
-    --axd-white: #f7f9ff;
-    --axd-text: #e7edfb;
-    --axd-muted: #8c99b7;
-    --axd-dim: #596783;
-
-    --axd-cyan: #20ddf5;
-    --axd-blue: #367cff;
-    --axd-purple: #8b4dff;
-
-    --axd-green: #00f58a;
-    --axd-red: #ff1744;
-
-    --axd-shadow:
-        0 22px 60px rgba(0, 0, 0, 0.36),
-        inset 0 1px 0 rgba(255, 255, 255, 0.025);
-}
-
-
-/* ========================================================
-   CORREGIR EL FONDO DEL DASHBOARD
-   ======================================================== */
-
-[data-testid="stAppViewContainer"] {
-    background:
-        radial-gradient(
-            circle at 12% 2%,
-            rgba(32, 221, 245, 0.075),
-            transparent 26%
-        ),
-        radial-gradient(
-            circle at 90% 10%,
-            rgba(139, 77, 255, 0.12),
-            transparent 32%
-        ),
-        linear-gradient(
-            135deg,
-            #020611,
-            #040918 55%,
-            #09041b
-        ) !important;
-}
-
-
-/*
-Elimina las franjas gigantes heredadas de core/styles.py.
-*/
-
-[data-testid="stAppViewContainer"]::before {
-    display: none !important;
-}
-
-
-/*
-Cuadrícula financiera sutil.
-*/
-
-[data-testid="stAppViewContainer"]::after {
-    content: "" !important;
-
-    display: block !important;
-
-    position: fixed !important;
-    inset: 0 !important;
-
-    z-index: 0 !important;
-
-    pointer-events: none !important;
-
-    background-image:
-        linear-gradient(
-            rgba(76, 108, 175, 0.032) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(76, 108, 175, 0.032) 1px,
-            transparent 1px
-        ) !important;
-
-    background-size:
-        48px 48px !important;
-
-    opacity: 0.58 !important;
-}
-
-
-/* ========================================================
-   VELAS JAPONESAS DECORATIVAS
-   ======================================================== */
-
-.ax-dashboard-candles {
-    position: fixed;
-
-    left: 250px;
-    right: 25px;
-    top: 78px;
-
-    height: 118px;
-
-    z-index: 1;
-
-    pointer-events: none;
-
-    overflow: hidden;
-
-    opacity: 0.42;
-
-    mask-image:
-        linear-gradient(
-            90deg,
-            transparent,
-            black 10%,
-            black 90%,
-            transparent
-        );
-
-    -webkit-mask-image:
-        linear-gradient(
-            90deg,
-            transparent,
-            black 10%,
-            black 90%,
-            transparent
-        );
-}
-
-
-.ax-dashboard-candles-track {
-    position: absolute;
-
-    left: 0;
-    top: 0;
-
-    width: 2200px;
-    height: 100%;
-
-    animation:
-        axd-candle-track
-        38s
-        linear
-        infinite;
-}
-
-
-.ax-dashboard-candle {
-    position: absolute;
-
-    width: 8px;
-    height: var(--body-height);
-
-    top: var(--body-top);
-    left: var(--left);
-
-    border-radius: 1px;
-
-    background:
-        var(--candle-color);
-
-    box-shadow:
-        0 0 8px
-        color-mix(
-            in srgb,
-            var(--candle-color) 55%,
-            transparent
-        );
-}
-
-
-.ax-dashboard-candle::before {
-    content: "";
-
-    position: absolute;
-
-    left: 50%;
-    top: calc(var(--wick-top) * -1);
-
-    width: 1px;
-    height:
-        calc(
-            var(--body-height)
-            + var(--wick-top)
-            + var(--wick-bottom)
-        );
-
-    transform:
-        translateX(-50%);
-
-    background:
-        var(--candle-color);
-
-    opacity: 0.9;
-}
-
-
-.ax-dashboard-candle::after {
-    content: "";
-
-    position: absolute;
-
-    inset: 0;
-
-    background:
-        linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0.13),
-            transparent 45%
-        );
-}
-
-
-@keyframes axd-candle-track {
-    from {
-        transform:
-            translateX(0);
-    }
-
-    to {
-        transform:
-            translateX(-850px);
-    }
-}
-
-
-/* ========================================================
-   ANCHO GENERAL DEL DASHBOARD
-   ======================================================== */
-
-.block-container {
-    width: 100% !important;
-    max-width: 1760px !important;
-
-    padding-top: 1.35rem !important;
-    padding-left: 2.2rem !important;
-    padding-right: 2.2rem !important;
-    padding-bottom: 3rem !important;
-}
-
-
-/* ========================================================
-   HEADER FUTURISTA
-   ======================================================== */
-
-.ax-future-header {
-    position: relative;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    gap: 26px;
-    flex-wrap: wrap;
-
-    overflow: hidden;
-
-    min-height: 154px;
-
-    padding:
-        26px
-        29px;
-
-    margin-bottom: 18px;
-
-    background:
-        radial-gradient(
-            circle at 83% 18%,
-            rgba(139, 77, 255, 0.22),
-            transparent 34%
-        ),
-        radial-gradient(
-            circle at 5% 0%,
-            rgba(32, 221, 245, 0.08),
-            transparent 30%
-        ),
-        linear-gradient(
-            135deg,
-            rgba(4, 14, 33, 0.985),
-            rgba(11, 7, 38, 0.975)
-        );
-
-    border:
-        1px solid
-        rgba(32, 221, 245, 0.41);
-
-    border-radius: 22px;
-
-    box-shadow:
-        var(--axd-shadow);
-}
-
-
-.ax-future-header::before {
-    content: "";
-
-    position: absolute;
-
-    top: 0;
-    right: -8%;
-
-    width: 55%;
-    height: 100%;
-
-    pointer-events: none;
-
-    background:
-        repeating-linear-gradient(
-            90deg,
-            transparent 0 28px,
-            rgba(32, 221, 245, 0.022) 29px 30px
-        );
-
-    transform:
-        skewX(-12deg);
-}
-
-
-.ax-future-header::after {
-    content: "";
-
-    position: absolute;
-
-    left: 0;
-    right: 0;
-    bottom: 0;
-
-    height: 2px;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            var(--axd-cyan),
-            var(--axd-blue),
-            var(--axd-purple),
-            transparent
-        );
-
-    opacity: 0.75;
-}
-
-
-.ax-future-header-copy,
-.ax-future-header-status {
-    position: relative;
-    z-index: 2;
-}
-
-
-.ax-future-kicker {
-    color:
-        var(--axd-cyan);
-
-    font-size: 8px;
-    font-weight: 950;
-
-    letter-spacing: 2.2px;
-}
-
-
-.ax-future-header h1 {
-    margin:
-        9px
-        0
-        0 !important;
-
-    color:
-        var(--axd-white);
-
-    font-size:
-        clamp(31px, 3vw, 46px);
-
-    line-height: 1.03;
-
-    font-weight: 950;
-
-    letter-spacing: -2px;
-}
-
-
-.ax-future-header p {
-    margin:
-        10px
-        0
-        0 !important;
-
-    color:
-        var(--axd-muted);
-
-    font-size: 12px;
-
-    line-height: 1.55;
-}
-
-
-.ax-future-header-status {
-    display: flex;
-    align-items: center;
-
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-
-.ax-future-date {
-    display: flex;
-    align-items: center;
-
-    gap: 8px;
-
-    padding:
-        8px
-        12px;
-
-    color:
-        #dce5f8;
-
-    font-size: 9px;
-    font-weight: 850;
-
-    background:
-        rgba(4, 10, 25, 0.56);
-
-    border:
-        1px solid
-        rgba(82, 108, 171, 0.25);
-
-    border-radius: 999px;
-}
-
-
-.ax-future-date span {
-    width: 1px;
-    height: 13px;
-
-    background:
-        rgba(108, 127, 176, 0.44);
-}
-
-
-.ax-future-market-status {
-    display: flex;
-    align-items: center;
-
-    gap: 8px;
-
-    padding:
-        9px
-        14px;
-
-    color:
-        var(--axd-green);
-
-    font-size: 7px;
-    font-weight: 950;
-
-    background:
-        rgba(0, 245, 138, 0.075);
-
-    border:
-        1px solid
-        rgba(0, 245, 138, 0.35);
-
-    border-radius: 999px;
-
-    box-shadow:
-        inset 0 0 20px
-        rgba(0, 245, 138, 0.025);
-}
-
-
-.ax-future-market-status i {
-    width: 7px;
-    height: 7px;
-
-    display: block;
-
-    border-radius: 50%;
-
-    background:
-        var(--axd-green);
-
-    box-shadow:
-        0 0 12px
-        var(--axd-green);
-
-    animation:
-        axd-market-pulse
-        2s
-        ease-in-out
-        infinite;
-}
-
-
-@keyframes axd-market-pulse {
-    0%,
-    100% {
-        opacity: 0.55;
-        transform: scale(0.85);
-    }
-
-    50% {
-        opacity: 1;
-        transform: scale(1.15);
-    }
-}
-
-
-/* ========================================================
-   FILTROS
-   ======================================================== */
-
-[data-baseweb="select"] > div {
-    min-height: 43px !important;
-
-    color:
-        var(--axd-white) !important;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(10, 19, 41, 0.98),
-            rgba(5, 11, 27, 0.98)
-        ) !important;
-
-    border:
-        1px solid
-        rgba(76, 104, 171, 0.36) !important;
-
-    border-radius:
-        11px !important;
-}
-
-
-[data-baseweb="select"] > div:hover {
-    border-color:
-        rgba(32, 221, 245, 0.53) !important;
-}
-
-
-/* ========================================================
-   TARJETAS DE MÉTRICAS
-   ======================================================== */
-
-.ax-future-metric {
-    position: relative;
-
-    min-height: 162px;
-
-    display: flex;
-    flex-direction: column;
-
-    overflow: hidden;
-
-    padding:
-        16px;
-
-    background:
-        radial-gradient(
-            circle at 10% 0%,
-            rgba(32, 221, 245, 0.075),
-            transparent 42%
-        ),
-        linear-gradient(
-            145deg,
-            rgba(8, 18, 39, 0.985),
-            rgba(4, 10, 25, 0.985)
-        );
-
-    border:
-        1px solid
-        rgba(65, 101, 170, 0.34);
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 16px 44px
-        rgba(0, 0, 0, 0.29);
-
-    transition:
-        transform 0.2s ease,
-        border-color 0.2s ease,
-        box-shadow 0.2s ease;
-}
-
-
-.ax-future-metric::after {
-    content: "";
-
-    position: absolute;
-
-    left: 14px;
-    right: 14px;
-    bottom: 0;
-
-    height: 1px;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            rgba(32, 221, 245, 0.55),
-            rgba(139, 77, 255, 0.7),
-            transparent
-        );
-}
-
-
-.ax-future-metric:hover {
-    transform:
-        translateY(-4px);
-
-    border-color:
-        rgba(32, 221, 245, 0.53);
-
-    box-shadow:
-        0 20px 52px
-        rgba(0, 0, 0, 0.35),
-        0 0 25px
-        rgba(32, 221, 245, 0.05);
-}
-
-
-.ax-future-metric-head {
-    display: flex;
-    align-items: center;
-
-    gap: 12px;
-}
-
-
-.ax-future-metric-icon {
-    width: 42px;
-    height: 42px;
-
-    display: grid;
-    place-items: center;
-
-    flex-shrink: 0;
-
-    border:
-        1px solid;
-
-    border-radius: 11px;
-
-    font-size: 20px;
-    font-weight: 950;
-}
-
-
-.ax-future-metric-label {
-    color:
-        #818eab;
-
-    font-size: 7px;
-    font-weight: 950;
-
-    letter-spacing: 1.4px;
-}
-
-
-.ax-future-metric-value {
-    margin-top: 7px;
-
-    font-size:
-        clamp(21px, 1.7vw, 29px);
-
-    line-height: 1;
-
-    font-weight: 950;
-
-    white-space: nowrap;
-
-    letter-spacing: -0.8px;
-}
-
-
-.ax-future-metric-meta {
-    display: flex;
-    justify-content: space-between;
-
-    gap: 8px;
-
-    margin-top: 13px;
-
-    color:
-        #74819e;
-
-    font-size: 7px;
-}
-
-
-.ax-future-sparkline {
-    width: 100%;
-    height: 40px;
-
-    margin-top: auto;
-
-    overflow: visible;
-}
-
-
-/* ========================================================
-   TÍTULOS DE SECCIÓN
-   ======================================================== */
-
-.ax-future-panel-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    gap: 12px;
-
-    padding:
-        13px
-        15px;
-
-    margin-top: 17px;
-    margin-bottom: 9px;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(7, 15, 33, 0.98),
-            rgba(5, 10, 25, 0.98)
-        );
-
-    border:
-        1px solid
-        rgba(65, 99, 165, 0.3);
-
-    border-radius: 14px;
-
-    box-shadow:
-        0 10px 28px
-        rgba(0, 0, 0, 0.19);
-}
-
-
-.ax-future-panel-title > div {
-    display: flex;
-    align-items: center;
-
-    gap: 8px;
-}
-
-
-.ax-future-panel-title > div > span {
-    color:
-        var(--axd-cyan);
-
-    font-size: 14px;
-
-    text-shadow:
-        0 0 12px
-        rgba(32, 221, 245, 0.36);
-}
-
-
-.ax-future-panel-title strong {
-    color:
-        var(--axd-white);
-
-    font-size: 12px;
-    font-weight: 900;
-}
-
-
-.ax-future-panel-title small {
-    color:
-        #64718d;
-
-    font-size: 6px;
-    font-weight: 850;
-
-    letter-spacing: 1.3px;
-}
-
-
-/* ========================================================
-   GRÁFICO DE EQUITY
-   ======================================================== */
-
-[data-testid="stPlotlyChart"] {
-    overflow: hidden;
-
-    padding:
-        7px;
-
-    background:
-        radial-gradient(
-            circle at 50% 100%,
-            rgba(32, 221, 245, 0.075),
-            transparent 46%
-        ),
-        linear-gradient(
-            145deg,
-            rgba(6, 14, 31, 0.985),
-            rgba(4, 9, 23, 0.985)
-        );
-
-    border:
-        1px solid
-        rgba(65, 99, 165, 0.32);
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 16px 42px
-        rgba(0, 0, 0, 0.25);
-}
-
-
-/* ========================================================
-   TABLA DE OPERACIONES
-   ======================================================== */
-
-.ax-future-table-shell {
-    width: 100%;
-
-    min-height: 430px;
-
-    overflow: hidden;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(6, 14, 31, 0.985),
-            rgba(4, 9, 23, 0.985)
-        );
-
-    border:
-        1px solid
-        rgba(65, 99, 165, 0.32);
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 16px 42px
-        rgba(0, 0, 0, 0.25);
-}
-
-
-.ax-future-table {
-    width: 100%;
-
-    table-layout: fixed;
-
-    border-collapse: collapse;
-
-    color:
-        var(--axd-text);
-
-    font-size: 10px;
-}
-
-
-.ax-future-table th {
-    padding:
-        14px
-        10px;
-
-    color:
-        #71809e;
-
-    font-size: 7px;
-    font-weight: 950;
-
-    text-align: left;
-
-    letter-spacing: 1px;
-
-    background:
-        rgba(8, 17, 38, 0.99);
-
-    border-bottom:
-        1px solid
-        rgba(68, 98, 160, 0.29);
-}
-
-
-.ax-future-table td {
-    overflow: hidden;
-
-    padding:
-        14px
-        10px;
-
-    white-space: nowrap;
-
-    text-overflow: ellipsis;
-
-    border-bottom:
-        1px solid
-        rgba(68, 98, 160, 0.13);
-}
-
-
-.ax-future-table th:nth-child(1),
-.ax-future-table td:nth-child(1) {
-    width: 22%;
-}
-
-
-.ax-future-table th:nth-child(2),
-.ax-future-table td:nth-child(2) {
-    width: 26%;
-}
-
-
-.ax-future-table th:nth-child(3),
-.ax-future-table td:nth-child(3) {
-    width: 18%;
-}
-
-
-.ax-future-table th:nth-child(4),
-.ax-future-table td:nth-child(4) {
-    width: 18%;
-}
-
-
-.ax-future-table th:nth-child(5),
-.ax-future-table td:nth-child(5) {
-    width: 20%;
-}
-
-
-.ax-future-table tr:last-child td {
-    border-bottom: none;
-}
-
-
-.ax-future-table tbody tr {
-    transition:
-        background 0.16s ease;
-}
-
-
-.ax-future-table tbody tr:hover {
-    background:
-        rgba(32, 221, 245, 0.045);
-}
-
-
-.ax-future-badge,
-.ax-future-result {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    min-width: 42px;
-
-    padding:
-        4px
-        8px;
-
-    border-radius: 999px;
-
-    font-size: 7px;
-    font-weight: 950;
-}
-
-
-.ax-future-long {
-    color:
-        var(--axd-green);
-
-    background:
-        rgba(0, 245, 138, 0.12);
-
-    border:
-        1px solid
-        rgba(0, 245, 138, 0.26);
-}
-
-
-.ax-future-short {
-    color:
-        #ff718a;
-
-    background:
-        rgba(255, 23, 68, 0.14);
-
-    border:
-        1px solid
-        rgba(255, 23, 68, 0.28);
-}
-
-
-.ax-future-neutral {
-    color:
-        var(--axd-muted);
-
-    background:
-        rgba(125, 141, 176, 0.11);
-}
-
-
-.ax-future-win {
-    color:
-        var(--axd-green);
-
-    background:
-        rgba(0, 245, 138, 0.12);
-}
-
-
-.ax-future-loss {
-    color:
-        #ff718a;
-
-    background:
-        rgba(255, 23, 68, 0.14);
-}
-
-
-.ax-future-be {
-    color:
-        #c1cae0;
-
-    background:
-        rgba(130, 145, 179, 0.11);
-}
-
-
-.ax-future-pnl {
-    font-weight: 950;
-}
-
-
-/* ========================================================
-   SETUP
-   ======================================================== */
-
-[data-testid="stImage"] {
-    overflow: hidden;
-
-    padding: 8px;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(6, 14, 31, 0.985),
-            rgba(4, 9, 23, 0.985)
-        );
-
-    border:
-        1px solid
-        rgba(65, 99, 165, 0.32);
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 16px 42px
-        rgba(0, 0, 0, 0.25);
-}
-
-
-[data-testid="stImage"] img {
-    display: block;
-
-    border-radius: 11px;
-}
-
-
-/* ========================================================
-   RESUMEN RÁPIDO
-   ======================================================== */
-
-.ax-future-summary {
-    padding:
-        16px;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(6, 14, 31, 0.985),
-            rgba(4, 9, 23, 0.985)
-        );
-
-    border:
-        1px solid
-        rgba(65, 99, 165, 0.32);
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 16px 42px
-        rgba(0, 0, 0, 0.25);
-}
-
-
-.ax-future-summary-row {
-    display: flex;
-    justify-content: space-between;
-
-    gap: 12px;
-
-    padding:
-        10px
-        0;
-
-    color:
-        #8996b3;
-
-    font-size: 9px;
-
-    border-bottom:
-        1px solid
-        rgba(67, 98, 160, 0.14);
-}
-
-
-.ax-future-summary-row:last-child {
-    border-bottom: none;
-}
-
-
-.ax-future-summary-row strong {
-    font-size: 10px;
-    font-weight: 900;
-}
-
-
-/* ========================================================
-   ESTADOS VACÍOS
-   ======================================================== */
-
-.ax-future-empty {
-    min-height: 300px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    padding:
-        24px;
-
-    text-align: center;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(6, 14, 31, 0.97),
-            rgba(4, 9, 23, 0.97)
-        );
-
-    border:
-        1px dashed
-        rgba(32, 221, 245, 0.32);
-
-    border-radius: 16px;
-}
-
-
-.ax-future-empty > div {
-    color:
-        var(--axd-cyan);
-
-    font-size: 32px;
-
-    text-shadow:
-        0 0 18px
-        rgba(32, 221, 245, 0.34);
-}
-
-
-.ax-future-empty strong {
-    margin-top: 12px;
-
-    color:
-        var(--axd-white);
-
-    font-size: 13px;
-}
-
-
-.ax-future-empty p {
-    margin-top: 7px;
-
-    color:
-        #7c89a6;
-
-    font-size: 9px;
-    line-height: 1.5;
-}
-
-
-.ax-future-setup-empty {
-    min-height: 245px;
-}
-
-
-/* ========================================================
-   BANNER FUTURISTA
-   ======================================================== */
-
-.ax-future-intelligence {
-    position: relative;
-
-    display: grid;
-
-    grid-template-columns:
-        1.15fr
-        0.95fr
-        0.85fr;
-
-    gap: 23px;
-
-    overflow: hidden;
-
-    margin-top: 21px;
-    padding: 28px;
-
-    background:
-        radial-gradient(
-            circle at 58% 50%,
-            rgba(32, 221, 245, 0.105),
-            transparent 29%
-        ),
-        radial-gradient(
-            circle at 81% 50%,
-            rgba(255, 23, 68, 0.105),
-            transparent 29%
-        ),
-        linear-gradient(
-            135deg,
-            rgba(4, 14, 32, 0.985),
-            rgba(10, 6, 31, 0.985)
-        );
-
-    border:
-        1px solid
-        rgba(65, 102, 170, 0.35);
-
-    border-radius: 22px;
-
-    box-shadow:
-        0 25px 70px
-        rgba(0, 0, 0, 0.35);
-}
-
-
-.ax-future-intelligence::before {
-    content: "";
-
-    position: absolute;
-
-    left: 0;
-    right: 0;
-    bottom: 0;
-
-    height: 2px;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            var(--axd-cyan),
-            var(--axd-purple),
-            var(--axd-red),
-            transparent
-        );
-
-    opacity: 0.7;
-}
-
-
-.ax-future-intelligence-copy h2 {
-    margin:
-        12px
-        0
-        0;
-
-    color:
-        var(--axd-white);
-
-    font-size:
-        clamp(32px, 3vw, 49px);
-
-    line-height: 0.98;
-
-    font-weight: 950;
-
-    letter-spacing: -2px;
-}
-
-
-.ax-future-intelligence-copy h2 span {
-    display: block;
-
-    color:
-        var(--axd-cyan);
-
-    text-shadow:
-        0 0 22px
-        rgba(32, 221, 245, 0.18);
-}
-
-
-.ax-future-intelligence-copy p {
-    max-width: 550px;
-
-    margin-top: 16px;
-
-    color:
-        #95a2bf;
-
-    font-size: 11px;
-    line-height: 1.65;
-}
-
-
-.ax-future-feature-grid {
-    display: grid;
-
-    grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-
-    gap: 9px;
-
-    margin-top: 20px;
-}
-
-
-.ax-future-feature-grid div {
-    display: flex;
-    align-items: center;
-
-    gap: 9px;
-
-    padding:
-        12px;
-
-    color:
-        #e3e9f8;
-
-    font-size: 9px;
-    font-weight: 780;
-
-    background:
-        rgba(4, 10, 25, 0.72);
-
-    border:
-        1px solid
-        rgba(68, 99, 161, 0.24);
-
-    border-radius: 11px;
-
-    transition:
-        transform 0.18s ease,
-        border-color 0.18s ease;
-}
-
-
-.ax-future-feature-grid div:hover {
-    transform:
-        translateY(-2px);
-
-    border-color:
-        rgba(32, 221, 245, 0.42);
-}
-
-
-.ax-future-feature-grid i {
-    color:
-        var(--axd-cyan);
-
-    font-size: 14px;
-    font-style: normal;
-}
-
-
-.ax-future-market-visual {
-    position: relative;
-
-    min-height: 235px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    gap: 13px;
-
-    overflow: hidden;
-
-    background:
-        radial-gradient(
-            circle at 28% 50%,
-            rgba(0, 245, 138, 0.14),
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at 73% 50%,
-            rgba(255, 23, 68, 0.14),
-            transparent 35%
-        );
-
-    border:
-        1px solid
-        rgba(69, 101, 166, 0.16);
-
-    border-radius: 18px;
-}
-
-
-.ax-future-market-visual::before,
-.ax-future-market-visual::after {
-    content: "";
-
-    position: absolute;
-
-    width: 115px;
-    height: 115px;
-
-    border-radius:
-        52% 48% 47% 53%;
-
-    opacity: 0.22;
-}
-
-
-.ax-future-market-visual::before {
-    left: 8%;
-
-    background:
-        linear-gradient(
-            145deg,
-            transparent,
-            var(--axd-green)
-        );
-
-    filter:
-        blur(5px);
-
-    transform:
-        rotate(-26deg);
-}
-
-
-.ax-future-market-visual::after {
-    right: 8%;
-
-    background:
-        linear-gradient(
-            145deg,
-            var(--axd-red),
-            transparent
-        );
-
-    filter:
-        blur(5px);
-
-    transform:
-        rotate(26deg);
-}
-
-
-.ax-future-bull,
-.ax-future-bear {
-    position: relative;
-    z-index: 2;
-
-    font-size:
-        clamp(20px, 2vw, 33px);
-
-    font-weight: 950;
-
-    letter-spacing: 1px;
-}
-
-
-.ax-future-bull {
-    color:
-        var(--axd-green);
-
-    text-shadow:
-        0 0 25px
-        rgba(0, 245, 138, 0.48);
-}
-
-
-.ax-future-bear {
-    color:
-        var(--axd-red);
-
-    text-shadow:
-        0 0 25px
-        rgba(255, 23, 68, 0.48);
-}
-
-
-.ax-future-center-logo {
-    position: relative;
-    z-index: 3;
-
-    width: 76px;
-    height: 76px;
-
-    display: grid;
-    place-items: center;
-
-    color:
-        white;
-
-    font-size: 32px;
-    font-weight: 950;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(32, 221, 245, 0.2),
-            rgba(139, 77, 255, 0.28)
-        );
-
-    border:
-        1px solid
-        rgba(104, 139, 218, 0.45);
-
-    border-radius: 21px;
-
-    box-shadow:
-        0 0 42px
-        rgba(54, 124, 255, 0.28);
-}
-
-
-.ax-future-market-line {
-    position: absolute;
-
-    left: 4%;
-    right: 4%;
-    bottom: 23%;
-
-    height: 2px;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            var(--axd-green),
-            var(--axd-blue),
-            var(--axd-purple),
-            var(--axd-red),
-            transparent
-        );
-
-    box-shadow:
-        0 0 20px
-        rgba(54, 124, 255, 0.38);
-
-    transform:
-        rotate(-3deg);
-}
-
-
-.ax-future-global-stats {
-    display: grid;
-
-    grid-template-columns: 1fr;
-
-    gap: 10px;
-
-    align-content: center;
-}
-
-
-.ax-future-global-stats div {
-    padding:
-        15px;
-
-    text-align: center;
-
-    background:
-        rgba(4, 10, 25, 0.78);
-
-    border:
-        1px solid
-        rgba(68, 98, 160, 0.25);
-
-    border-radius: 13px;
-}
-
-
-.ax-future-global-stats strong {
-    display: block;
-
-    color:
-        var(--axd-cyan);
-
-    font-size: 19px;
-    font-weight: 950;
-}
-
-
-.ax-future-global-stats span {
-    display: block;
-
-    margin-top: 5px;
-
-    color:
-        #7d8aa7;
-
-    font-size: 8px;
-}
-
-
-/* ========================================================
-   BOTONES
-   ======================================================== */
-
-.stButton > button {
-    min-height: 43px;
-
-    color:
-        white !important;
-
-    font-size:
-        12px !important;
-
-    font-weight:
-        850 !important;
-
-    background:
-        linear-gradient(
-            95deg,
-            var(--axd-cyan),
-            var(--axd-blue),
-            var(--axd-purple)
-        ) !important;
-
-    border:
-        1px solid
-        rgba(99, 219, 255, 0.4) !important;
-
-    border-radius:
-        11px !important;
-
-    box-shadow:
-        0 10px 26px
-        rgba(54, 124, 255, 0.14);
-
-    transition:
-        transform 0.18s ease,
-        filter 0.18s ease,
-        box-shadow 0.18s ease;
-}
-
-
-.stButton > button:hover {
-    transform:
-        translateY(-2px);
-
-    filter:
-        brightness(1.08)
-        saturate(1.08);
-
-    box-shadow:
-        0 15px 34px
-        rgba(54, 124, 255, 0.24);
-}
-
-
-.stButton > button[kind="secondary"] {
-    background:
-        linear-gradient(
-            145deg,
-            rgba(10, 18, 40, 0.985),
-            rgba(5, 10, 25, 0.985)
-        ) !important;
-
-    border:
-        1px solid
-        rgba(76, 104, 169, 0.37) !important;
-
-    box-shadow:
-        none;
-}
-
-
-/* ========================================================
-   RESPONSIVE
-   ======================================================== */
-
-@media (max-width: 1300px) {
-
-    .ax-future-intelligence {
-        grid-template-columns:
-            1.2fr
-            0.8fr;
-    }
-
-    .ax-future-global-stats {
-        grid-column:
-            1 / -1;
-
-        grid-template-columns:
-            repeat(4, 1fr);
-    }
-}
-
-
-@media (max-width: 900px) {
-
-    .block-container {
-        padding-left:
-            1rem !important;
-
-        padding-right:
-            1rem !important;
-    }
-
-    .ax-future-header {
-        align-items:
-            flex-start;
-    }
-
-    .ax-future-intelligence {
-        grid-template-columns:
-            1fr;
-    }
-
-    .ax-future-global-stats {
-        grid-template-columns:
-            repeat(2, 1fr);
-    }
-
-    .ax-future-feature-grid {
-        grid-template-columns:
-            1fr;
-    }
-
-    .ax-dashboard-candles {
-        left: 0;
-
-        opacity: 0.25;
-    }
-}
-
-
-@media (max-width: 560px) {
-
-    .ax-future-global-stats {
-        grid-template-columns:
-            1fr;
-    }
-
-    .ax-future-header h1 {
-        font-size:
-            29px;
-    }
-}
-
-
-/* ========================================================
-   REDUCIR ANIMACIÓN
-   ======================================================== */
-
-@media (prefers-reduced-motion: reduce) {
-
-    *,
-    *::before,
-    *::after {
-        animation-duration:
-            0.001ms !important;
-
-        animation-iteration-count:
-            1 !important;
-    }
-}
-
-</style>
-"""
-
-
-# =========================================================
-# FUNCIÓN PARA APLICAR LOS ESTILOS
-# =========================================================
-
-
-def apply_dashboard_styles() -> None:
-    """
-    Aplica únicamente los estilos del dashboard.
-    No altera el login ni la pantalla de perfil.
-    """
-
-    st.markdown(
-        DASHBOARD_CSS,
-        unsafe_allow_html=True,
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value if value is not None else default)
+    except (TypeError, ValueError):
+        return default
+
+
+def _money(value: Any) -> str:
+    return f"${_safe_float(value):,.2f}"
+
+
+def _safe_text(value: Any, default: str = "") -> str:
+    return html.escape(str(value if value is not None else default).strip())
+
+
+def _prepare_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    result = df.copy()
+
+    if "beneficio_usd" not in result.columns:
+        result["beneficio_usd"] = 0.0
+
+    result["beneficio_usd"] = pd.to_numeric(
+        result["beneficio_usd"], errors="coerce"
+    ).fillna(0.0)
+
+    for column in ("precio_entrada", "stop_loss", "take_profit", "rr"):
+        if column not in result.columns:
+            result[column] = 0.0
+        result[column] = pd.to_numeric(result[column], errors="coerce").fillna(0.0)
+
+    if "fecha" in result.columns:
+        result["fecha_dt"] = pd.to_datetime(result["fecha"], errors="coerce")
+    else:
+        result["fecha_dt"] = pd.NaT
+
+    if "created_at" in result.columns:
+        result["created_at_dt"] = pd.to_datetime(
+            result["created_at"], errors="coerce"
+        )
+    else:
+        result["created_at_dt"] = result["fecha_dt"]
+
+    for column, default in (
+        ("par", "Sin activo"),
+        ("direccion", ""),
+        ("resultado", ""),
+    ):
+        if column not in result.columns:
+            result[column] = default
+
+    return result
+
+
+def _filter_data(data: pd.DataFrame, period: str, asset: str) -> pd.DataFrame:
+    if data.empty:
+        return data
+
+    filtered = data.copy()
+    now = pd.Timestamp.now()
+
+    if period == "Hoy":
+        filtered = filtered[filtered["fecha_dt"].dt.date == now.date()]
+    elif period == "Últimos 7 días":
+        filtered = filtered[filtered["fecha_dt"] >= now - pd.Timedelta(days=7)]
+    elif period == "Este mes":
+        filtered = filtered[
+            (filtered["fecha_dt"].dt.year == now.year)
+            & (filtered["fecha_dt"].dt.month == now.month)
+        ]
+
+    if asset != "Todos":
+        filtered = filtered[filtered["par"].astype(str) == asset]
+
+    return filtered
+
+
+def _normalize_result(value: Any, pnl: float) -> str:
+    result = str(value or "").strip().upper()
+    if result in {"WIN", "GANADOR", "GANADA", "PROFIT"}:
+        return "WIN"
+    if result in {"LOSS", "PERDEDOR", "PERDIDA", "PÉRDIDA", "LOSE"}:
+        return "LOSS"
+    if result in {"BE", "BREAK EVEN", "BREAKEVEN"}:
+        return "BE"
+    if pnl > 0:
+        return "WIN"
+    if pnl < 0:
+        return "LOSS"
+    return "BE"
+
+
+def _render_dashboard_candles() -> None:
+    candles = [
+        (34, 25, 28, 11, 15, GREEN),
+        (82, 43, 22, 17, 13, RED),
+        (129, 31, 35, 14, 18, GREEN),
+        (177, 51, 19, 20, 13, RED),
+        (224, 24, 31, 12, 19, GREEN),
+        (271, 39, 26, 18, 16, GREEN),
+        (319, 18, 39, 10, 23, RED),
+        (366, 47, 21, 16, 14, RED),
+        (414, 28, 34, 13, 20, GREEN),
+        (461, 53, 18, 19, 12, GREEN),
+        (508, 35, 28, 14, 17, RED),
+        (556, 22, 40, 11, 21, GREEN),
+        (603, 45, 23, 18, 15, RED),
+        (650, 29, 33, 13, 19, GREEN),
+        (698, 17, 42, 10, 23, RED),
+        (745, 50, 20, 17, 14, GREEN),
+        (792, 32, 31, 14, 18, RED),
+        (840, 41, 25, 16, 16, GREEN),
+        (887, 23, 38, 11, 21, RED),
+        (934, 49, 21, 18, 14, GREEN),
+        (982, 30, 34, 13, 19, RED),
+        (1029, 20, 41, 10, 23, GREEN),
+        (1076, 46, 23, 17, 15, RED),
+        (1124, 27, 35, 12, 20, GREEN),
+        (1171, 52, 18, 20, 12, RED),
+        (1218, 33, 30, 14, 17, GREEN),
+        (1266, 21, 39, 11, 22, RED),
+        (1313, 48, 22, 18, 14, GREEN),
+        (1360, 29, 34, 13, 19, RED),
+        (1408, 19, 41, 10, 23, GREEN),
+        (1455, 44, 24, 17, 16, RED),
+        (1502, 26, 36, 12, 20, GREEN),
+        (1550, 51, 19, 19, 13, RED),
+        (1597, 31, 32, 14, 18, GREEN),
+        (1644, 22, 39, 11, 21, RED),
+        (1692, 47, 22, 17, 15, GREEN),
+    ]
+
+    candle_html = "".join(
+        f"""
+        <span class="ax-dashboard-candle" style="
+            --left:{left}px;
+            --body-top:{body_top}px;
+            --body-height:{body_height}px;
+            --wick-top:{wick_top}px;
+            --wick-bottom:{wick_bottom}px;
+            --candle-color:{color};
+        "></span>
+        """
+        for left, body_top, body_height, wick_top, wick_bottom, color in candles
     )
+
+    st.html(
+        f"""
+        <div class="ax-dashboard-candles" aria-hidden="true">
+            <div class="ax-dashboard-candles-track">{candle_html}</div>
+        </div>
+        """
+    )
+
+
+def _render_header(trader_name: str) -> None:
+    now = datetime.datetime.now()
+    current_date = now.strftime("%d %b %Y").upper()
+    current_time = now.strftime("%I:%M %p")
+
+    st.html(
+        f"""
+        <section class="ax-future-header">
+            <div class="ax-future-header-copy">
+                <div class="ax-future-kicker">AXION PRIME · PERFORMANCE COMMAND OS X10</div>
+                <h1>¡Buenos días, {_safe_text(trader_name, 'Trader Pro')}! 👋</h1>
+                <p>Disciplina hoy, libertad mañana. Tu desempeño vive en los datos.</p>
+            </div>
+            <div class="ax-future-header-status">
+                <div class="ax-future-date">{current_date}<span></span>{current_time}</div>
+                <div class="ax-future-market-status"><i></i>MERCADOS ACTIVOS</div>
+            </div>
+        </section>
+        """
+    )
+
+
+def _sparkline_svg(values: list[float], accent: str) -> str:
+    clean_values = [_safe_float(value) for value in values[-20:]]
+    if len(clean_values) < 2:
+        clean_values = [0.0, 0.0, 0.0, 0.0]
+
+    minimum = min(clean_values)
+    maximum = max(clean_values)
+    difference = maximum - minimum if maximum != minimum else 1.0
+    width, height = 210, 40
+    points: list[str] = []
+
+    for index, value in enumerate(clean_values):
+        x = index / max(len(clean_values) - 1, 1) * width
+        normalized = (value - minimum) / difference
+        y = height - normalized * 29 - 5
+        points.append(f"{x:.1f},{y:.1f}")
+
+    return f"""
+    <svg class="ax-future-sparkline" viewBox="0 0 {width} {height}" preserveAspectRatio="none" aria-hidden="true">
+        <polyline points="{' '.join(points)}" fill="none" stroke="{accent}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    """
+
+
+def _metric_card(
+    *,
+    icon: str,
+    label: str,
+    value: str,
+    subtitle: str,
+    footer: str,
+    accent: str,
+    spark_values: list[float],
+) -> None:
+    st.html(
+        f"""
+        <article class="ax-future-metric">
+            <div class="ax-future-metric-head">
+                <div class="ax-future-metric-icon" style="color:{accent};background:{accent}12;border-color:{accent}55;box-shadow:0 0 25px {accent}18;">{icon}</div>
+                <div>
+                    <div class="ax-future-metric-label">{_safe_text(label)}</div>
+                    <div class="ax-future-metric-value" style="color:{accent}">{_safe_text(value)}</div>
+                </div>
+            </div>
+            <div class="ax-future-metric-meta"><span>{_safe_text(subtitle)}</span><span>{_safe_text(footer)}</span></div>
+            {_sparkline_svg(spark_values, accent)}
+        </article>
+        """
+    )
+
+
+def _panel_title(icon: str, title: str, subtitle: str) -> None:
+    st.html(
+        f"""
+        <div class="ax-future-panel-title">
+            <div><span>{icon}</span><strong>{_safe_text(title)}</strong></div>
+            <small>{_safe_text(subtitle)}</small>
+        </div>
+        """
+    )
+
+
+def _build_equity(data: pd.DataFrame, initial_capital: float) -> pd.DataFrame:
+    if data.empty:
+        return pd.DataFrame()
+
+    equity = data.dropna(subset=["fecha_dt"]).copy()
+    equity = equity.sort_values(["fecha_dt", "created_at_dt"])
+    if equity.empty:
+        return pd.DataFrame()
+
+    equity["equity"] = initial_capital + equity["beneficio_usd"].cumsum()
+    equity["peak"] = equity["equity"].cummax()
+    equity["drawdown"] = equity["equity"] - equity["peak"]
+    return equity
+
+
+def _equity_chart(data: pd.DataFrame, initial_capital: float) -> None:
+    _panel_title("◈", "CURVA DE EQUITY", "BALANCE ACUMULADO")
+    equity = _build_equity(data, initial_capital)
+
+    if equity.empty:
+        st.html(
+            """
+            <div class="ax-future-empty"><div>◇</div><strong>Tu curva comienza con tu primer trade</strong><p>Registra una operación para activar rendimiento, consistencia y drawdown.</p></div>
+            """
+        )
+        return
+
+    last_equity = float(equity["equity"].iloc[-1])
+    maximum_equity = float(equity["equity"].max())
+
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=equity["fecha_dt"],
+            y=equity["equity"],
+            mode="lines",
+            line={"color": CYAN, "width": 3, "shape": "spline", "smoothing": 0.75},
+            fill="tozeroy",
+            fillcolor="rgba(32,221,245,0.08)",
+            hovertemplate="<b>%{x|%d %b %Y}</b><br>Balance: $%{y:,.2f}<extra></extra>",
+            showlegend=False,
+        )
+    )
+    figure.add_hline(
+        y=maximum_equity,
+        line_width=1,
+        line_dash="dot",
+        line_color=GREEN,
+        annotation_text=f"Máximo histórico ${maximum_equity:,.0f}",
+        annotation_position="top right",
+        annotation_font={"color": GREEN, "size": 10},
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=[equity["fecha_dt"].iloc[-1]],
+            y=[last_equity],
+            mode="markers",
+            marker={"size": 11, "color": BLUE, "line": {"color": WHITE, "width": 2}},
+            hovertemplate=f"Balance actual: ${last_equity:,.2f}<extra></extra>",
+            showlegend=False,
+        )
+    )
+    figure.update_layout(
+        height=430,
+        margin={"l": 8, "r": 8, "t": 26, "b": 8},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        hovermode="x unified",
+        font={"color": MUTED, "family": "Inter"},
+        xaxis={"showgrid": True, "gridcolor": "rgba(82,111,175,0.11)", "zeroline": False, "tickfont": {"color": MUTED, "size": 9}},
+        yaxis={"showgrid": True, "gridcolor": "rgba(82,111,175,0.13)", "zeroline": False, "tickprefix": "$", "tickformat": ",.0f", "tickfont": {"color": MUTED, "size": 9}},
+    )
+    st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False, "responsive": True})
+
+
+def _direction_badge(direction: Any) -> str:
+    clean_direction = str(direction or "").strip().upper()
+    if clean_direction == "LONG":
+        return '<span class="ax-future-badge ax-future-long">LONG</span>'
+    if clean_direction == "SHORT":
+        return '<span class="ax-future-badge ax-future-short">SHORT</span>'
+    return '<span class="ax-future-badge ax-future-neutral">—</span>'
+
+
+def _result_badge(result: Any, pnl: float) -> str:
+    normalized = _normalize_result(result, pnl)
+    class_name = {"WIN": "ax-future-win", "LOSS": "ax-future-loss", "BE": "ax-future-be"}[normalized]
+    return f'<span class="ax-future-result {class_name}">{normalized}</span>'
+
+
+def _recent_trades(data: pd.DataFrame) -> None:
+    _panel_title("▣", "ÚLTIMAS OPERACIONES", "HISTORIAL RECIENTE")
+
+    if data.empty:
+        st.html("""<div class="ax-future-empty"><div>▤</div><strong>Todavía no existen operaciones</strong><p>Tus operaciones aparecerán aquí.</p></div>""")
+        return
+
+    recent = data.sort_values(["fecha_dt", "created_at_dt"], ascending=False).head(7)
+    rows: list[str] = []
+
+    for _, trade in recent.iterrows():
+        pnl = _safe_float(trade.get("beneficio_usd"))
+        date_value = trade.get("fecha_dt")
+        date_text = pd.Timestamp(date_value).strftime("%d/%m/%Y") if pd.notna(date_value) else _safe_text(trade.get("fecha", "—"))
+        pnl_color = GREEN if pnl > 0 else RED if pnl < 0 else MUTED
+        rows.append(
+            f"""
+            <tr>
+                <td>{date_text}</td>
+                <td><strong>{_safe_text(trade.get('par', '—'))}</strong></td>
+                <td>{_direction_badge(trade.get('direccion'))}</td>
+                <td>{_result_badge(trade.get('resultado'), pnl)}</td>
+                <td class="ax-future-pnl" style="color:{pnl_color}">{_money(pnl)}</td>
+            </tr>
+            """
+        )
+
+    st.html(
+        f"""
+        <div class="ax-future-table-shell">
+            <table class="ax-future-table">
+                <thead><tr><th>FECHA</th><th>ACTIVO</th><th>DIRECCIÓN</th><th>RESULTADO</th><th>P&amp;L</th></tr></thead>
+                <tbody>{''.join(rows)}</tbody>
+            </table>
+        </div>
+        """
+    )
+
+
+def _setup_panel(data: pd.DataFrame) -> None:
+    _panel_title("▧", "CAPTURA DEL SETUP", "AI VISION READY")
+
+    if data.empty:
+        st.html("""<div class="ax-future-empty ax-future-setup-empty"><div>🧠</div><strong>AXION Vision está listo</strong><p>Registra un setup para activar el análisis visual.</p></div>""")
+        return
+
+    ordered = data.sort_values(["fecha_dt", "created_at_dt"], ascending=False)
+    last_trade = ordered.iloc[0]
+    image_value = str(last_trade.get("img_before") or last_trade.get("img_after") or "").strip()
+
+    if image_value:
+        st.image(image_value, use_container_width=True)
+    else:
+        st.html("""<div class="ax-future-empty ax-future-setup-empty"><div>📷</div><strong>Sin captura disponible</strong><p>El último trade no tiene imagen guardada.</p></div>""")
+
+
+def _current_streak(values: list[float]) -> int:
+    streak = 0
+    for value in reversed(values):
+        if value > 0:
+            streak += 1
+        else:
+            break
+    return streak
+
+
+def _maximum_streak(values: list[float]) -> int:
+    maximum = 0
+    current = 0
+    for value in values:
+        if value > 0:
+            current += 1
+            maximum = max(maximum, current)
+        else:
+            current = 0
+    return maximum
+
+
+def _maximum_drawdown(data: pd.DataFrame, initial_capital: float) -> float:
+    equity = _build_equity(data, initial_capital)
+    if equity.empty:
+        return 0.0
+    percentage = equity["drawdown"] / equity["peak"].replace(0, pd.NA) * 100
+    minimum_value = percentage.min()
+    return 0.0 if pd.isna(minimum_value) else abs(_safe_float(minimum_value))
+
+
+def _quick_summary(data: pd.DataFrame, initial_capital: float) -> None:
+    _panel_title("⚡", "RESUMEN RÁPIDO", "PERFORMANCE")
+
+    if data.empty:
+        best_day = worst_day = 0.0
+        current_streak = maximum_streak = 0
+        drawdown = 0.0
+    else:
+        valid_dates = data.dropna(subset=["fecha_dt"]).copy()
+        daily = (
+            valid_dates.groupby(valid_dates["fecha_dt"].dt.date)["beneficio_usd"].sum()
+            if not valid_dates.empty
+            else pd.Series(dtype=float)
+        )
+        best_day = _safe_float(daily.max()) if not daily.empty else 0.0
+        worst_day = _safe_float(daily.min()) if not daily.empty else 0.0
+        ordered = data.sort_values(["fecha_dt", "created_at_dt"])
+        pnl_values = ordered["beneficio_usd"].tolist()
+        current_streak = _current_streak(pnl_values)
+        maximum_streak = _maximum_streak(pnl_values)
+        drawdown = _maximum_drawdown(data, initial_capital)
+
+    summary_items = [
+        ("Mejor día", _money(best_day), GREEN),
+        ("Peor día", _money(worst_day), RED if worst_day < 0 else MUTED),
+        ("Racha actual", f"{current_streak} Wins", GREEN),
+        ("Racha máxima", f"{maximum_streak} Wins", GREEN),
+        ("Drawdown máximo", f"{drawdown:.2f}%", GREEN if drawdown < 5 else RED),
+    ]
+    rows = "".join(
+        f'<div class="ax-future-summary-row"><span>{label}</span><strong style="color:{color}">{value}</strong></div>'
+        for label, value, color in summary_items
+    )
+    st.html(f'<div class="ax-future-summary">{rows}</div>')
+
+
+def _intelligence_banner(total: int, pnl: float, win_rate: float) -> None:
+    pnl_color = GREEN if pnl >= 0 else RED
+    st.html(
+        f"""
+        <section class="ax-future-intelligence">
+            <div class="ax-future-intelligence-copy">
+                <div class="ax-future-kicker">AXION INTELLIGENCE</div>
+                <h2>Convierte disciplina<span>en ventaja.</span></h2>
+                <p>Registra, analiza y perfecciona cada ejecución desde un solo centro de inteligencia operativa.</p>
+                <div class="ax-future-feature-grid">
+                    <div><i>▣</i>Track Record inteligente</div>
+                    <div><i>◉</i>Auditoría visual con IA</div>
+                    <div><i>☁</i>Psicotrading medible</div>
+                    <div><i>⌁</i>Riesgo y métricas avanzadas</div>
+                </div>
+            </div>
+            <div class="ax-future-market-visual">
+                <div class="ax-future-bull">BULL</div>
+                <div class="ax-future-center-logo">A</div>
+                <div class="ax-future-bear">BEAR</div>
+                <div class="ax-future-market-line"></div>
+            </div>
+            <div class="ax-future-global-stats">
+                <div><strong>+{total:,}</strong><span>Trades analizados</span></div>
+                <div><strong style="color:{pnl_color}">{_money(pnl)}</strong><span>Resultado acumulado</span></div>
+                <div><strong>{win_rate:.1f}%</strong><span>Precisión</span></div>
+                <div><strong>24/7</strong><span>IA activa</span></div>
+            </div>
+        </section>
+        """
+    )
+
+
+def render_dashboard(
+    df: pd.DataFrame,
+    trader_name: str = "Trader Pro",
+    initial_capital: float | None = None,
+) -> None:
+    apply_dashboard_styles()
+    _render_dashboard_candles()
+
+    if initial_capital is None:
+        initial_capital = _safe_float(
+            st.session_state.get("capital_actual", 10000.0), 10000.0
+        )
+
+    data = _prepare_df(df)
+    _render_header(trader_name)
+
+    assets = ["Todos"]
+    if not data.empty:
+        assets.extend(
+            sorted(
+                {
+                    str(value).strip()
+                    for value in data["par"].dropna().tolist()
+                    if str(value).strip()
+                }
+            )
+        )
+
+    filter_columns = st.columns([1, 1, 1, 1.35], gap="medium")
+    with filter_columns[0]:
+        period = st.selectbox(
+            "Período",
+            ["Todo", "Hoy", "Últimos 7 días", "Este mes"],
+            label_visibility="collapsed",
+            key="dashboard_period",
+        )
+    with filter_columns[1]:
+        asset = st.selectbox(
+            "Activo",
+            assets,
+            label_visibility="collapsed",
+            key="dashboard_asset",
+        )
+    with filter_columns[2]:
+        st.selectbox(
+            "Vista",
+            ["Performance Desk", "Risk Desk", "Psychology Desk"],
+            label_visibility="collapsed",
+            key="dashboard_view",
+        )
+    with filter_columns[3]:
+        if st.button(
+            "＋ REGISTRAR NUEVA OPERACIÓN",
+            key="dashboard_new_trade",
+            use_container_width=True,
+            type="primary",
+        ):
+            st.session_state.page = "Registrar Trade"
+            st.rerun()
+
+    filtered_data = _filter_data(data, period, asset)
+    total = len(filtered_data)
+    pnl = _safe_float(filtered_data["beneficio_usd"].sum()) if not filtered_data.empty else 0.0
+    balance = initial_capital + pnl
+    wins = int((filtered_data["beneficio_usd"] > 0).sum()) if not filtered_data.empty else 0
+    losses = int((filtered_data["beneficio_usd"] < 0).sum()) if not filtered_data.empty else 0
+    win_rate = wins / total * 100 if total > 0 else 0.0
+
+    gross_profit = (
+        _safe_float(filtered_data.loc[filtered_data["beneficio_usd"] > 0, "beneficio_usd"].sum())
+        if not filtered_data.empty
+        else 0.0
+    )
+    gross_loss = (
+        abs(_safe_float(filtered_data.loc[filtered_data["beneficio_usd"] < 0, "beneficio_usd"].sum()))
+        if not filtered_data.empty
+        else 0.0
+    )
+
+    if gross_loss > 0:
+        profit_factor = gross_profit / gross_loss
+    elif gross_profit > 0:
+        profit_factor = float("inf")
+    else:
+        profit_factor = 0.0
+
+    finite_profit_factor = 3.0 if profit_factor == float("inf") else min(profit_factor, 3.0)
+    score = min(100, max(0, round(50 + win_rate * 0.25 + finite_profit_factor * 8)))
+
+    ordered_pnl = (
+        filtered_data.sort_values(["fecha_dt", "created_at_dt"])["beneficio_usd"].tolist()
+        if not filtered_data.empty
+        else []
+    )
+    cumulative_pnl = pd.Series(ordered_pnl).cumsum().tolist() if ordered_pnl else [0.0, 0.0]
+    balance_spark = [initial_capital + value for value in cumulative_pnl]
+
+    running_wins = 0
+    win_spark: list[float] = []
+    for index, value in enumerate(ordered_pnl, start=1):
+        if value > 0:
+            running_wins += 1
+        win_spark.append(running_wins / index * 100)
+    if not win_spark:
+        win_spark = [0.0, 0.0]
+
+    metric_columns = st.columns(5, gap="medium")
+    with metric_columns[0]:
+        _metric_card(icon="▣", label="BALANCE ACTUAL", value=_money(balance), subtitle="Capital + PnL", footer=f"{total} trades", accent=WHITE, spark_values=balance_spark)
+    with metric_columns[1]:
+        pnl_color = GREEN if pnl >= 0 else RED
+        _metric_card(icon="↗", label="P&L TOTAL", value=_money(pnl), subtitle="Resultado acumulado", footer="Performance", accent=pnl_color, spark_values=cumulative_pnl)
+    with metric_columns[2]:
+        _metric_card(icon="◎", label="WIN RATE", value=f"{win_rate:.1f}%", subtitle=f"{wins}W / {losses}L", footer="Aciertos", accent=CYAN, spark_values=win_spark)
+    with metric_columns[3]:
+        profit_factor_text = "∞" if profit_factor == float("inf") else f"{profit_factor:.2f}"
+        _metric_card(icon="Σ", label="PROFIT FACTOR", value=profit_factor_text, subtitle="Objetivo > 1.50", footer="Sistema", accent=PURPLE, spark_values=cumulative_pnl)
+    with metric_columns[4]:
+        _metric_card(icon="♢", label="PROP FIRM SCORE", value=str(score), subtitle="de 100", footer="AXION", accent=GREEN, spark_values=[50, 55, 61, 67, float(score)])
+
+    main_left, main_right = st.columns([1.08, 1], gap="medium")
+    with main_left:
+        _equity_chart(filtered_data, initial_capital)
+    with main_right:
+        _recent_trades(filtered_data)
+
+    setup_column, summary_column = st.columns([1.25, 0.75], gap="medium")
+    with setup_column:
+        _setup_panel(filtered_data)
+    with summary_column:
+        _quick_summary(filtered_data, initial_capital)
+
+    _intelligence_banner(total, pnl, win_rate)
