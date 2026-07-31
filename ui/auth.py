@@ -878,3 +878,48 @@ def render_dashboard(
         _render_asset_performance(
             df
         )
+        # =========================================================
+# PANTALLA COMPLETA DE AUTENTICACIÓN
+# =========================================================
+
+def render_auth() -> None:
+    """
+    Renderiza la pantalla completa de acceso,
+    registro y recuperación de contraseña.
+    """
+
+    st.markdown(
+        """
+        <div style="height:10px;"></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns(
+        [1.28, 1],
+        gap="large",
+    )
+
+    with left:
+        render_login_presentation()
+
+    with right:
+        st.markdown(
+            """
+            <div
+                class="ax-card"
+                style="
+                    padding:34px;
+                    min-height:610px;
+                "
+            >
+            """,
+            unsafe_allow_html=True,
+        )
+
+        render_login_form()
+
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
+        )
