@@ -1,47 +1,33 @@
 from __future__ import annotations
 
-import time
 from typing import Any
 
 import requests
 import streamlit as st
 
-from core.config import (
-    SUPABASE_KEY,
-    SUPABASE_URL,
-)
+from core.config import SUPABASE_KEY, SUPABASE_URL
 
 
 # =========================================================
 # AXION PRIME X10
-# CONEXIÓN REST Y AUTENTICACIÓN CON SUPABASE
+# API DE SUPABASE COMPLETA
 # =========================================================
 
 
-REQUEST_TIMEOUT = 50
-MAX_TOKEN_LENGTH = 10_000
+REQUEST_TIMEOUT = 45
 
 
 class ApiError(RuntimeError):
-    """
-    Error controlado para mostrar mensajes claros
-    cuando Supabase rechaza una petición.
-    """
+    """Error controlado de conexión con Supabase."""
 
 
 # =========================================================
-# UTILIDADES
+# CONFIGURACIÓN
 # =========================================================
 
 
 def _base_url() -> str:
-    """
-    Devuelve la URL de Supabase sin barra final.
-    """
-
-    url = str(
-        SUPABASE_URL or ""
-    ).strip().rstrip("/")
+    url = str(SUPABASE_URL or "").strip().rstrip("/")
 
     if not url:
         raise ApiError(
@@ -52,13 +38,7 @@ def _base_url() -> str:
 
 
 def _api_key() -> str:
-    """
-    Devuelve la clave pública configurada.
-    """
-
-    key = str(
-        SUPABASE_KEY or ""
-    ).strip()
+    key = str(SUPABASE_KEY or "").strip()
 
     if not key:
         raise ApiError(
@@ -68,13 +48,14 @@ def _api_key() -> str:
     return key
 
 
+# =========================================================
+# RESPUESTAS HTTP
+# =========================================================
+
+
 def _safe_json(
     response: requests.Response,
 ) -> Any:
-    """
-    Convierte una respuesta en JSON cuando sea posible.
-    """
-
     try:
         return response.json()
 
@@ -82,36 +63,30 @@ def _safe_json(
         return None
 
 
-def _error_message(
+def _extract_error(
     response: requests.Response,
 ) -> str:
-    """
-    Extrae un mensaje legible de una respuesta fallida.
-    """
-
-    payload = _safe_json(
-        response
-    )
+    payload = _safe_json(response)
 
     if isinstance(payload, dict):
-        message = (
-            payload.get("message")
-            or payload.get("msg")
-            or payload.get("error_description")
-            or payload.get("error")
-            or payload.get("hint")
-            or payload.get("details")
-        )
+        for key in (
+            "message",
+            "msg",
+            "error_description",
+            "error",
+            "hint",
+            "details",
+            "code",
+        ):
+            value = payload.get(key)
 
-        if message:
-            return str(message)
+            if value:
+                return str(value)
 
-    text = str(
-        response.text or ""
-    ).strip()
+    text = str(response.text or "").strip()
 
     if text:
-        return text[:1_500]
+        return text[:1200]
 
     return (
         f"Supabase respondió con HTTP "
@@ -123,38 +98,33 @@ def _validate_response(
     response: requests.Response,
     action: str,
 ) -> Any:
-    """
-    Comprueba una respuesta de Supabase.
-    """
-
     if response.status_code >= 400:
         raise ApiError(
-            f"{action}. "
-            f"HTTP {response.status_code}: "
-            f"{_error_message(response)}"
+            f"{action}. HTTP {response.status_code}: "
+            f"{_extract_error(response)}"
         )
 
-    payload = _safe_json(
-        response
-    )
+    payload = _safe_json(response)
 
-    if payload is not None:
-        return payload
+    if payload is None:
+        return {}
 
-    return {}
+    return payload
 
 
 def _request(
     method: str,
-    url: str,
+    endpoint: str,
     *,
     headers: dict[str, str] | None = None,
     params: dict[str, Any] | None = None,
     json: Any = None,
 ) -> requests.Response:
-    """
-    Ejecuta una petición HTTP con errores controlados.
-    """
+    url = (
+        endpoint
+        if endpoint.startswith("http")
+        else f"{_base_url()}{endpoint}"
+    )
 
     try:
         return requests.request(
@@ -173,40 +143,27 @@ def _request(
 
     except requests.ConnectionError as exc:
         raise ApiError(
-            "No se pudo establecer conexión con Supabase."
+            "No se pudo conectar con Supabase."
         ) from exc
 
     except requests.RequestException as exc:
         raise ApiError(
-            f"Error de comunicación con Supabase: {exc}"
+            f"Error de comunicación: {exc}"
         ) from exc
 
 
 # =========================================================
-# MANEJO SEGURO DE TOKENS
+# TOKENS
 # =========================================================
 
 
-def _normalize_token(
+def _clean_token(
     value: Any,
 ) -> str:
-    """
-    Obtiene únicamente un access token válido como texto.
-
-    Evita enviar diccionarios, listas, objetos de usuario
-    o el session_state completo dentro de Authorization.
-    """
-
     if value is None:
         return ""
 
-    if isinstance(value, dict):
-        value = value.get(
-            "access_token",
-            "",
-        )
-
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(value, (dict, list, tuple, set)):
         return ""
 
     token = str(value).strip()
@@ -214,45 +171,103 @@ def _normalize_token(
     if token.lower().startswith("bearer "):
         token = token[7:].strip()
 
-    if not token:
-        return ""
-
     if token.startswith("{") or token.startswith("["):
-        return ""
-
-    if len(token) > MAX_TOKEN_LENGTH:
         return ""
 
     return token
 
 
+def _session_from_payload(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Acepta las dos formas posibles:
+
+    1. Respuesta REST directa:
+       {
+           "access_token": "...",
+           "refresh_token": "...",
+           "user": {...}
+       }
+
+    2. Respuesta con sesión anidada:
+       {
+           "session": {
+               "access_token": "...",
+               "refresh_token": "..."
+           },
+           "user": {...}
+       }
+    """
+
+    nested_session = payload.get("session")
+
+    if isinstance(nested_session, dict):
+        session = nested_session.copy()
+
+        if "user" not in session:
+            session["user"] = payload.get(
+                "user",
+                {},
+            )
+
+        return session
+
+    data = payload.get("data")
+
+    if isinstance(data, dict):
+        nested_data_session = data.get("session")
+
+        if isinstance(nested_data_session, dict):
+            session = nested_data_session.copy()
+
+            if "user" not in session:
+                session["user"] = data.get(
+                    "user",
+                    payload.get("user", {}),
+                )
+
+            return session
+
+        if data.get("access_token"):
+            return data
+
+    return payload
+
+
 def _save_auth_payload(
     payload: dict[str, Any],
-) -> None:
-    """
-    Guarda exclusivamente tokens y usuario necesarios.
-    """
+) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ApiError(
+            "Supabase devolvió una respuesta inválida."
+        )
 
-    access_token = _normalize_token(
-        payload.get("access_token")
+    session = _session_from_payload(payload)
+
+    access_token = _clean_token(
+        session.get("access_token")
     )
 
-    refresh_token = str(
-        payload.get(
-            "refresh_token",
-            "",
-        )
-        or ""
-    ).strip()
+    refresh_token = _clean_token(
+        session.get("refresh_token")
+    )
 
-    user = payload.get(
-        "user",
-        {},
+    user = (
+        session.get("user")
+        or payload.get("user")
+        or {}
     )
 
     if not access_token:
+        available_keys = ", ".join(
+            sorted(payload.keys())
+        ) or "ninguna"
+
         raise ApiError(
-            "Supabase no devolvió un access token válido."
+            "Supabase no devolvió una sesión activa. "
+            "Puede que el correo todavía no esté confirmado. "
+            f"Campos recibidos: {available_keys}"
         )
 
     st.session_state.access_token = access_token
@@ -262,49 +277,45 @@ def _save_auth_payload(
         if isinstance(user, dict)
         else {}
     )
+
     st.session_state.authenticated = True
+    st.session_state.page = "Dashboard"
+
+    return session
 
 
 def clear_api_session() -> None:
-    """
-    Elimina los datos locales de autenticación.
-    """
-
     for key in (
         "access_token",
         "refresh_token",
         "user",
         "authenticated",
+        "page",
     ):
-        if key in st.session_state:
-            del st.session_state[key]
+        st.session_state.pop(
+            key,
+            None,
+        )
 
 
 def _refresh_access_token() -> str:
-    """
-    Renueva la sesión utilizando el refresh token.
-    """
-
-    refresh_token = str(
+    refresh_token = _clean_token(
         st.session_state.get(
             "refresh_token",
             "",
         )
-        or ""
-    ).strip()
+    )
 
     if not refresh_token:
         return ""
 
     response = _request(
         "POST",
-        (
-            f"{_base_url()}/auth/v1/token"
-            "?grant_type=refresh_token"
-        ),
+        "/auth/v1/token?grant_type=refresh_token",
         headers={
             "apikey": _api_key(),
             "Content-Type": "application/json",
+            "Accept": "application/json",
         },
         json={
             "refresh_token": refresh_token,
@@ -317,46 +328,39 @@ def _refresh_access_token() -> str:
     )
 
     if not isinstance(payload, dict):
-        raise ApiError(
-            "Supabase devolvió una renovación inválida."
-        )
+        return ""
 
-    _save_auth_payload(
-        payload
-    )
+    session = _save_auth_payload(payload)
 
-    return _normalize_token(
-        payload.get("access_token")
+    return _clean_token(
+        session.get("access_token")
     )
 
 
 def ensure_access_token() -> str:
-    """
-    Devuelve únicamente el JWT del usuario.
-
-    Nunca convierte el usuario, el payload ni todo
-    session_state en el encabezado Authorization.
-    """
-
-    token = _normalize_token(
+    access_token = _clean_token(
         st.session_state.get(
             "access_token",
             "",
         )
     )
 
-    if token:
-        return token
+    if access_token:
+        return access_token
 
-    token = _refresh_access_token()
+    try:
+        refreshed_token = _refresh_access_token()
 
-    if token:
-        return token
+    except ApiError:
+        refreshed_token = ""
+
+    if refreshed_token:
+        return refreshed_token
 
     clear_api_session()
 
     raise ApiError(
-        "La sesión expiró. Cierra sesión y vuelve a entrar."
+        "La sesión expiró. Vuelve a iniciar sesión."
     )
 
 
@@ -366,27 +370,16 @@ def ensure_access_token() -> str:
 
 
 def _auth_headers() -> dict[str, str]:
-    """
-    Cabeceras para endpoints de Supabase Auth.
-    """
-
     return {
         "apikey": _api_key(),
         "Content-Type": "application/json",
+        "Accept": "application/json",
     }
 
 
 def _rest_headers(
-    *,
     prefer: str = "",
 ) -> dict[str, str]:
-    """
-    Cabeceras para la Data API de Supabase.
-
-    Authorization contiene solamente:
-    Bearer <access_token>
-    """
-
     access_token = ensure_access_token()
 
     headers = {
@@ -413,10 +406,6 @@ def sign_in(
     email: str,
     password: str,
 ) -> dict[str, Any]:
-    """
-    Inicia sesión con correo y contraseña.
-    """
-
     clean_email = str(
         email or ""
     ).strip().lower()
@@ -427,20 +416,17 @@ def sign_in(
 
     if not clean_email:
         raise ApiError(
-            "El correo electrónico es obligatorio."
+            "Introduce tu correo electrónico."
         )
 
     if not clean_password:
         raise ApiError(
-            "La contraseña es obligatoria."
+            "Introduce tu contraseña."
         )
 
     response = _request(
         "POST",
-        (
-            f"{_base_url()}/auth/v1/token"
-            "?grant_type=password"
-        ),
+        "/auth/v1/token?grant_type=password",
         headers=_auth_headers(),
         json={
             "email": clean_email,
@@ -455,12 +441,10 @@ def sign_in(
 
     if not isinstance(payload, dict):
         raise ApiError(
-            "Supabase devolvió una sesión inválida."
+            "Supabase devolvió una respuesta inesperada."
         )
 
-    _save_auth_payload(
-        payload
-    )
+    _save_auth_payload(payload)
 
     return payload
 
@@ -469,10 +453,6 @@ def sign_up(
     email: str,
     password: str,
 ) -> dict[str, Any]:
-    """
-    Crea una cuenta mediante correo y contraseña.
-    """
-
     clean_email = str(
         email or ""
     ).strip().lower()
@@ -483,7 +463,7 @@ def sign_up(
 
     if not clean_email:
         raise ApiError(
-            "El correo electrónico es obligatorio."
+            "Introduce un correo electrónico."
         )
 
     if len(clean_password) < 6:
@@ -494,7 +474,7 @@ def sign_up(
 
     response = _request(
         "POST",
-        f"{_base_url()}/auth/v1/signup",
+        "/auth/v1/signup",
         headers=_auth_headers(),
         json={
             "email": clean_email,
@@ -512,10 +492,10 @@ def sign_up(
             "Supabase devolvió un registro inválido."
         )
 
-    if payload.get("access_token"):
-        _save_auth_payload(
-            payload
-        )
+    session = _session_from_payload(payload)
+
+    if session.get("access_token"):
+        _save_auth_payload(payload)
 
     return payload
 
@@ -524,10 +504,6 @@ def reset_password(
     email: str,
     redirect_url: str = "",
 ) -> dict[str, Any]:
-    """
-    Envía el correo de recuperación de contraseña.
-    """
-
     clean_email = str(
         email or ""
     ).strip().lower()
@@ -538,7 +514,7 @@ def reset_password(
 
     if not clean_email:
         raise ApiError(
-            "El correo electrónico es obligatorio."
+            "Introduce tu correo electrónico."
         )
 
     body: dict[str, Any] = {
@@ -550,7 +526,7 @@ def reset_password(
 
     response = _request(
         "POST",
-        f"{_base_url()}/auth/v1/recover",
+        "/auth/v1/recover",
         headers=_auth_headers(),
         json=body,
     )
@@ -567,49 +543,19 @@ def reset_password(
     )
 
 
-def get_current_user() -> dict[str, Any]:
-    """
-    Consulta el usuario de la sesión actual.
-    """
-
-    response = _request(
-        "GET",
-        f"{_base_url()}/auth/v1/user",
-        headers=_rest_headers(),
-    )
-
-    payload = _validate_response(
-        response,
-        "No se pudo consultar el usuario",
-    )
-
-    if not isinstance(payload, dict):
-        return {}
-
-    st.session_state.user = payload
-
-    return payload
-
-
 # =========================================================
-# CARGAR OPERACIONES
+# OPERACIONES
 # =========================================================
 
 
 def list_trades() -> list[dict[str, Any]]:
-    """
-    Obtiene los trades visibles para el usuario actual.
-
-    Las políticas RLS de Supabase deben filtrar cada usuario.
-    """
-
     response = _request(
         "GET",
-        f"{_base_url()}/rest/v1/trades",
+        "/rest/v1/trades",
         headers=_rest_headers(),
         params={
             "select": "*",
-            "order": "fecha.desc",
+            "order": "fecha.desc,created_at.desc",
         },
     )
 
@@ -623,8 +569,8 @@ def list_trades() -> list[dict[str, Any]]:
 
     if not isinstance(payload, list):
         raise ApiError(
-            "Supabase devolvió un formato inesperado "
-            "al cargar los trades."
+            "Supabase devolvió un formato inválido "
+            "al cargar las operaciones."
         )
 
     return [
@@ -634,19 +580,9 @@ def list_trades() -> list[dict[str, Any]]:
     ]
 
 
-# =========================================================
-# GUARDAR OPERACIÓN MEDIANTE RPC
-# =========================================================
-
-
 def _trade_rpc_payload(
     trade_data: dict[str, Any],
 ) -> dict[str, Any]:
-    """
-    Convierte los campos del formulario en los parámetros
-    esperados por la función axion_save_trade de Supabase.
-    """
-
     return {
         "p_fecha":
             trade_data.get("fecha"),
@@ -679,7 +615,9 @@ def _trade_rpc_payload(
             trade_data.get("emocion"),
 
         "p_notas_emocionales":
-            trade_data.get("notas_emocionales"),
+            trade_data.get(
+                "notas_emocionales"
+            ),
 
         "p_beneficio_usd":
             trade_data.get("beneficio_usd"),
@@ -707,29 +645,20 @@ def _trade_rpc_payload(
 def save_trade_rpc(
     trade_data: dict[str, Any],
 ) -> dict[str, Any]:
-    """
-    Guarda una operación utilizando axion_save_trade.
-    """
-
     if not isinstance(trade_data, dict):
         raise ApiError(
-            "Los datos del trade son inválidos."
+            "Los datos de la operación son inválidos."
         )
-
-    rpc_payload = _trade_rpc_payload(
-        trade_data
-    )
 
     response = _request(
         "POST",
-        (
-            f"{_base_url()}"
-            "/rest/v1/rpc/axion_save_trade"
-        ),
+        "/rest/v1/rpc/axion_save_trade",
         headers=_rest_headers(
             prefer="return=representation",
         ),
-        json=rpc_payload,
+        json=_trade_rpc_payload(
+            trade_data
+        ),
     )
 
     payload = _validate_response(
@@ -759,39 +688,26 @@ def save_trade_rpc(
 def save_trade(
     trade_data: dict[str, Any],
 ) -> dict[str, Any]:
-    """
-    Alias compatible para módulos que llamen save_trade.
-    """
-
     return save_trade_rpc(
         trade_data
     )
 
 
-# =========================================================
-# ELIMINAR OPERACIÓN
-# =========================================================
-
-
 def delete_trade(
     trade_id: str,
 ) -> bool:
-    """
-    Elimina una operación por ID.
-    """
-
     clean_id = str(
         trade_id or ""
     ).strip()
 
     if not clean_id:
         raise ApiError(
-            "El ID de la operación es obligatorio."
+            "El ID de la operación está vacío."
         )
 
     response = _request(
         "DELETE",
-        f"{_base_url()}/rest/v1/trades",
+        "/rest/v1/trades",
         headers=_rest_headers(
             prefer="return=minimal",
         ),
@@ -808,72 +724,34 @@ def delete_trade(
     return True
 
 
-# =========================================================
-# ACTUALIZAR OPERACIÓN
-# =========================================================
-
-
 def update_trade(
     trade_id: str,
     changes: dict[str, Any],
 ) -> dict[str, Any]:
-    """
-    Actualiza campos de una operación.
-    """
-
     clean_id = str(
         trade_id or ""
     ).strip()
 
     if not clean_id:
         raise ApiError(
-            "El ID de la operación es obligatorio."
+            "El ID de la operación está vacío."
         )
 
     if not isinstance(changes, dict):
         raise ApiError(
-            "Los cambios enviados son inválidos."
-        )
-
-    allowed_columns = {
-        "fecha",
-        "par",
-        "direccion",
-        "precio_entrada",
-        "stop_loss",
-        "take_profit",
-        "rr",
-        "timeframe",
-        "resultado",
-        "emocion",
-        "notas_emocionales",
-        "beneficio_usd",
-        "trades_cant",
-        "img_before",
-        "img_after",
-    }
-
-    safe_changes = {
-        key: value
-        for key, value in changes.items()
-        if key in allowed_columns
-    }
-
-    if not safe_changes:
-        raise ApiError(
-            "No existen campos válidos para actualizar."
+            "Los cambios recibidos son inválidos."
         )
 
     response = _request(
         "PATCH",
-        f"{_base_url()}/rest/v1/trades",
+        "/rest/v1/trades",
         headers=_rest_headers(
             prefer="return=representation",
         ),
         params={
             "id": f"eq.{clean_id}",
         },
-        json=safe_changes,
+        json=changes,
     )
 
     payload = _validate_response(
@@ -882,69 +760,12 @@ def update_trade(
     )
 
     if isinstance(payload, list) and payload:
-        first = payload[0]
-
-        if isinstance(first, dict):
-            return first
+        if isinstance(payload[0], dict):
+            return payload[0]
 
     if isinstance(payload, dict):
         return payload
 
     return {
         "success": True,
-    }
-
-
-# =========================================================
-# DIAGNÓSTICO SEGURO
-# =========================================================
-
-
-def connection_diagnostics() -> dict[str, Any]:
-    """
-    Información segura para comprobar la sesión sin mostrar
-    claves ni tokens.
-    """
-
-    token = _normalize_token(
-        st.session_state.get(
-            "access_token",
-            "",
-        )
-    )
-
-    refresh_token = str(
-        st.session_state.get(
-            "refresh_token",
-            "",
-        )
-        or ""
-    )
-
-    return {
-        "supabase_url_configured":
-            bool(SUPABASE_URL),
-
-        "supabase_key_configured":
-            bool(SUPABASE_KEY),
-
-        "access_token_present":
-            bool(token),
-
-        "access_token_length":
-            len(token),
-
-        "refresh_token_present":
-            bool(refresh_token),
-
-        "authenticated":
-            bool(
-                st.session_state.get(
-                    "authenticated",
-                    False,
-                )
-            ),
-
-        "checked_at":
-            int(time.time()),
     }
