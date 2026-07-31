@@ -33,13 +33,22 @@ st.set_page_config(
 # 2. CONFIGURACIÓN / SECRETOS
 # =========================================================
 
-SUPABASE_URL = st.secrets.get(
-    "SUPABASE_URL",
+# URL exacta del proyecto. No uses /rest/v1/ ni /auth/v1/.
+SUPABASE_URL = str(
     st.secrets.get(
-        "OSUPABASE_URL",
+        "SUPABASE_URL",
         "https://lyzvcbjqpoydeckxtbcq.supabase.co"
     )
 ).strip().rstrip("/")
+
+# Evita que un valor mal escrito en Secrets cause errores DNS confusos.
+EXPECTED_SUPABASE_HOST = "lyzvcbjqpoydeckxtbcq.supabase.co"
+if SUPABASE_URL != f"https://{EXPECTED_SUPABASE_HOST}":
+    st.error(
+        "La variable SUPABASE_URL de Streamlit Secrets está mal escrita. "
+        f"Debe ser exactamente: https://{EXPECTED_SUPABASE_HOST}"
+    )
+    st.stop()
 
 SUPABASE_KEY = st.secrets.get(
     "SUPABASE_KEY",
