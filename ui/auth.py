@@ -1,34 +1,24 @@
 from __future__ import annotations
 
-from textwrap import dedent
 from typing import Any
 
 import streamlit as st
 
-from core.api import (
-    reset_password,
-    sign_in,
-    sign_up,
-)
+from core.api import reset_password, sign_in, sign_up
 from core.config import APP_URL
 
 
 # =========================================================
 # AXION PRIME X10 PRO
-# AUTENTICACIÓN
+# AUTENTICACIÓN COMPLETA
 # =========================================================
 
 
-def _get_payload_value(
+def _payload_value(
     payload: Any,
     key: str,
     default: Any = None,
 ) -> Any:
-    """
-    Lee valores de una respuesta recibida como diccionario
-    u objeto.
-    """
-
     if payload is None:
         return default
 
@@ -41,17 +31,8 @@ def _get_payload_value(
 def save_session(
     payload: dict[str, Any],
 ) -> None:
-    """
-    Guarda la sesión devuelta por Supabase.
-    """
-
-    if not isinstance(payload, dict):
-        raise RuntimeError(
-            "Supabase devolvió una sesión con formato inválido."
-        )
-
     access_token = str(
-        _get_payload_value(
+        _payload_value(
             payload,
             "access_token",
             "",
@@ -60,7 +41,7 @@ def save_session(
     ).strip()
 
     refresh_token = str(
-        _get_payload_value(
+        _payload_value(
             payload,
             "refresh_token",
             "",
@@ -68,7 +49,7 @@ def save_session(
         or ""
     ).strip()
 
-    user = _get_payload_value(
+    user = _payload_value(
         payload,
         "user",
         {},
@@ -76,8 +57,7 @@ def save_session(
 
     if not access_token:
         raise RuntimeError(
-            "Supabase no devolvió el token de acceso. "
-            "Verifica que el correo esté confirmado."
+            "Supabase no devolvió un token de acceso."
         )
 
     st.session_state.access_token = access_token
@@ -87,246 +67,88 @@ def save_session(
     st.session_state.page = "Dashboard"
 
 
-# =========================================================
-# PRESENTACIÓN DEL LOGIN
-# =========================================================
-
-
-def render_login_presentation() -> None:
-    """
-    Renderiza el panel visual izquierdo.
-    """
-
-    html = dedent(
-        """
-        <div
-            class="ax-hero"
-            style="
-                min-height:610px;
-                display:flex;
-                flex-direction:column;
-                justify-content:center;
-                padding:45px;
-            "
-        >
-            <div
-                style="
-                    display:flex;
-                    align-items:center;
-                    gap:14px;
-                    margin-bottom:32px;
-                "
-            >
-                <div class="ax-logo">
-                    A
-                </div>
-
-                <div>
-                    <div
-                        style="
-                            color:#f5f7ff;
-                            font-size:18px;
-                            font-weight:950;
-                        "
-                    >
-                        AXION PRIME
-                    </div>
-
-                    <div
-                        style="
-                            color:#687594;
-                            font-size:8px;
-                            letter-spacing:2px;
-                            margin-top:4px;
-                        "
-                    >
-                        PERFORMANCE COMMAND OS · X10
-                    </div>
-                </div>
-            </div>
-
-            <div
-                style="
-                    color:#25e5ff;
-                    font-size:11px;
-                    letter-spacing:2.2px;
-                    font-weight:900;
-                "
-            >
-                TU VENTAJA EMPIEZA CON TUS DATOS
-            </div>
-
-            <div
-                style="
-                    color:#f5f7ff;
-                    font-size:58px;
-                    line-height:1.04;
-                    font-weight:950;
-                    letter-spacing:-2.5px;
-                    margin-top:24px;
-                "
-            >
-                Opera con más<br>
-
-                <span
-                    style="
-                        background:linear-gradient(
-                            90deg,
-                            #25e5ff,
-                            #768cff,
-                            #a146ff
-                        );
-                        -webkit-background-clip:text;
-                        background-clip:text;
-                        -webkit-text-fill-color:transparent;
-                        color:transparent;
-                    "
-                >
-                    claridad.
-                </span>
-            </div>
-
-            <div
-                style="
-                    color:#9aa7c8;
-                    font-size:16px;
-                    line-height:1.75;
-                    max-width:590px;
-                    margin-top:25px;
-                "
-            >
-                Convierte cada operación en inteligencia accionable.
-                Analiza tu rendimiento, disciplina, gestión de riesgo
-                y emociones desde un solo sistema operativo para traders.
-            </div>
-
-            <div
-                style="
-                    display:grid;
-                    grid-template-columns:1fr 1fr;
-                    gap:12px;
-                    margin-top:32px;
-                "
-            >
-                <div class="ax-card">
-                    📊 Track Record inteligente
-                </div>
-
-                <div class="ax-card">
-                    🧠 Auditoría visual con IA
-                </div>
-
-                <div class="ax-card">
-                    💭 Psicotrading medible
-                </div>
-
-                <div class="ax-card">
-                    📈 Métricas profesionales
-                </div>
-            </div>
-
-            <div
-                style="
-                    margin-top:38px;
-                    padding:16px;
-                    border-left:3px solid #25e5ff;
-                    border-radius:5px;
-                    background:rgba(10,15,38,.72);
-                    color:#8fa0c6;
-                    font-size:12px;
-                "
-            >
-                “La consistencia no se adivina.
-                Se diseña, se mide y se mejora.”
-            </div>
-        </div>
-        """
-    )
-
-    st.markdown(
-        html,
-        unsafe_allow_html=True,
-    )
-
-
-# =========================================================
-# ENCABEZADO DEL FORMULARIO
-# =========================================================
-
-
-def _render_form_header() -> None:
-    html = dedent(
-        """
-        <div
-            style="
-                display:flex;
-                align-items:center;
-                gap:12px;
-                margin-bottom:26px;
-            "
-        >
-            <div class="ax-logo">
-                ⚡
-            </div>
+def _hero_html() -> str:
+    return """
+    <section class="ax-auth-hero">
+        <div class="ax-auth-brand">
+            <div class="ax-auth-logo">A</div>
 
             <div>
-                <div
-                    style="
-                        color:#f5f7ff;
-                        font-size:16px;
-                        font-weight:950;
-                    "
-                >
+                <div class="ax-auth-brand-title">
                     AXION PRIME
                 </div>
 
-                <div
-                    style="
-                        color:#687594;
-                        font-size:8px;
-                        letter-spacing:1.8px;
-                        margin-top:3px;
-                    "
-                >
+                <div class="ax-auth-brand-subtitle">
+                    PERFORMANCE COMMAND OS · X10
+                </div>
+            </div>
+        </div>
+
+        <div class="ax-auth-eyebrow">
+            TU VENTAJA EMPIEZA CON TUS DATOS
+        </div>
+
+        <h1 class="ax-auth-title">
+            Opera con más
+            <span>claridad.</span>
+        </h1>
+
+        <p class="ax-auth-description">
+            Convierte cada operación en inteligencia accionable.
+            Analiza tu rendimiento, disciplina, riesgo y emociones
+            desde un solo centro operativo para traders.
+        </p>
+
+        <div class="ax-auth-feature-grid">
+            <div class="ax-auth-feature">
+                📊 Track Record inteligente
+            </div>
+
+            <div class="ax-auth-feature">
+                🧠 Auditoría visual con IA
+            </div>
+
+            <div class="ax-auth-feature">
+                💭 Psicotrading medible
+            </div>
+
+            <div class="ax-auth-feature">
+                📈 Métricas profesionales
+            </div>
+        </div>
+
+        <div class="ax-auth-quote">
+            “La consistencia no se adivina.
+            Se diseña, se mide y se mejora.”
+        </div>
+    </section>
+    """
+
+
+def _form_header_html() -> str:
+    return """
+    <section class="ax-auth-form-header">
+        <div class="ax-auth-mini-brand">
+            <div class="ax-auth-mini-logo">⚡</div>
+
+            <div>
+                <div class="ax-auth-mini-title">
+                    AXION PRIME
+                </div>
+
+                <div class="ax-auth-mini-subtitle">
                     INTELIGENCIA · DISCIPLINA · VENTAJA
                 </div>
             </div>
         </div>
 
-        <div
-            style="
-                color:#25e5ff;
-                font-size:38px;
-                line-height:1.1;
-                font-weight:950;
-                letter-spacing:-1.5px;
-                margin-bottom:10px;
-            "
-        >
-            Bienvenido de vuelta 👋
-        </div>
+        <h2>Bienvenido de vuelta 👋</h2>
 
-        <div
-            style="
-                color:#8d99ba;
-                font-size:13px;
-                margin-bottom:24px;
-            "
-        >
+        <p>
             Accede a tu centro de inteligencia de trading.
-        </div>
-        """
-    )
-
-    st.markdown(
-        html,
-        unsafe_allow_html=True,
-    )
-
-
-# =========================================================
-# INICIAR SESIÓN
-# =========================================================
+        </p>
+    </section>
+    """
 
 
 def _render_login_tab() -> None:
@@ -393,17 +215,6 @@ def _render_login_tab() -> None:
                 f"No se pudo iniciar sesión: {exc}"
             )
 
-    st.markdown("---")
-
-    st.caption(
-        "🔐 Acceso seguro mediante Supabase Auth"
-    )
-
-
-# =========================================================
-# CREAR CUENTA
-# =========================================================
-
 
 def _render_register_tab() -> None:
     email = st.text_input(
@@ -463,28 +274,18 @@ def _render_register_tab() -> None:
 
         try:
             with st.spinner(
-                "Creando tu cuenta..."
+                "Creando cuenta..."
             ):
                 payload = sign_up(
                     clean_email,
                     password,
                 )
 
-            access_token = str(
-                payload.get(
-                    "access_token",
-                    "",
-                )
-                or ""
-            ).strip()
-
-            if access_token:
+            if payload.get("access_token"):
                 save_session(payload)
-
                 st.success(
                     "Cuenta creada correctamente."
                 )
-
                 st.rerun()
 
             else:
@@ -497,11 +298,6 @@ def _render_register_tab() -> None:
             st.error(
                 f"No se pudo crear la cuenta: {exc}"
             )
-
-
-# =========================================================
-# RECUPERAR CONTRASEÑA
-# =========================================================
 
 
 def _render_reset_tab() -> None:
@@ -539,8 +335,7 @@ def _render_reset_tab() -> None:
                 )
 
             st.success(
-                "Enlace enviado. Revisa también "
-                "la carpeta de correo no deseado."
+                "Enlace enviado. Revisa también Spam."
             )
 
         except Exception as exc:
@@ -549,17 +344,10 @@ def _render_reset_tab() -> None:
             )
 
 
-# =========================================================
-# FORMULARIO COMPLETO
-# =========================================================
-
-
 def render_login_form() -> None:
-    """
-    Renderiza login, registro y recuperación.
-    """
-
-    _render_form_header()
+    st.html(
+        _form_header_html()
+    )
 
     login_tab, register_tab, reset_tab = st.tabs(
         [
@@ -579,34 +367,29 @@ def render_login_form() -> None:
         _render_reset_tab()
 
 
-# =========================================================
-# PANTALLA COMPLETA
-# =========================================================
-
-
 def render_auth() -> None:
-    """
-    Renderiza la pantalla completa de autenticación.
-
-    No abre etiquetas HTML en una llamada para cerrarlas
-    en otra, evitando paneles vacíos o HTML visible.
-    """
-
-    st.markdown(
-        "<div style='height:8px;'></div>",
-        unsafe_allow_html=True,
+    st.html(
+        "<div class='ax-auth-spacer'></div>"
     )
 
     left, right = st.columns(
-        [
-            1.28,
-            1,
-        ],
+        [1.25, 1],
         gap="large",
     )
 
     with left:
-        render_login_presentation()
+        st.html(
+            _hero_html()
+        )
 
     with right:
+        st.html(
+            "<div class='ax-auth-form-shell'>"
+            "<div class='ax-auth-form-inner'>"
+        )
+
         render_login_form()
+
+        st.html(
+            "</div></div>"
+        )
