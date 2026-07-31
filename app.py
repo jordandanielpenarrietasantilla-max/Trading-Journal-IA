@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 # =========================================================
 
 st.set_page_config(
-    page_title="AI Trading Journal & Auditor V9",
+    page_title="NEXORA TRADE OS",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -71,6 +71,18 @@ OPENROUTER_MODEL = st.secrets.get(
 ADMIN_EMAIL = st.secrets.get(
     "ADMIN_EMAIL",
     ""
+)
+
+# =========================================================
+# IDENTIDAD DE MARCA V10
+# =========================================================
+
+APP_NAME = "NEXORA TRADE OS"
+APP_TAGLINE = "Inteligencia. Disciplina. Ventaja."
+APP_VERSION = "V10"
+APP_DESCRIPTION = (
+    "Sistema operativo de rendimiento para traders: "
+    "journaling, analítica, psicotrading e inteligencia artificial."
 )
 
 
@@ -666,7 +678,12 @@ defaults = {
 
     # V9.1: página actualmente seleccionada en el
     # menú lateral de navegación
-    "pagina_actual": "Dashboard"
+    "pagina_actual": "Dashboard",
+
+    # V10: filtros globales del dashboard
+    "dashboard_periodo": "Todo",
+    "dashboard_asset": "Todos",
+    "dashboard_view": "Rendimiento"
 }
 
 
@@ -1203,7 +1220,7 @@ No escribas ```json.
                 "https://trading-journal-ia.streamlit.app",
 
             "X-Title":
-                "AI Trading Journal V9"
+                "NEXORA TRADE OS"
         }
 
         payload = {
@@ -2022,6 +2039,173 @@ def aplicar_estilos():
         margin-top: 10px;
     }
 
+
+
+    /* =====================================================
+       NEXORA TRADE OS V10 — DESIGN SYSTEM
+       ===================================================== */
+
+    :root {
+        --nx-bg: #060810;
+        --nx-panel: rgba(15, 20, 33, .86);
+        --nx-panel-2: rgba(20, 27, 44, .78);
+        --nx-line: rgba(126, 249, 255, .14);
+        --nx-cyan: #35e7ff;
+        --nx-blue: #4d7cff;
+        --nx-violet: #9d4dff;
+        --nx-green: #2ce6a6;
+        --nx-red: #ff5f7a;
+        --nx-muted: #8290aa;
+        --nx-text: #f3f7ff;
+    }
+
+    .stApp {
+        background:
+          radial-gradient(circle at 84% -10%, rgba(157,77,255,.15), transparent 35%),
+          radial-gradient(circle at 18% 4%, rgba(53,231,255,.10), transparent 32%),
+          linear-gradient(180deg, #060810 0%, #090c16 55%, #060810 100%) !important;
+    }
+
+    [data-testid="stHeader"] {
+        background: rgba(6,8,16,.74) !important;
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+
+    .block-container {
+        max-width: 1520px;
+        padding-top: 1.6rem;
+        padding-bottom: 3rem;
+    }
+
+    .nx-brand {
+        display:flex; align-items:center; gap:12px;
+        margin-bottom:18px;
+    }
+    .nx-brand-mark {
+        width:44px; height:44px; border-radius:14px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:25px;
+        background:linear-gradient(145deg,var(--nx-cyan),var(--nx-blue) 55%,var(--nx-violet));
+        box-shadow:0 0 30px rgba(53,231,255,.22);
+    }
+    .nx-brand-name {font-size:17px;font-weight:900;letter-spacing:.7px;color:white!important;}
+    .nx-brand-sub {font-size:10px;letter-spacing:1.8px;color:var(--nx-muted)!important;}
+
+    .nx-login-shell {
+        min-height: calc(100vh - 150px);
+        display:flex; align-items:center;
+    }
+    .nx-visual {
+        position:relative; min-height:650px; overflow:hidden;
+        border-radius:28px;
+        background:
+          linear-gradient(90deg,rgba(6,8,16,.97) 0%,rgba(6,8,16,.72) 46%,rgba(6,8,16,.18) 100%),
+          linear-gradient(0deg,rgba(6,8,16,.94) 0%,transparent 50%),
+          url('app/static/fondo.jpg'), url('fondo.jpg');
+        background-size:cover;
+        background-position:center;
+        border:1px solid rgba(255,255,255,.08);
+        box-shadow:0 30px 90px rgba(0,0,0,.55);
+        padding:46px;
+    }
+    .nx-visual:after {
+        content:""; position:absolute; inset:0; pointer-events:none;
+        background:radial-gradient(circle at 70% 38%,rgba(53,231,255,.13),transparent 26%);
+    }
+    .nx-hero-content {position:relative;z-index:2;max-width:520px;}
+    .nx-kicker {color:var(--nx-cyan)!important;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;}
+    .nx-hero-title {font-size:clamp(40px,5vw,72px);line-height:.98;font-weight:950;letter-spacing:-2.5px;margin:20px 0;color:#fff!important;}
+    .nx-gradient-text {background:linear-gradient(90deg,var(--nx-cyan),#8bd9ff 43%,#b77dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .nx-hero-copy {font-size:16px;line-height:1.7;color:#b8c4d8!important;max-width:470px;}
+    .nx-feature-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:28px;}
+    .nx-feature {background:rgba(12,17,29,.66);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:13px 15px;backdrop-filter:blur(10px);font-size:12px;color:#d9e4f6!important;}
+    .nx-quote {position:absolute;bottom:35px;left:46px;right:46px;z-index:3;border-left:3px solid var(--nx-cyan);padding:12px 16px;background:rgba(9,13,23,.68);border-radius:0 12px 12px 0;color:#9eabc0!important;font-size:12px;}
+
+    .nx-auth-card {
+        background:linear-gradient(160deg,rgba(19,25,41,.92),rgba(10,14,25,.94));
+        border:1px solid rgba(255,255,255,.09);
+        border-radius:26px;
+        padding:34px;
+        box-shadow:0 30px 80px rgba(0,0,0,.45);
+        backdrop-filter:blur(18px);
+    }
+
+    .nx-topbar {
+        display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
+        padding:4px 2px 18px 2px;
+    }
+    .nx-page-eyebrow {font-size:11px;letter-spacing:1.7px;text-transform:uppercase;color:var(--nx-cyan)!important;font-weight:800;}
+    .nx-page-title {font-size:34px;font-weight:900;letter-spacing:-1px;color:white!important;margin:4px 0 2px;}
+    .nx-page-copy {font-size:13px;color:var(--nx-muted)!important;}
+    .nx-live-pill {display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(44,230,166,.25);background:rgba(44,230,166,.08);padding:8px 12px;border-radius:999px;font-size:11px;color:#8fffd5!important;}
+    .nx-dot {width:7px;height:7px;border-radius:50%;background:var(--nx-green);box-shadow:0 0 12px var(--nx-green);}
+
+    .nx-card {
+        background:linear-gradient(160deg,rgba(20,27,44,.86),rgba(10,14,25,.92));
+        border:1px solid var(--nx-line);
+        border-radius:18px;
+        padding:18px;
+        box-shadow:0 16px 40px rgba(0,0,0,.20);
+        transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;
+    }
+    .nx-card:hover {transform:translateY(-2px);border-color:rgba(53,231,255,.32);box-shadow:0 18px 48px rgba(0,0,0,.28),0 0 26px rgba(53,231,255,.06);}
+    .nx-metric-label {font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--nx-muted)!important;font-weight:800;}
+    .nx-metric-value {font-size:27px;font-weight:900;color:white!important;margin:8px 0 3px;letter-spacing:-.7px;}
+    .nx-metric-foot {font-size:11px;color:#91a0b8!important;display:flex;justify-content:space-between;gap:10px;}
+    .nx-positive {color:var(--nx-green)!important;}
+    .nx-negative {color:var(--nx-red)!important;}
+    .nx-spark {height:3px;margin-top:15px;border-radius:99px;background:linear-gradient(90deg,var(--nx-cyan),var(--nx-blue),var(--nx-violet));opacity:.85;}
+
+    .nx-section-head {display:flex;justify-content:space-between;align-items:center;margin:8px 0 12px;}
+    .nx-section-title {font-size:16px;font-weight:850;color:white!important;}
+    .nx-section-meta {font-size:10px;color:var(--nx-muted)!important;}
+
+    .nx-ai-score {
+        background:radial-gradient(circle at 85% 10%,rgba(157,77,255,.23),transparent 38%),linear-gradient(145deg,rgba(25,31,50,.95),rgba(12,16,29,.96));
+        border:1px solid rgba(157,77,255,.27);border-radius:20px;padding:20px;
+    }
+    .nx-score-number {font-size:52px;font-weight:950;line-height:1;background:linear-gradient(90deg,var(--nx-cyan),var(--nx-violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .nx-insight {display:flex;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px;color:#b9c5d8!important;}
+
+    .nx-session-strip {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+    .nx-session-item {background:rgba(15,21,35,.72);border:1px solid rgba(255,255,255,.06);border-radius:13px;padding:12px;}
+    .nx-session-name {font-size:10px;color:#91a0b8!important;}
+    .nx-session-time {font-size:17px;font-weight:850;color:white!important;margin:3px 0;}
+    .nx-session-open {font-size:9px;color:var(--nx-green)!important;font-weight:800;}
+    .nx-session-closed {font-size:9px;color:var(--nx-red)!important;font-weight:800;}
+
+    .nx-empty {border:1px dashed rgba(53,231,255,.22);background:rgba(53,231,255,.035);border-radius:18px;padding:38px;text-align:center;color:#91a0b8!important;}
+
+    section[data-testid="stSidebar"] {
+        background:linear-gradient(180deg,#0a0d17 0%,#0d1220 100%)!important;
+        border-right:1px solid rgba(53,231,255,.10)!important;
+    }
+    section[data-testid="stSidebar"] > div {padding-top:1.2rem;}
+
+    .stButton > button, .stFormSubmitButton > button {
+        min-height:42px;
+        background:linear-gradient(110deg,var(--nx-cyan),var(--nx-blue) 52%,var(--nx-violet))!important;
+        box-shadow:0 10px 28px rgba(77,124,255,.18);
+        transition:all .2s ease!important;
+    }
+    .stButton > button:hover, .stFormSubmitButton > button:hover {transform:translateY(-1px);box-shadow:0 14px 34px rgba(77,124,255,.28);}
+
+    [data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stTextArea"] textarea {
+        background:rgba(8,12,22,.78)!important;
+        border:1px solid rgba(255,255,255,.09)!important;
+        min-height:44px;
+    }
+    [data-testid="stTextInput"] input:focus,[data-testid="stNumberInput"] input:focus,[data-testid="stTextArea"] textarea:focus {border-color:rgba(53,231,255,.55)!important;box-shadow:0 0 0 3px rgba(53,231,255,.08)!important;}
+
+    [data-testid="stPlotlyChart"] {background:transparent!important;border-radius:18px;overflow:hidden;}
+
+    @media (max-width: 900px) {
+      .nx-visual {min-height:520px;padding:28px;}
+      .nx-feature-grid,.nx-session-strip {grid-template-columns:1fr 1fr;}
+      .nx-quote {left:28px;right:28px;}
+    }
+
     </style>
 
     """
@@ -2168,351 +2352,277 @@ def render_paywall():
 
 def render_auth():
 
-    left, right = st.columns(
-        [1.3, 1]
-    )
+    st.markdown('<div class="nx-login-shell">', unsafe_allow_html=True)
+
+    left, right = st.columns([1.35, 0.85], gap="large")
 
     with left:
 
         st.markdown(
             textwrap.dedent(
+                f"""
+                <div class="nx-visual">
+                  <div class="nx-hero-content">
+                    <div class="nx-brand">
+                      <div class="nx-brand-mark">⚡</div>
+                      <div>
+                        <div class="nx-brand-name">{APP_NAME}</div>
+                        <div class="nx-brand-sub">TRADING INTELLIGENCE PLATFORM</div>
+                      </div>
+                    </div>
+                    <div class="nx-kicker">Tu ventaja empieza con tus datos</div>
+                    <div class="nx-hero-title">Opera con más<br><span class="nx-gradient-text">claridad.</span></div>
+                    <div class="nx-hero-copy">
+                      Convierte cada operación en inteligencia accionable.
+                      Analiza tu rendimiento, disciplina, riesgo y emociones
+                      desde un solo sistema operativo para traders.
+                    </div>
+                    <div class="nx-feature-grid">
+                      <div class="nx-feature">◈ Track Record inteligente</div>
+                      <div class="nx-feature">◈ Auditoría visual con IA</div>
+                      <div class="nx-feature">◈ Psicotrading medible</div>
+                      <div class="nx-feature">◈ Métricas de rendimiento</div>
+                    </div>
+                  </div>
+                  <div class="nx-quote">“La consistencia no se adivina. Se diseña, se mide y se mejora.”</div>
+                </div>
                 """
-                <div class="hero-panel">
-                <div style="font-size:34px; font-weight:900;">
-                ⚡ AI TRADING JOURNAL
-                </div>
-                <div style="color:#8b98a8; margin-bottom:18px;">
-                Disciplina · Análisis · Constancia · Resultados
-                </div>
-                <div style="font-size:26px; font-weight:800; margin-top:10px;">
-                Eleva tu trading&lt;br&gt;al siguiente nivel.
-                </div>
-                <div style="color:#c8d3e0; margin:10px 0 20px 0;">
-                Tu diario, tu auditor, tu ventaja.
-                </div>
-                <div style="line-height:2.1;">
-                ✅ Track Record inteligente&lt;br&gt;
-                🧠 Auditoría con IA&lt;br&gt;
-                💭 Psicotrading y emociones&lt;br&gt;
-                📊 Estadísticas avanzadas&lt;br&gt;
-                📈 Análisis y proyecciones
-                </div>
-                <div class="hero-quote">
-                "Lo que no se mide, no se puede mejorar."&lt;br&gt;
-                — Trading Pro
-                </div>
-                </div>
-                """
-            ).replace("&lt;br&gt;", "<br>"),
+            ),
             unsafe_allow_html=True
         )
 
     with right:
 
+        st.markdown('<div class="nx-auth-card">', unsafe_allow_html=True)
+
         st.markdown(
-            "### 👋 Bienvenido de vuelta"
+            f"""
+            <div class="nx-brand">
+              <div class="nx-brand-mark">⚡</div>
+              <div>
+                <div class="nx-brand-name">{APP_NAME}</div>
+                <div class="nx-brand-sub">{APP_TAGLINE}</div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
-        st.caption(
-            "Inicia sesión para continuar"
-        )
+        st.markdown("## Bienvenido de vuelta 👋")
+        st.caption("Accede a tu centro de inteligencia de trading")
 
         tab_login, tab_register, tab_reset = st.tabs(
-            [
-                "🔑 Iniciar Sesión",
-                "📝 Registrarse",
-                "🔐 Recuperar"
-            ]
+            ["Iniciar sesión", "Crear cuenta", "Recuperar"]
         )
 
         with tab_login:
 
-            st.markdown(
-                "### Ingresa a tu cuenta"
-            )
+            with st.form("login_form", clear_on_submit=False):
 
-            email = st.text_input(
-                "Correo electrónico",
-                key="login_email"
-            )
+                email = st.text_input(
+                    "Correo electrónico",
+                    placeholder="trader@correo.com",
+                    key="login_email"
+                )
 
-            password = st.text_input(
-                "Contraseña",
-                type="password",
-                key="login_password"
-            )
+                password = st.text_input(
+                    "Contraseña",
+                    type="password",
+                    placeholder="••••••••",
+                    key="login_password"
+                )
 
-            if st.button(
-                "Ingresar",
-                key="login_button"
-            ):
+                remember = st.checkbox(
+                    "Mantener sesión iniciada",
+                    value=True,
+                    key="remember_login"
+                )
+
+                ingresar = st.form_submit_button(
+                    "⚡ Entrar a NEXORA",
+                    use_container_width=True
+                )
+
+            if ingresar:
 
                 if not email or not password:
-
-                    st.warning(
-                        "Completa correo y contraseña."
-                    )
-
+                    st.warning("Completa correo y contraseña.")
                 else:
-
                     try:
-
-                        client = (
-                            get_supabase_client()
+                        client = get_supabase_client()
+                        result = client.auth.sign_in_with_password(
+                            {"email": email.strip(), "password": password}
                         )
 
-                        result = (
-                            client
-                            .auth
-                            .sign_in_with_password(
-                                {
-                                    "email": email,
-                                    "password": password
-                                }
-                            )
-                        )
-
-                        st.session_state.user = (
-                            result.user
-                        )
-
-                        # FIX #1: guardamos el token de ESTA
-                        # sesión de navegador para que
-                        # get_supabase_client() lo restaure
-                        # en cada rerun, en vez de depender
-                        # de un cliente global compartido.
-                        if result.session:
-
+                        if not result.user or not result.session:
+                            st.error("Supabase no devolvió una sesión válida.")
+                        else:
+                            st.session_state.user = result.user
                             st.session_state.supabase_session = {
-                                "access_token":
-                                    result.session.access_token,
-                                "refresh_token":
-                                    result.session.refresh_token
+                                "access_token": result.session.access_token,
+                                "refresh_token": result.session.refresh_token
                             }
-
-                        st.session_state.authenticated = (
-                            True
-                        )
-
-                        # FIX #2: forzamos a recargar reglas
-                        # y capital desde el backend en el
-                        # próximo render del sidebar.
-                        st.session_state.prefs_cargadas = False
-
-                        st.rerun()
+                            st.session_state.authenticated = True
+                            st.session_state.prefs_cargadas = False
+                            st.session_state.pagina_actual = "Dashboard"
+                            st.success("Acceso correcto. Preparando tu terminal…")
+                            st.rerun()
 
                     except Exception as e:
-
-                        st.error(
-                            f"❌ No se pudo iniciar sesión: {e}"
-                        )
+                        mensaje = str(e)
+                        if _es_error_de_conexion(e):
+                            _forzar_reconexion_supabase()
+                            st.error(
+                                "No fue posible conectar con Supabase. "
+                                "Reinicia la aplicación y vuelve a intentarlo."
+                            )
+                        elif "invalid login credentials" in mensaje.lower():
+                            st.error("Correo o contraseña incorrectos.")
+                        elif "email not confirmed" in mensaje.lower():
+                            st.error("Debes confirmar tu correo antes de iniciar sesión.")
+                        else:
+                            st.error(f"No se pudo iniciar sesión: {mensaje}")
 
         with tab_register:
 
-            st.markdown(
-                "### Crear cuenta"
-            )
+            with st.form("register_form", clear_on_submit=False):
+                nombre = st.text_input(
+                    "Nombre de trader",
+                    placeholder="Trader Pro",
+                    key="register_name"
+                )
+                email_reg = st.text_input(
+                    "Correo electrónico",
+                    placeholder="trader@correo.com",
+                    key="register_email"
+                )
+                password_reg = st.text_input(
+                    "Contraseña",
+                    type="password",
+                    key="register_password"
+                )
+                password2 = st.text_input(
+                    "Repetir contraseña",
+                    type="password",
+                    key="register_password_2"
+                )
+                aceptar = st.checkbox(
+                    "Acepto los términos y la política de privacidad",
+                    key="accept_terms"
+                )
+                registrar = st.form_submit_button(
+                    "Crear cuenta gratuita",
+                    use_container_width=True
+                )
 
-            email = st.text_input(
-                "Correo electrónico",
-                key="register_email"
-            )
-
-            password = st.text_input(
-                "Contraseña",
-                type="password",
-                key="register_password"
-            )
-
-            password2 = st.text_input(
-                "Repetir contraseña",
-                type="password",
-                key="register_password_2"
-            )
-
-            if st.button(
-                "Crear cuenta y probar",
-                key="register_button"
-            ):
-
-                if not email or not password:
-
-                    st.warning(
-                        "Completa todos los campos."
-                    )
-
-                elif password != password2:
-
-                    st.error(
-                        "Las contraseñas no coinciden."
-                    )
-
-                elif len(password) < 6:
-
-                    st.error(
-                        "La contraseña debe tener "
-                        "al menos 6 caracteres."
-                    )
-
+            if registrar:
+                if not nombre or not email_reg or not password_reg:
+                    st.warning("Completa todos los campos.")
+                elif password_reg != password2:
+                    st.error("Las contraseñas no coinciden.")
+                elif len(password_reg) < 8:
+                    st.error("La contraseña debe tener al menos 8 caracteres.")
+                elif not aceptar:
+                    st.warning("Debes aceptar los términos para continuar.")
                 else:
-
                     try:
-
-                        client = (
-                            get_supabase_client()
-                        )
-
-                        result = (
-                            client
-                            .auth
-                            .sign_up(
-                                {
-                                    "email": email,
-                                    "password": password
+                        client = get_supabase_client()
+                        result = client.auth.sign_up(
+                            {
+                                "email": email_reg.strip(),
+                                "password": password_reg,
+                                "options": {
+                                    "data": {
+                                        "username": nombre.strip(),
+                                        "capital_actual": 10000.0,
+                                        "capital_meta": 15000.0,
+                                        "reglas_disciplina": DEFAULT_RULES
+                                    }
                                 }
-                            )
+                            }
                         )
-
                         if result.user:
-
-                            # Si el proyecto de Supabase tiene
-                            # desactivada la confirmación por
-                            # email, sign_up ya devuelve una
-                            # sesión activa: la guardamos igual
-                            # que en el login.
                             if result.session:
-
-                                st.session_state.user = (
-                                    result.user
-                                )
-
+                                st.session_state.user = result.user
                                 st.session_state.supabase_session = {
-                                    "access_token":
-                                        result.session.access_token,
-                                    "refresh_token":
-                                        result.session.refresh_token
+                                    "access_token": result.session.access_token,
+                                    "refresh_token": result.session.refresh_token
                                 }
-
                                 st.session_state.authenticated = True
-
                                 st.session_state.prefs_cargadas = False
-
-                            st.success(
-                                "Cuenta creada. "
-                                "Ahora puedes iniciar sesión."
-                            )
-
+                                st.session_state.pagina_actual = "Dashboard"
+                                st.rerun()
+                            else:
+                                st.success(
+                                    "Cuenta creada. Revisa tu correo para confirmar "
+                                    "el registro y luego inicia sesión."
+                                )
                     except Exception as e:
-
-                        st.error(
-                            f"❌ Error registrando usuario: {e}"
-                        )
+                        st.error(f"No se pudo crear la cuenta: {e}")
 
         with tab_reset:
 
-            st.markdown(
-                "### Recuperar contraseña"
-            )
+            with st.form("reset_form"):
+                email_reset = st.text_input(
+                    "Correo registrado",
+                    placeholder="trader@correo.com",
+                    key="reset_email"
+                )
+                enviar_reset = st.form_submit_button(
+                    "Enviar enlace de recuperación",
+                    use_container_width=True
+                )
 
-            email = st.text_input(
-                "Correo registrado",
-                key="reset_email"
-            )
-
-            if st.button(
-                "Enviar enlace",
-                key="reset_button"
-            ):
-
-                if not email:
-
-                    st.warning(
-                        "Introduce tu correo."
-                    )
-
+            if enviar_reset:
+                if not email_reset:
+                    st.warning("Introduce tu correo.")
                 else:
-
                     try:
-
-                        client = (
-                            get_supabase_client()
-                        )
-
-                        app_url = (
+                        app_url = st.secrets.get(
+                            "APP_URL",
                             "https://trading-journal-ia-7lvamxtjspcbclwcda2zxg.streamlit.app/"
                         )
-
-                        client.auth.reset_password_for_email(
-                            email,
-                            {
-                                "redirectTo": app_url
-                            }
+                        get_supabase_client().auth.reset_password_for_email(
+                            email_reset.strip(),
+                            {"redirectTo": app_url}
                         )
-
-                        st.success(
-                            "📩 Revisa tu correo y Spam."
-                        )
-
+                        st.success("Enlace enviado. Revisa también Spam.")
                     except Exception as e:
-
-                        st.error(
-                            f"❌ Error: {e}"
-                        )
+                        st.error(f"No se pudo enviar el enlace: {e}")
 
         st.markdown("---")
-
-        st.caption(
-            "o continúa con"
-        )
+        st.caption("Acceso seguro mediante Supabase Auth")
 
         if st.button(
-            "🔵 Continuar con Google",
+            "Continuar con Google",
             key="google_login",
             use_container_width=True
         ):
-
-            # NOTA: esto solo funciona si activaste el
-            # proveedor Google en Supabase (Authentication ->
-            # Providers -> Google). Si no lo configuraste,
-            # Supabase devolverá un error claro al respecto.
             try:
-
-                client = get_supabase_client()
-
-                app_url = (
+                app_url = st.secrets.get(
+                    "APP_URL",
                     "https://trading-journal-ia-7lvamxtjspcbclwcda2zxg.streamlit.app/"
                 )
-
-                result = client.auth.sign_in_with_oauth(
+                result = get_supabase_client().auth.sign_in_with_oauth(
                     {
                         "provider": "google",
-                        "options": {
-                            "redirect_to": app_url
-                        }
+                        "options": {"redirect_to": app_url}
                     }
                 )
-
                 url_login = getattr(result, "url", None)
-
                 if url_login:
-
-                    st.markdown(
-                        f'<meta http-equiv="refresh" content="0; url={url_login}">',
-                        unsafe_allow_html=True
-                    )
-
                     st.link_button(
-                        "Continuar en Google →",
+                        "Abrir acceso con Google →",
                         url_login,
                         use_container_width=True
                     )
-
             except Exception as e:
+                st.error(f"Google aún no está configurado: {e}")
 
-                st.error(
-                    f"❌ El login con Google no está activado "
-                    f"todavía en tu proyecto de Supabase: {e}"
-                )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 # =========================================================
@@ -2522,6 +2632,19 @@ def render_auth():
 def render_sidebar(estado_sub):
 
     with st.sidebar:
+
+        st.markdown(
+            f"""
+            <div class="nx-brand">
+              <div class="nx-brand-mark">⚡</div>
+              <div>
+                <div class="nx-brand-name">{APP_NAME}</div>
+                <div class="nx-brand-sub">{APP_VERSION} · TRADER OS</div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         user = st.session_state.user
 
@@ -4747,188 +4870,325 @@ def render_psicotrading():
 # 33. DASHBOARD
 # =========================================================
 
-def render_dashboard_stats(
-    df_trades
-):
+def preparar_dashboard_df(df_trades):
+
+    if df_trades is None or df_trades.empty:
+        return pd.DataFrame()
+
+    df = df_trades.copy()
+    df["beneficio_usd"] = pd.to_numeric(
+        df.get("beneficio_usd", 0), errors="coerce"
+    ).fillna(0.0)
+    df["fecha_dt"] = pd.to_datetime(
+        df.get("fecha"), errors="coerce"
+    )
+    return df.sort_values("fecha_dt")
+
+
+def calcular_metricas_avanzadas(df_trades):
+
+    df = preparar_dashboard_df(df_trades)
+
+    if df.empty:
+        return {
+            "total": 0, "pnl": 0.0, "wins": 0, "losses": 0,
+            "be": 0, "win_rate": 0.0, "profit_factor": 0.0,
+            "avg_win": 0.0, "avg_loss": 0.0, "expectancy": 0.0,
+            "max_drawdown": 0.0, "rr_avg": 0.0
+        }
+
+    pnl = df["beneficio_usd"]
+    positives = pnl[pnl > 0]
+    negatives = pnl[pnl < 0]
+    total = len(df)
+    wins = len(positives)
+    losses = len(negatives)
+    be = total - wins - losses
+    gross_profit = float(positives.sum()) if wins else 0.0
+    gross_loss = abs(float(negatives.sum())) if losses else 0.0
+    profit_factor = gross_profit / gross_loss if gross_loss else (gross_profit if gross_profit else 0.0)
+    avg_win = float(positives.mean()) if wins else 0.0
+    avg_loss = float(negatives.mean()) if losses else 0.0
+    expectancy = float(pnl.mean()) if total else 0.0
+
+    equity = pnl.cumsum()
+    peak = equity.cummax()
+    drawdown = equity - peak
+    max_drawdown = float(drawdown.min()) if not drawdown.empty else 0.0
+
+    rr_avg = 0.0
+    if "rr" in df.columns:
+        rr_values = pd.to_numeric(df["rr"], errors="coerce").dropna()
+        rr_avg = float(rr_values.mean()) if not rr_values.empty else 0.0
+
+    return {
+        "total": total,
+        "pnl": float(pnl.sum()),
+        "wins": wins,
+        "losses": losses,
+        "be": be,
+        "win_rate": (wins / total * 100) if total else 0.0,
+        "profit_factor": profit_factor,
+        "avg_win": avg_win,
+        "avg_loss": avg_loss,
+        "expectancy": expectancy,
+        "max_drawdown": max_drawdown,
+        "rr_avg": rr_avg
+    }
+
+
+def render_nx_metric(label, value, foot_left, foot_right="", tone="neutral"):
+
+    cls = "nx-positive" if tone == "positive" else "nx-negative" if tone == "negative" else ""
 
     st.markdown(
-        "### 📊 Dashboard Operativo"
+        textwrap.dedent(
+            f"""
+            <div class="nx-card">
+              <div class="nx-metric-label">{label}</div>
+              <div class="nx-metric-value {cls}">{value}</div>
+              <div class="nx-metric-foot">
+                <span>{foot_left}</span><span class="{cls}">{foot_right}</span>
+              </div>
+              <div class="nx-spark"></div>
+            </div>
+            """
+        ),
+        unsafe_allow_html=True
     )
 
-    if df_trades.empty:
 
-        st.info(
-            "Registra operaciones para comenzar "
-            "a construir tu dashboard."
+def render_market_strip():
+
+    cards = []
+    for sesion in SESIONES:
+        ahora = obtener_hora_zona(sesion["zona"])
+        abierto = mercado_abierto(
+            sesion["zona"], sesion["inicio"], sesion["fin"]
+        )
+        status_class = "nx-session-open" if abierto else "nx-session-closed"
+        status = "● ABIERTO" if abierto else "● CERRADO"
+        cards.append(
+            f"""
+            <div class="nx-session-item">
+              <div class="nx-session-name">{sesion['nombre']}</div>
+              <div class="nx-session-time">{ahora.strftime('%H:%M')}</div>
+              <div class="{status_class}">{status}</div>
+            </div>
+            """
         )
 
+    st.markdown(
+        '<div class="nx-session-strip">' + "".join(cards) + '</div>',
+        unsafe_allow_html=True
+    )
+
+
+def render_dashboard_stats(df_trades):
+
+    df = preparar_dashboard_df(df_trades)
+    metrics = calcular_metricas_avanzadas(df)
+
+    if df.empty:
+        st.markdown(
+            """
+            <div class="nx-empty">
+              <div style="font-size:36px;margin-bottom:10px;">◈</div>
+              <b>Tu inteligencia de trading comienza con el primer registro.</b><br>
+              <span>Agrega una operación para desbloquear curvas, patrones y métricas.</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         return
 
-    pnl = float(
-        df_trades[
-            "beneficio_usd"
-        ].sum()
+    chart_df = df.dropna(subset=["fecha_dt"]).copy()
+    chart_df["equity"] = (
+        float(st.session_state.capital_actual)
+        + chart_df["beneficio_usd"].cumsum()
     )
 
-    wins = len(
-        df_trades[
-            df_trades[
-                "beneficio_usd"
-            ] > 0
-        ]
+    if not chart_df.empty:
+        fig = px.area(
+            chart_df,
+            x="fecha_dt",
+            y="equity",
+            markers=True,
+            labels={"fecha_dt": "Fecha", "equity": "Balance"}
+        )
+        fig.update_traces(
+            line=dict(width=2.4),
+            fill="tozeroy",
+            hovertemplate="%{x|%d/%m/%Y}<br>Balance: $%{y:,.2f}<extra></extra>"
+        )
+        fig.update_layout(
+            height=315,
+            margin=dict(l=8, r=8, t=15, b=8),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#91a0b8"),
+            xaxis=dict(showgrid=False, title=None),
+            yaxis=dict(gridcolor="rgba(255,255,255,.05)", title=None),
+            showlegend=False
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+
+def render_dashboard_v10(df_trades, estado_sub):
+
+    df = preparar_dashboard_df(df_trades)
+    m = calcular_metricas_avanzadas(df)
+
+    user = st.session_state.user
+    metadata = getattr(user, "user_metadata", {}) or {}
+    nombre = metadata.get("username", st.session_state.nombre_trader)
+
+    st.markdown(
+        textwrap.dedent(
+            f"""
+            <div class="nx-topbar">
+              <div>
+                <div class="nx-page-eyebrow">NEXORA COMMAND CENTER · {APP_VERSION}</div>
+                <div class="nx-page-title">Hola, {nombre} 👋</div>
+                <div class="nx-page-copy">Convierte tu operativa en decisiones medibles y repetibles.</div>
+              </div>
+              <div class="nx-live-pill"><span class="nx-dot"></span> Datos sincronizados · {estado_sub}</div>
+            </div>
+            """
+        ),
+        unsafe_allow_html=True
     )
 
-    losses = len(
-        df_trades[
-            df_trades[
-                "beneficio_usd"
-            ] < 0
-        ]
-    )
+    controls = st.columns([1.2, 1.2, 1.2, 3.4])
+    with controls[0]:
+        periodo = st.selectbox(
+            "Período", ["Todo", "7 días", "30 días", "90 días", "Este año"],
+            key="dashboard_periodo", label_visibility="collapsed"
+        )
+    with controls[1]:
+        assets = ["Todos"]
+        if not df.empty and "par" in df.columns:
+            assets += sorted([str(x) for x in df["par"].dropna().unique()])
+        asset = st.selectbox(
+            "Activo", assets, key="dashboard_asset", label_visibility="collapsed"
+        )
+    with controls[2]:
+        st.selectbox(
+            "Vista", ["Rendimiento", "Disciplina", "Riesgo"],
+            key="dashboard_view", label_visibility="collapsed"
+        )
+    with controls[3]:
+        if st.button("＋ Registrar nueva operación", key="nx_quick_trade", use_container_width=True):
+            st.session_state.pagina_actual = "Registrar Trade"
+            st.rerun()
 
-    total = len(
-        df_trades
-    )
+    filtered = df.copy()
+    today = pd.Timestamp.now().normalize()
+    if not filtered.empty:
+        if periodo == "7 días":
+            filtered = filtered[filtered["fecha_dt"] >= today - pd.Timedelta(days=7)]
+        elif periodo == "30 días":
+            filtered = filtered[filtered["fecha_dt"] >= today - pd.Timedelta(days=30)]
+        elif periodo == "90 días":
+            filtered = filtered[filtered["fecha_dt"] >= today - pd.Timedelta(days=90)]
+        elif periodo == "Este año":
+            filtered = filtered[filtered["fecha_dt"].dt.year == today.year]
+        if asset != "Todos" and "par" in filtered.columns:
+            filtered = filtered[filtered["par"].astype(str) == asset]
 
-    win_rate = (
-        wins / total * 100
-        if total
-        else 0
-    )
+    m = calcular_metricas_avanzadas(filtered)
 
-    avg_win = (
-        df_trades[
-            df_trades[
-                "beneficio_usd"
-            ] > 0
-        ][
-            "beneficio_usd"
-        ].mean()
-        if wins
-        else 0
-    )
+    st.markdown("")
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        render_nx_metric("Balance actual", f"${st.session_state.capital_actual + m['pnl']:,.2f}", "Capital + PnL", f"{m['total']} trades")
+    with c2:
+        render_nx_metric("PnL neto", f"${m['pnl']:,.2f}", "Período seleccionado", "▲" if m['pnl'] >= 0 else "▼", "positive" if m['pnl'] >= 0 else "negative")
+    with c3:
+        render_nx_metric("Win rate", f"{m['win_rate']:.1f}%", f"{m['wins']} ganadas", f"{m['losses']} perdidas")
+    with c4:
+        render_nx_metric("Profit factor", f"{m['profit_factor']:.2f}", "Calidad del sistema", "Sólido" if m['profit_factor'] >= 1.5 else "En desarrollo", "positive" if m['profit_factor'] >= 1.5 else "neutral")
+    with c5:
+        render_nx_metric("Drawdown máx.", f"${m['max_drawdown']:,.2f}", "Caída desde máximo", f"R:R {m['rr_avg']:.2f}", "negative" if m['max_drawdown'] < 0 else "neutral")
 
-    avg_loss = (
-        df_trades[
-            df_trades[
-                "beneficio_usd"
-            ] < 0
-        ][
-            "beneficio_usd"
-        ].mean()
-        if losses
-        else 0
-    )
+    st.markdown("")
+    main_col, ai_col = st.columns([2.15, 0.85], gap="large")
 
-    c1, c2, c3, c4 = st.columns(4)
+    with main_col:
+        st.markdown('<div class="nx-section-head"><div class="nx-section-title">Evolución de capital</div><div class="nx-section-meta">Balance acumulado</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="nx-card">', unsafe_allow_html=True)
+        render_dashboard_stats(filtered)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    c1.metric(
-        "PnL",
-        f"${pnl:,.2f}"
-    )
+    with ai_col:
+        score = 50
+        if m["total"]:
+            score = int(max(0, min(100,
+                30 + min(m["win_rate"], 40) + min(m["profit_factor"] * 10, 20)
+                + min(max(m["rr_avg"], 0) * 5, 10)
+            )))
+        best_asset = "Sin datos"
+        if not filtered.empty and "par" in filtered.columns:
+            grouped = filtered.groupby("par")["beneficio_usd"].sum().sort_values(ascending=False)
+            if not grouped.empty:
+                best_asset = str(grouped.index[0])
 
-    c2.metric(
-        "Win Rate",
-        f"{win_rate:.1f}%"
-    )
-
-    c3.metric(
-        "Ganancia promedio",
-        f"${avg_win:,.2f}"
-    )
-
-    c4.metric(
-        "Pérdida promedio",
-        f"${avg_loss:,.2f}"
-    )
-
-    st.markdown("---")
-
-    # PNL POR ACTIVO
-
-    if "par" in df_trades.columns:
-
-        asset_pnl = (
-            df_trades
-            .groupby("par")[
-                "beneficio_usd"
-            ]
-            .sum()
-            .reset_index()
+        st.markdown(
+            textwrap.dedent(
+                f"""
+                <div class="nx-ai-score">
+                  <div class="nx-metric-label">NEXORA AI SCORE</div>
+                  <div class="nx-score-number">{score}</div>
+                  <div style="font-size:11px;color:#91a0b8;margin-bottom:14px;">de 100 · lectura del período</div>
+                  <div class="nx-insight"><span>◈</span><span>Expectativa por trade: <b>${m['expectancy']:,.2f}</b></span></div>
+                  <div class="nx-insight"><span>◈</span><span>Mejor activo: <b>{best_asset}</b></span></div>
+                  <div class="nx-insight"><span>◈</span><span>R:R promedio: <b>{m['rr_avg']:.2f}</b></span></div>
+                  <div class="nx-insight"><span>◈</span><span>Disciplina: registra contexto y emoción en cada trade.</span></div>
+                </div>
+                """
+            ),
+            unsafe_allow_html=True
         )
 
-        if not asset_pnl.empty:
+    st.markdown("")
+    st.markdown('<div class="nx-section-head"><div class="nx-section-title">Mercados globales</div><div class="nx-section-meta">Horarios en tiempo real</div></div>', unsafe_allow_html=True)
+    render_market_strip()
 
-            fig = px.bar(
-                asset_pnl,
-                x="par",
-                y="beneficio_usd",
-                title="PnL por activo"
-            )
+    st.markdown("")
+    lower_left, lower_mid, lower_right = st.columns([1.05, 1.2, 1.25], gap="large")
 
-            fig.update_layout(
-                template="plotly_dark"
-            )
+    with lower_left:
+        st.markdown('<div class="nx-section-head"><div class="nx-section-title">Resultados</div></div>', unsafe_allow_html=True)
+        if m["total"]:
+            pie_df = pd.DataFrame({"Resultado": ["Ganadas", "Perdidas", "Break-even"], "Cantidad": [m["wins"], m["losses"], m["be"]]})
+            fig = px.pie(pie_df, names="Resultado", values="Cantidad", hole=.7)
+            fig.update_layout(height=250, margin=dict(l=0,r=0,t=8,b=0), paper_bgcolor="rgba(0,0,0,0)", font=dict(color="#91a0b8"), showlegend=True, legend=dict(orientation="h", y=-.1))
+            fig.update_traces(textinfo="percent", hovertemplate="%{label}: %{value}<extra></extra>")
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
+        else:
+            st.markdown('<div class="nx-empty">Aún no hay resultados.</div>', unsafe_allow_html=True)
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
+    with lower_mid:
+        st.markdown('<div class="nx-section-head"><div class="nx-section-title">Mejores activos</div></div>', unsafe_allow_html=True)
+        if not filtered.empty and "par" in filtered.columns:
+            best = filtered.groupby("par")["beneficio_usd"].agg(["sum","count"]).sort_values("sum", ascending=False).head(5)
+            for idx, row in best.iterrows():
+                tone = "nx-positive" if row["sum"] >= 0 else "nx-negative"
+                st.markdown(f'<div class="nx-insight"><span>{idx}</span><span class="{tone}">${row["sum"]:,.2f} · {int(row["count"])} trades</span></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="nx-empty">Registra operaciones para comparar activos.</div>', unsafe_allow_html=True)
 
-    st.dataframe(
-        df_trades,
-        use_container_width=True,
-        hide_index=True
-    )
+    with lower_right:
+        st.markdown('<div class="nx-section-head"><div class="nx-section-title">Operaciones recientes</div></div>', unsafe_allow_html=True)
+        if not filtered.empty:
+            recent = filtered.sort_values("fecha_dt", ascending=False).head(5)
+            for _, row in recent.iterrows():
+                pnl = float(row.get("beneficio_usd", 0) or 0)
+                tone = "nx-positive" if pnl >= 0 else "nx-negative"
+                st.markdown(f'<div class="nx-insight"><span><b>{row.get("par","-")}</b><br><small>{str(row.get("fecha",""))[:10]} · {row.get("timeframe","")}</small></span><span class="{tone}">${pnl:,.2f}</span></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="nx-empty">No hay operaciones recientes.</div>', unsafe_allow_html=True)
 
-
-# =========================================================
-# 33B. CALENDARIO ECONÓMICO (V9)
-# =========================================================
-#
-# Placeholder con datos de ejemplo/manuales. Si más adelante
-# quieres conectarlo a una API real (ForexFactory, Investing,
-# TradingEconomics), esta es la función a reemplazar: solo
-# tiene que devolver una lista de dicts con las mismas claves
-# y el resto de la pantalla sigue funcionando igual.
-
-EVENTOS_ECONOMICOS_EJEMPLO = [
-    {
-        "fecha": "Hoy",
-        "hora": "08:30",
-        "pais": "🇺🇸 EE.UU.",
-        "evento": "Solicitudes de Desempleo",
-        "impacto": "Alto"
-    },
-    {
-        "fecha": "Hoy",
-        "hora": "10:00",
-        "pais": "🇺🇸 EE.UU.",
-        "evento": "Índice ISM Manufacturero",
-        "impacto": "Medio"
-    },
-    {
-        "fecha": "Mañana",
-        "hora": "03:00",
-        "pais": "🇪🇺 Eurozona",
-        "evento": "IPC (Inflación) Preliminar",
-        "impacto": "Alto"
-    },
-    {
-        "fecha": "Mañana",
-        "hora": "09:00",
-        "pais": "🇬🇧 Reino Unido",
-        "evento": "Decisión de Tipos de Interés (BoE)",
-        "impacto": "Alto"
-    },
-    {
-        "fecha": "Viernes",
-        "hora": "08:30",
-        "pais": "🇺🇸 EE.UU.",
-        "evento": "Nóminas No Agrícolas (NFP)",
-        "impacto": "Alto"
-    }
-]
 
 
 def render_calendario_economico():
@@ -5215,110 +5475,17 @@ def render_dashboard():
 
         st.session_state.pagina_actual = "Dashboard"
 
-    st.markdown(
-        f"## ⚡ {pagina}"
-    )
+    if pagina != "Dashboard":
+        st.markdown(
+            f"## {pagina}"
+        )
 
     if pagina == "Dashboard":
 
-        st.caption(
-            "Sistema de journaling + IA visual + disciplina + "
-            "Track Record"
+        render_dashboard_v10(
+            df_trades,
+            estado_sub
         )
-
-        # -------------------------------------------------
-        # V9: fila de tarjetas de métricas estilo SaaS
-        # -------------------------------------------------
-
-        pnl_total = (
-            float(df_trades["beneficio_usd"].sum())
-            if not df_trades.empty
-            else 0.0
-        )
-
-        total_trades = len(df_trades)
-
-        wins_top = (
-            len(df_trades[df_trades["beneficio_usd"] > 0])
-            if not df_trades.empty
-            else 0
-        )
-
-        win_rate_top = (
-            (wins_top / total_trades * 100)
-            if total_trades
-            else 0.0
-        )
-
-        mc1, mc2, mc3, mc4 = st.columns(4)
-
-        with mc1:
-
-            render_metric_card(
-                "💰",
-                "Balance Actual",
-                f"${st.session_state.capital_actual:,.2f}",
-                "Capital de trading"
-            )
-
-        with mc2:
-
-            render_metric_card(
-                "🎯",
-                "Meta",
-                f"${st.session_state.capital_meta:,.2f}",
-                "Objetivo de cuenta"
-            )
-
-        with mc3:
-
-            render_metric_card(
-                "📈",
-                "P&L Total",
-                f"${pnl_total:,.2f}",
-                f"{total_trades} trades"
-            )
-
-        with mc4:
-
-            render_metric_card(
-                "🏆",
-                "Win Rate",
-                f"{win_rate_top:.1f}%",
-                "Porcentaje de aciertos"
-            )
-
-        st.markdown("")
-
-        # -------------------------------------------------
-        # V9.1: Sesiones de Mercado + evolución de balance,
-        # igual que en la referencia visual
-        # -------------------------------------------------
-
-        col_ses, col_graf = st.columns(
-            [1, 1.4]
-        )
-
-        with col_ses:
-
-            st.markdown(
-                "#### 🌎 Sesiones de Mercado"
-            )
-
-            for sesion in SESIONES:
-
-                render_sesion(
-                    sesion["nombre"],
-                    sesion["zona"],
-                    sesion["inicio"],
-                    sesion["fin"]
-                )
-
-        with col_graf:
-
-            render_dashboard_stats(
-                df_trades
-            )
 
     elif pagina == "Registrar Trade":
 
