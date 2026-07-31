@@ -35,8 +35,11 @@ st.set_page_config(
 
 SUPABASE_URL = st.secrets.get(
     "SUPABASE_URL",
-    "https://lyzvcbjpoydeckxtbcq.supabase.co"
-)
+    st.secrets.get(
+        "OSUPABASE_URL",
+        "https://lyzvcbjqpoydeckxtbcq.supabase.co"
+    )
+).strip().rstrip("/")
 
 SUPABASE_KEY = st.secrets.get(
     "SUPABASE_KEY",
