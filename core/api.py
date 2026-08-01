@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 import requests
 import streamlit as st
@@ -769,3 +770,131 @@ def update_trade(
     return {
         "success": True,
     }
+
+
+# =========================================================
+# PERFIL Y STORAGE
+# =========================================================
+
+
+def upload_avatar(
+    file_bytes: bytes,
+    user_id: str,
+    *,
+    content_type: str = "image/jpeg",
+    extension: str = "jpg",
+) -> str:
+    """
+    Sube el avatar del usuario al bucket público `avatars`
+    usando la API REST de Supabase Storage.
+    """
+
+    clean_user_id = str(user_id or "").strip()
+    clean_extension = str(extension or "jpg").strip().lower()
+
+    if not clean_user_id:
+        raise ApiError(
+            "No se pudo obtener el ID del usuario."
+        )
+
+    if not isinstance(file_bytes, (bytes, bytearray)):
+        raise ApiError(
+            "La imagen recibida no es válida."
+        )
+
+    object_path = (
+        f"{clean_user_id}/avatar.{clean_extension}"
+    )
+
+    encoded_path = quote(
+        object_path,
+        safe="/",
+    )
+
+    url = (
+        f"{_base_url()}"
+        f"/storage/v1/object/avatars/"
+        f"{encoded_path}"
+    )
+
+    headers = {
+        "apikey": _api_key(),
+        "Authorization": (
+            f"Bearer {ensure_access_token()}"
+        ),
+        "Content-Type": content_type,
+        "x-upsert": "true",
+    }
+
+    try:
+        response = requests.post(
+            url,
+            headers=headers,
+            data=bytes(file_bytes),
+            timeout=REQUEST_TIMEOUT,
+        )
+
+    except requests.Timeout as exc:
+        raise ApiError(
+            "La subida del avatar tardó demasiado."
+        ) from exc
+
+    except requests.RequestException as exc:
+        raise ApiError(
+            f"No se pudo subir el avatar: {exc}"
+        ) from exc
+
+    _validate_response(
+        response,
+        "No se pudo subir el avatar",
+    )
+
+    return (
+        f"{_base_url()}"
+        f"/storage/v1/object/public/avatars/"
+        f"{encoded_path}"
+    )
+
+
+def update_user_metadata(
+    metadata: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Actualiza los metadatos del usuario autenticado
+    mediante la API REST de Supabase Auth.
+    """
+
+    if not isinstance(metadata, dict):
+        raise ApiError(
+            "Los metadatos recibidos son inválidos."
+        )
+
+    response = _request(
+        "PUT",
+        "/auth/v1/user",
+        headers={
+            "apikey": _api_key(),
+            "Authorization": (
+                f"Bearer {ensure_access_token()}"
+            ),
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        json={
+            "data": metadata,
+        },
+    )
+
+    payload = _validate_response(
+        response,
+        "No se pudo actualizar el perfil",
+    )
+
+    if not isinstance(payload, dict):
+        raise ApiError(
+            "Supabase devolvió un perfil inválido."
+        )
+
+    st.session_state.user = payload
+
+    return payload
