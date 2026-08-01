@@ -17,8 +17,39 @@ SIDEBAR_CSS = """
     border-right:1px solid rgba(70,108,178,.30);
 }
 
+[data-testid="stSidebar"] {
+    height: 100vh !important;
+    overflow: hidden !important;
+}
+
 [data-testid="stSidebarContent"] {
-    padding:.55rem .62rem .8rem !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    padding:.55rem .62rem 1.2rem !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(25,228,255,.45) rgba(4,10,25,.55);
+}
+
+[data-testid="stSidebarContent"]::-webkit-scrollbar {
+    width:7px;
+}
+
+[data-testid="stSidebarContent"]::-webkit-scrollbar-track {
+    background:rgba(4,10,25,.55);
+    border-radius:999px;
+}
+
+[data-testid="stSidebarContent"]::-webkit-scrollbar-thumb {
+    background:linear-gradient(180deg,#19e4ff,#3c7dff,#8b4dff);
+    border-radius:999px;
+}
+
+[data-testid="stSidebarUserContent"] {
+    min-height:max-content !important;
+    padding-bottom:1rem !important;
 }
 
 .ax-brand {
