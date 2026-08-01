@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import io
-import time
 from typing import Any
-from uuid import uuid4
 
 import streamlit as st
 from PIL import Image
 
-from core.api import get_supabase_client
+from core.api import upload_avatar, update_user_metadata
 from ui_v2.theme import apply_v2_theme
 
 
@@ -396,82 +394,20 @@ def _upload_avatar(
         _normalize_image(uploaded_file)
     )
 
-    client = get_supabase_client()
-
-    path = (
-        f"{user_id}/avatar-"
-        f"{int(time.time())}-"
-        f"{uuid4().hex[:8]}.jpg"
-    )
-
-    client.storage.from_("avatars").upload(
-        path,
+    return upload_avatar(
         image_bytes,
-        {
-            "content-type": content_type,
-            "upsert": "true",
-        },
+        user_id,
+        content_type=content_type,
+        extension="jpg",
     )
-
-    public_result = (
-        client.storage
-        .from_("avatars")
-        .get_public_url(path)
-    )
-
-    if isinstance(public_result, str):
-        return public_result
-
-    public_url = _value(
-        public_result,
-        "public_url",
-        "",
-    )
-
-    if public_url:
-        return str(public_url)
-
-    data = _value(
-        public_result,
-        "data",
-        {},
-    )
-
-    if isinstance(data, dict):
-        return str(
-            data.get("publicUrl")
-            or data.get("public_url")
-            or ""
-        )
-
-    return ""
 
 
 def _update_user_metadata(
     new_metadata: dict[str, Any],
 ) -> Any:
-    client = get_supabase_client()
-
-    result = client.auth.update_user(
-        {
-            "data": new_metadata,
-        }
+    return update_user_metadata(
+        new_metadata
     )
-
-    user = _value(
-        result,
-        "user",
-        None,
-    )
-
-    if user is None:
-        raise RuntimeError(
-            "Supabase no devolvió el usuario actualizado."
-        )
-
-    st.session_state.user = user
-
-    return user
 
 
 # =========================================================
