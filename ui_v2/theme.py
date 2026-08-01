@@ -441,6 +441,134 @@ div {
     }
 }
 
+
+/* ========================================================
+   LIMPIEZA DE ESTILOS HEREDADOS
+   Elimina franjas verdes/rojas y fondos antiguos.
+   ======================================================== */
+
+.stApp::before,
+.stApp::after,
+[data-testid="stAppViewContainer"]::before,
+[data-testid="stAppViewContainer"]::after,
+[data-testid="stSidebar"]::before,
+[data-testid="stSidebar"]::after,
+[data-testid="stMain"]::before,
+[data-testid="stMain"]::after,
+.main::before,
+.main::after {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+    box-shadow: none !important;
+}
+
+
+html,
+body,
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"] {
+    background:
+        radial-gradient(
+            circle at 82% 10%,
+            rgba(60, 125, 255, 0.10),
+            transparent 32%
+        ),
+        radial-gradient(
+            circle at 18% 86%,
+            rgba(139, 77, 255, 0.08),
+            transparent 34%
+        ),
+        linear-gradient(
+            180deg,
+            #02050d 0%,
+            #050914 52%,
+            #030611 100%
+        ) !important;
+}
+
+
+[data-testid="stAppViewContainer"] {
+    position: relative;
+    isolation: isolate;
+}
+
+
+[data-testid="stAppViewContainer"] > .main {
+    background: transparent !important;
+}
+
+
+[data-testid="stAppViewContainer"] .block-container {
+    position: relative;
+    z-index: 2;
+}
+
+
+[data-testid="stAppViewContainer"] > div:first-child {
+    background: transparent !important;
+}
+
+
+/* Rejilla azul tenue y profesional */
+[data-testid="stAppViewContainer"]::after {
+    content: "" !important;
+    display: block !important;
+
+    position: fixed;
+    inset: 0;
+
+    z-index: 0;
+    pointer-events: none;
+
+    background-image:
+        linear-gradient(
+            rgba(54, 90, 151, 0.025) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(54, 90, 151, 0.025) 1px,
+            transparent 1px
+        ) !important;
+
+    background-size:
+        48px 48px !important;
+
+    opacity: 0.55;
+}
+
+
+/* Encabezado oscuro y limpio */
+[data-testid="stHeader"] {
+    background:
+        rgba(2, 5, 13, 0.90) !important;
+
+    border-bottom:
+        1px solid
+        rgba(69, 101, 164, 0.16) !important;
+
+    backdrop-filter:
+        blur(18px);
+}
+
+
+/* Sidebar sin franjas heredadas */
+[data-testid="stSidebar"] {
+    background:
+        radial-gradient(
+            circle at 50% -12%,
+            rgba(25, 228, 255, 0.08),
+            transparent 28%
+        ),
+        linear-gradient(
+            180deg,
+            #030814 0%,
+            #02050d 100%
+        ) !important;
+}
+
 </style>
 """
 
