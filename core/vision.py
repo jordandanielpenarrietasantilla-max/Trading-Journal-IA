@@ -452,132 +452,184 @@ def normalize_number(
 
 
 # =========================================================
-# EXTRAER JSON
+# EXTRAER Y REPARAR JSON
 # =========================================================
 
-def extract_json(
-    content: Any,
-) -> dict[str, Any]:
-    """
-    Extrae un objeto JSON aunque OpenRouter
-    devuelva Markdown o texto adicional.
-    """
-
-    if content is None:
-
-        raise VisionError(
-            "La IA no devolvió contenido."
-        )
-
-
-    if isinstance(
-        content,
-        list,
-    ):
-
-        parts = []
-
-
-        for item in content:
-
-            if isinstance(
-                item,
-                dict,
-            ):
-
-                text = item.get(
-                    "text",
-                    "",
-                )
-
-
-                if text:
-
-                    parts.append(
-                        str(text)
-                    )
-
-            else:
-
-                parts.append(
-                    str(item)
-                )
-
-
-        content = "\n".join(
-            parts
-        )
-
-
-    text = str(
-        content
-    ).strip()
-
-
-    text = re.sub(
-        r"```json",
+def _strip_code_fences(text: str) -> str:
+    cleaned = re.sub(
+        r"```(?:json)?",
         "",
         text,
         flags=re.IGNORECASE,
     )
+    return cleaned.replace("```", "").strip()
 
 
-    text = text.replace(
-        "```",
-        "",
-    ).strip()
+def _extract_balanced_object(text: str) -> str | None:
+    start = text.find("{")
+    if start < 0:
+        return None
+
+    depth = 0
+    in_string = False
+    escaped = False
+
+    for index in range(start, len(text)):
+        character = text[index]
+
+        if escaped:
+            escaped = False
+            continue
+
+        if character == "\\":
+            escaped = True
+            continue
+
+        if character == '"':
+            in_string = not in_string
+            continue
+
+        if in_string:
+            continue
+
+        if character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+
+    return None
 
 
-    start = text.find(
-        "{"
+def _repair_json_text(text: str) -> str:
+    repaired = text.strip()
+
+    repaired = (
+        repaired
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
     )
 
-
-    end = text.rfind(
-        "}"
+    repaired = re.sub(
+        r",\s*([}\]])",
+        r"\1",
+        repaired,
     )
 
+    repaired = re.sub(r"\bNone\b", "null", repaired)
+    repaired = re.sub(r"\bTrue\b", "true", repaired)
+    repaired = re.sub(r"\bFalse\b", "false", repaired)
 
-    if (
-        start < 0
-        or end <= start
-    ):
+    repaired = re.sub(
+        r"([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)",
+        r'\1"\2"\3',
+        repaired,
+    )
 
-        raise VisionError(
-            "La IA no devolvió un objeto JSON."
+    if "'" in repaired and '"' not in repaired:
+        repaired = repaired.replace("'", '"')
+
+    return repaired
+
+
+def _content_to_text(content: Any) -> str:
+    if content is None:
+        return ""
+
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, dict):
+        for key in (
+            "text",
+            "content",
+            "output_text",
+            "arguments",
+        ):
+            value = content.get(key)
+            if value:
+                return _content_to_text(value)
+
+        return json.dumps(
+            content,
+            ensure_ascii=False,
         )
 
+    if isinstance(content, list):
+        parts: list[str] = []
 
-    json_text = text[
-        start:end + 1
-    ]
+        for item in content:
+            item_text = _content_to_text(item)
+            if item_text:
+                parts.append(item_text)
+
+        return "\n".join(parts)
+
+    return str(content)
 
 
-    try:
+def extract_json(content: Any) -> dict[str, Any]:
+    """
+    Extrae un objeto JSON aunque OpenRouter devuelva:
+    Markdown, texto adicional, listas de bloques,
+    comas finales, claves sin comillas o valores Python.
+    """
 
-        payload = json.loads(
-            json_text
+    text = _content_to_text(content).strip()
+
+    if not text:
+        raise VisionError(
+            "La IA no devolvió contenido."
         )
 
-    except json.JSONDecodeError as exc:
+    text = _strip_code_fences(text)
 
-        raise VisionError(
-            "La respuesta de la IA no contiene "
-            "JSON válido."
-        ) from exc
+    candidates: list[str] = []
 
+    balanced = _extract_balanced_object(text)
+    if balanced:
+        candidates.append(balanced)
 
-    if not isinstance(
-        payload,
-        dict,
-    ):
+    candidates.append(text)
 
-        raise VisionError(
-            "El resultado de la IA no es un objeto."
+    last_error: Exception | None = None
+
+    for candidate in candidates:
+        for attempt in (
+            candidate,
+            _repair_json_text(candidate),
+        ):
+            try:
+                payload = json.loads(attempt)
+            except json.JSONDecodeError as exc:
+                last_error = exc
+                continue
+
+            if isinstance(payload, str):
+                try:
+                    payload = json.loads(payload)
+                except json.JSONDecodeError as exc:
+                    last_error = exc
+                    continue
+
+            if isinstance(payload, dict):
+                return payload
+
+    detail = ""
+
+    if last_error is not None:
+        detail = (
+            f" Línea {getattr(last_error, 'lineno', '?')}, "
+            f"columna {getattr(last_error, 'colno', '?')}."
         )
 
-
-    return payload
+    raise VisionError(
+        "La respuesta de la IA no contiene JSON válido."
+        + detail
+    )
 
 
 # =========================================================
@@ -682,6 +734,61 @@ def validate_scan_result(
         "confidence":
             confidence,
     }
+
+
+# =========================================================
+# EXTRAER CONTENIDO DEL MENSAJE
+# =========================================================
+
+def _extract_message_payload(
+    message: dict[str, Any],
+) -> Any:
+    """
+    Obtiene el contenido JSON desde cualquiera de las
+    estructuras que puede devolver OpenRouter.
+    """
+
+    if not isinstance(message, dict):
+        return message
+
+    tool_calls = message.get("tool_calls")
+
+    if isinstance(tool_calls, list) and tool_calls:
+        first_call = tool_calls[0]
+
+        if isinstance(first_call, dict):
+            function_data = first_call.get(
+                "function",
+                {},
+            )
+
+            if isinstance(function_data, dict):
+                arguments = function_data.get(
+                    "arguments"
+                )
+
+                if arguments:
+                    return arguments
+
+    function_call = message.get("function_call")
+
+    if isinstance(function_call, dict):
+        arguments = function_call.get("arguments")
+
+        if arguments:
+            return arguments
+
+    for key in (
+        "content",
+        "output_text",
+        "reasoning",
+    ):
+        value = message.get(key)
+
+        if value:
+            return value
+
+    return message
 
 
 # =========================================================
@@ -795,6 +902,10 @@ Devuelve únicamente JSON válido:
         "max_tokens":
             900,
 
+        "response_format": {
+            "type": "json_object",
+        },
+
         "messages": [
 
             {
@@ -803,7 +914,9 @@ Devuelve únicamente JSON válido:
 
                 "content":
                     "Eres un extractor visual preciso. "
-                    "Nunca inventes parámetros de trading.",
+                    "Nunca inventes parámetros de trading. "
+                    "Responde exclusivamente con un objeto JSON válido, "
+                    "sin Markdown, sin comentarios y sin texto adicional.",
             },
 
             {
@@ -867,11 +980,37 @@ Devuelve únicamente JSON válido:
 
     if response.status_code != 200:
 
-        raise VisionError(
-            f"OpenRouter HTTP "
-            f"{response.status_code}: "
-            f"{response.text[:1000]}"
-        )
+        # Algunos modelos no aceptan response_format.
+        # Reintentamos una vez sin esa opción.
+        if (
+            response.status_code in {400, 422}
+            and "response_format" in response.text
+        ):
+            fallback_payload = dict(payload)
+            fallback_payload.pop(
+                "response_format",
+                None,
+            )
+
+            try:
+                response = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json=fallback_payload,
+                    timeout=90,
+                )
+
+            except requests.RequestException as exc:
+                raise VisionError(
+                    "Falló el segundo intento con OpenRouter."
+                ) from exc
+
+        if response.status_code != 200:
+            raise VisionError(
+                f"OpenRouter HTTP "
+                f"{response.status_code}: "
+                f"{response.text[:1000]}"
+            )
 
 
     try:
@@ -904,9 +1043,8 @@ Devuelve únicamente JSON válido:
     )
 
 
-    content = message.get(
-        "content",
-        "",
+    content = _extract_message_payload(
+        message
     )
 
 
