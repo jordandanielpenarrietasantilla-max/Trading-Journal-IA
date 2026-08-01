@@ -97,6 +97,118 @@ EMOTIONS = [
 ]
 
 
+TRADE_CSS = """
+<style>
+.ax-trade-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 24px 26px;
+    margin-bottom: 18px;
+    background:
+        radial-gradient(circle at 88% 15%, rgba(139,77,255,.16), transparent 29%),
+        linear-gradient(145deg, rgba(7,16,35,.98), rgba(5,10,25,.98));
+    border: 1px solid rgba(62,112,184,.34);
+    border-radius: 20px;
+    box-shadow: 0 22px 65px rgba(0,0,0,.30);
+}
+
+.ax-trade-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(59,94,157,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,94,157,.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+}
+
+.ax-trade-hero > * {
+    position: relative;
+    z-index: 2;
+}
+
+.ax-kicker {
+    color: #25e5ff;
+    font-size: 8px;
+    font-weight: 950;
+    letter-spacing: 1.9px;
+}
+
+.ax-title {
+    margin-top: 8px;
+    color: #f7f9ff;
+    font-size: clamp(30px, 3vw, 46px);
+    line-height: 1;
+    font-weight: 950;
+    letter-spacing: -1.6px;
+}
+
+.ax-sub {
+    max-width: 720px;
+    margin-top: 10px;
+    color: #91a0bf;
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+.ax-vision-card {
+    padding: 17px;
+    margin: 10px 0 14px;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(25,228,255,.10), transparent 35%),
+        linear-gradient(145deg, rgba(7,15,33,.98), rgba(4,9,23,.98));
+    border: 1px solid rgba(25,228,255,.28);
+    border-radius: 16px;
+}
+
+.ax-vision-kicker {
+    color: #25e5ff;
+    font-size: 8px;
+    font-weight: 950;
+    letter-spacing: 1.5px;
+}
+
+.ax-vision-title {
+    margin-top: 7px;
+    color: #f7f9ff;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.ax-vision-copy {
+    margin-top: 7px;
+    color: #8794b6;
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.ax-scan-result {
+    padding: 14px;
+    margin-bottom: 12px;
+    background: rgba(0,245,138,.045);
+    border: 1px solid rgba(0,245,138,.22);
+    border-radius: 14px;
+}
+
+.ax-form-section {
+    margin: 10px 0 8px;
+    color: #f7f9ff;
+    font-size: 25px;
+    font-weight: 950;
+    letter-spacing: -0.8px;
+}
+</style>
+"""
+
+
+def _render_trade_styles() -> None:
+    st.markdown(
+        TRADE_CSS,
+        unsafe_allow_html=True,
+    )
+
+
 # =========================================================
 # ESTADO INICIAL
 # =========================================================
@@ -182,6 +294,23 @@ def _clear_trade_form() -> None:
     st.session_state.trade_scan_message = ""
     st.session_state.trade_scan_error = ""
 
+
+    widget_keys = [
+        "trade_asset_widget",
+        "trade_direction_widget",
+        "trade_entry_widget",
+        "trade_sl_widget",
+        "trade_tp_widget",
+        "trade_timeframe_widget",
+        "trade_result_widget",
+        "trade_emotion_widget",
+        "trade_notes_widget",
+        "trade_pnl_widget",
+    ]
+
+    for key in widget_keys:
+        st.session_state.pop(key, None)
+
     uploader_keys = [
         "trade_image_before",
         "trade_image_after",
@@ -196,51 +325,44 @@ def _clear_trade_form() -> None:
 def _apply_scan_result(
     result: dict[str, Any],
 ) -> None:
+    """
+    Aplica los valores detectados por AXION Vision tanto al
+    estado lógico como a los widgets visibles del formulario.
+    """
 
-    asset = result.get(
-        "asset"
-    )
-
-    direction = result.get(
-        "direction"
-    )
-
-    entry = result.get(
-        "entry"
-    )
-
-    stop_loss = result.get(
-        "sl"
-    )
-
-    take_profit = result.get(
-        "tp"
-    )
-
-    timeframe = result.get(
-        "timeframe"
-    )
+    asset = result.get("asset")
+    direction = result.get("direction")
+    entry = result.get("entry")
+    stop_loss = result.get("sl")
+    take_profit = result.get("tp")
+    timeframe = result.get("timeframe")
 
     if asset in ASSETS:
         st.session_state.trade_asset = asset
+        st.session_state.trade_asset_widget = asset
 
-    if direction in [
-        "LONG 🟢",
-        "SHORT 🔴",
-    ]:
+    if direction in ["LONG 🟢", "SHORT 🔴"]:
         st.session_state.trade_direction = direction
+        st.session_state.trade_direction_widget = direction
 
     if entry is not None:
-        st.session_state.trade_entry = float(entry)
+        entry_value = float(entry)
+        st.session_state.trade_entry = entry_value
+        st.session_state.trade_entry_widget = entry_value
 
     if stop_loss is not None:
-        st.session_state.trade_sl = float(stop_loss)
+        sl_value = float(stop_loss)
+        st.session_state.trade_sl = sl_value
+        st.session_state.trade_sl_widget = sl_value
 
     if take_profit is not None:
-        st.session_state.trade_tp = float(take_profit)
+        tp_value = float(take_profit)
+        st.session_state.trade_tp = tp_value
+        st.session_state.trade_tp_widget = tp_value
 
     if timeframe in TIMEFRAMES:
         st.session_state.trade_timeframe = timeframe
+        st.session_state.trade_timeframe_widget = timeframe
 
 
 # =========================================================
@@ -249,19 +371,10 @@ def _apply_scan_result(
 
 
 def _render_trade_header() -> None:
-
-    st.markdown(
+    st.html(
         """
-        <div class="ax-hero">
-
-            <div
-                style="
-                    color:#25e5ff;
-                    font-size:9px;
-                    font-weight:950;
-                    letter-spacing:2px;
-                "
-            >
+        <section class="ax-trade-hero">
+            <div class="ax-kicker">
                 AXION PRIME · EXECUTION JOURNAL
             </div>
 
@@ -273,10 +386,8 @@ def _render_trade_header() -> None:
                 Documenta el contexto, la ejecución, el riesgo,
                 las emociones y el resultado de cada trade.
             </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True,
+        </section>
+        """
     )
 
 
@@ -288,111 +399,93 @@ def _render_trade_header() -> None:
 def _render_ai_scanner(
     uploaded_file,
 ) -> None:
-
-    st.markdown(
+    st.html(
         """
-        <div
-            class="ax-card"
-            style="
-                padding:17px;
-                margin-bottom:15px;
-            "
-        >
-
-            <div
-                style="
-                    color:#25e5ff;
-                    font-size:10px;
-                    letter-spacing:1.5px;
-                    font-weight:950;
-                "
-            >
+        <section class="ax-vision-card">
+            <div class="ax-vision-kicker">
                 AXION VISION
             </div>
 
-            <div
-                style="
-                    font-size:17px;
-                    font-weight:900;
-                    margin-top:8px;
-                "
-            >
+            <div class="ax-vision-title">
                 🧠 Extracción automática del setup
             </div>
 
-            <div
-                style="
-                    color:#8794b6;
-                    font-size:11px;
-                    margin-top:7px;
-                "
-            >
-                La IA intentará completar activo, dirección,
-                entrada, Stop Loss, Take Profit y timeframe.
+            <div class="ax-vision-copy">
+                Sube una captura de TradingView y la IA intentará
+                completar activo, dirección, entrada, Stop Loss,
+                Take Profit y timeframe.
             </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True,
+        </section>
+        """
     )
 
     if uploaded_file is None:
-
         st.info(
-            "Sube la captura del setup para activar AXION Vision."
+            "Sube la captura ANTES de entrar para activar "
+            "el escáner automático."
         )
-
         return
 
-    if st.button(
-        "🧠 ESCANEAR CON IA",
-        use_container_width=True,
-        key="scan_trade_button",
-    ):
+    scan_column, clear_column = st.columns(
+        [1.7, 1],
+        gap="small",
+    )
 
-        try:
+    with scan_column:
+        scan_clicked = st.button(
+            "🧠 ESCANEAR Y RELLENAR CAMPOS",
+            use_container_width=True,
+            key="scan_trade_button",
+            type="primary",
+        )
 
-            with st.spinner(
-                "AXION Vision está leyendo el gráfico..."
-            ):
-
-                result = scan_trade(
-                    uploaded_file.getvalue(),
-                    uploaded_file.type
-                    or "image/jpeg",
-                )
-
-            st.session_state.trade_scan_result = result
+    with clear_column:
+        if st.button(
+            "Limpiar lectura IA",
+            use_container_width=True,
+            key="clear_scan_button",
+        ):
+            st.session_state.trade_scan_result = None
+            st.session_state.trade_scan_message = ""
             st.session_state.trade_scan_error = ""
-
-            _apply_scan_result(
-                result
-            )
-
-            st.session_state.trade_scan_message = (
-                "Los datos detectados fueron cargados "
-                "automáticamente."
-            )
-
             st.rerun()
 
-        except VisionError as exc:
+    if not scan_clicked:
+        return
 
-            st.session_state.trade_scan_error = str(exc)
-            st.session_state.trade_scan_message = ""
-
-            st.error(
-                f"No se pudo escanear la captura: {exc}"
+    try:
+        with st.spinner(
+            "AXION Vision está leyendo el gráfico..."
+        ):
+            result = scan_trade(
+                uploaded_file.getvalue(),
+                uploaded_file.type or "image/jpeg",
             )
 
-        except Exception as exc:
+        st.session_state.trade_scan_result = result
+        st.session_state.trade_scan_error = ""
 
-            st.session_state.trade_scan_error = str(exc)
-            st.session_state.trade_scan_message = ""
+        _apply_scan_result(result)
 
-            st.error(
-                f"Error inesperado de AXION Vision: {exc}"
-            )
+        st.session_state.trade_scan_message = (
+            "Lectura completada. Revisa los campos antes de guardar."
+        )
+
+        st.rerun()
+
+    except VisionError as exc:
+        st.session_state.trade_scan_error = str(exc)
+        st.session_state.trade_scan_message = ""
+        st.error(
+            f"No se pudo escanear la captura: {exc}"
+        )
+
+    except Exception as exc:
+        st.session_state.trade_scan_error = str(exc)
+        st.session_state.trade_scan_message = ""
+        st.error(
+            f"Error inesperado de AXION Vision: {exc}"
+        )
 
 
 # =========================================================
@@ -412,10 +505,17 @@ def _render_scan_result() -> None:
     if st.session_state.get(
         "trade_scan_message"
     ):
-
         st.success(
             st.session_state.trade_scan_message
         )
+
+    st.html(
+        """
+        <div class="ax-scan-result">
+            <strong>Datos detectados por AXION Vision</strong>
+        </div>
+        """
+    )
 
     confidence = _safe_float(
         result.get("confidence")
@@ -509,8 +609,23 @@ def _save_trade(
 def render_register_trade() -> None:
 
     _initialize_trade_state()
+    _render_trade_styles()
 
     _render_trade_header()
+
+
+    widget_defaults = {
+        "trade_asset_widget": st.session_state.trade_asset,
+        "trade_direction_widget": st.session_state.trade_direction,
+        "trade_entry_widget": float(st.session_state.trade_entry),
+        "trade_sl_widget": float(st.session_state.trade_sl),
+        "trade_tp_widget": float(st.session_state.trade_tp),
+        "trade_timeframe_widget": st.session_state.trade_timeframe,
+    }
+
+    for widget_key, widget_value in widget_defaults.items():
+        if widget_key not in st.session_state:
+            st.session_state[widget_key] = widget_value
 
     left, right = st.columns(
         [1.12, 1],
@@ -523,9 +638,7 @@ def render_register_trade() -> None:
 
     with right:
 
-        st.markdown(
-            "## 🖼️ Capturas del setup"
-        )
+        st.html('<div class="ax-form-section">🖼️ Capturas del setup</div>')
 
         image_before = st.file_uploader(
             "Captura ANTES de entrar",
@@ -583,9 +696,7 @@ def render_register_trade() -> None:
 
     with left:
 
-        st.markdown(
-            "## 📝 Datos de la operación"
-        )
+        st.html('<div class="ax-form-section">📝 Datos de la operación</div>')
 
         _render_scan_result()
 
@@ -610,7 +721,6 @@ def render_register_trade() -> None:
         asset = st.selectbox(
             "Activo / Par",
             asset_options,
-            index=asset_index,
             key="trade_asset_widget",
         )
 
@@ -634,9 +744,6 @@ def render_register_trade() -> None:
         direction = st.radio(
             "Dirección",
             direction_options,
-            index=direction_options.index(
-                current_direction
-            ),
             horizontal=True,
             key="trade_direction_widget",
         )
@@ -650,9 +757,6 @@ def render_register_trade() -> None:
             entry = st.number_input(
                 "Precio de entrada",
                 min_value=0.0,
-                value=float(
-                    st.session_state.trade_entry
-                ),
                 format="%.5f",
                 key="trade_entry_widget",
             )
@@ -660,9 +764,6 @@ def render_register_trade() -> None:
             stop_loss = st.number_input(
                 "Stop Loss",
                 min_value=0.0,
-                value=float(
-                    st.session_state.trade_sl
-                ),
                 format="%.5f",
                 key="trade_sl_widget",
             )
@@ -689,9 +790,6 @@ def render_register_trade() -> None:
             timeframe = st.selectbox(
                 "Timeframe",
                 TIMEFRAMES,
-                index=TIMEFRAMES.index(
-                    current_timeframe
-                ),
                 key="trade_timeframe_widget",
             )
 
@@ -722,9 +820,7 @@ def render_register_trade() -> None:
 
         st.session_state.trade_result = result
 
-        st.markdown(
-            "## 🧠 Psicotrading"
-        )
+        st.html('<div class="ax-form-section">🧠 Psicotrading</div>')
 
         emotion = st.selectbox(
             "Estado emocional",
