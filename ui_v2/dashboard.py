@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from ui_v2.bull_bear import render_bull_bear
 from ui_v2.components import (
     money,
     render_empty_state,
@@ -15,9 +16,8 @@ from ui_v2.components import (
     render_section_header,
     safe_text,
 )
-from ui_v2.theme import apply_v2_theme
 from ui_v2.market_stream import render_market_stream
-from ui_v2.bull_bear import render_bull_bear
+from ui_v2.theme import apply_v2_theme
 
 
 GREEN = "#00F58A"
@@ -31,8 +31,9 @@ MUTED = "#91A0BF"
 DASHBOARD_CSS = """
 <style>
 .block-container {
-    max-width: 1600px;
-    padding-top: 1.2rem;
+    max-width:1650px;
+    padding-top:1rem;
+    padding-bottom:1.5rem;
 }
 
 .v2-section-header {
@@ -42,39 +43,35 @@ DASHBOARD_CSS = """
     justify-content:space-between;
     gap:20px;
     flex-wrap:wrap;
-    padding:24px 28px;
-    margin-bottom:18px;
+    padding:22px 26px;
+    margin-bottom:15px;
     overflow:hidden;
 }
 
-.v2-section-header:before {
+.v2-section-header::before {
     content:"";
     position:absolute;
     inset:0;
     pointer-events:none;
     background:
-        radial-gradient(circle at 85% 18%, rgba(139,77,255,.17), transparent 30%),
-        repeating-linear-gradient(90deg, transparent 0 38px, rgba(25,228,255,.025) 39px 40px);
+        radial-gradient(circle at 72% 120%,rgba(25,228,255,.10),transparent 35%),
+        radial-gradient(circle at 88% 12%,rgba(139,77,255,.14),transparent 28%),
+        repeating-linear-gradient(90deg,transparent 0 38px,rgba(25,228,255,.022) 39px 40px);
 }
 
 .v2-section-header>* { position:relative; z-index:2; }
-
-.v2-section-header p {
-    margin:10px 0 0;
-    color:#91a0bf;
-    font-size:12px;
-}
+.v2-section-header p { margin:9px 0 0; color:#91a0bf; font-size:11px; }
 
 .v2-section-status {
     display:flex;
     align-items:center;
     gap:8px;
-    padding:9px 14px;
+    padding:8px 13px;
     color:#00f58a;
-    font-size:8px;
+    font-size:7px;
     font-weight:900;
     background:rgba(0,245,138,.07);
-    border:1px solid rgba(0,245,138,.30);
+    border:1px solid rgba(0,245,138,.28);
     border-radius:999px;
 }
 
@@ -87,29 +84,131 @@ DASHBOARD_CSS = """
 }
 
 .v2-metric-card {
-    min-height:142px;
+    min-height:132px;
     display:flex;
     align-items:flex-start;
-    gap:12px;
-    padding:16px;
+    gap:11px;
+    padding:14px;
 }
 
 .v2-metric-icon {
-    width:42px;
-    height:42px;
+    width:39px;
+    height:39px;
     display:grid;
     place-items:center;
     flex-shrink:0;
     border:1px solid;
-    border-radius:12px;
-    font-size:18px;
+    border-radius:11px;
+    font-size:17px;
     font-weight:950;
 }
 
 .v2-metric-copy { min-width:0; flex:1; }
-.v2-metric-label { color:#7f8ba7; font-size:7px; font-weight:950; letter-spacing:1.2px; }
-.v2-metric-value { margin-top:8px; font-size:clamp(22px,2vw,30px); line-height:1; font-weight:950; white-space:nowrap; }
-.v2-metric-meta { display:flex; justify-content:space-between; gap:8px; margin-top:14px; color:#6f7d9a; font-size:7px; }
+.v2-metric-label { color:#7f8ba7; font-size:6.4px; font-weight:950; letter-spacing:1.15px; }
+.v2-metric-value { margin-top:7px; font-size:clamp(21px,1.75vw,29px); line-height:1; font-weight:950; white-space:nowrap; }
+.v2-metric-meta { display:flex; justify-content:space-between; gap:7px; margin-top:12px; color:#6f7d9a; font-size:6.3px; }
+
+.ax-panel {
+    overflow:hidden;
+    background:linear-gradient(145deg,rgba(6,14,31,.98),rgba(4,9,23,.98));
+    border:1px solid rgba(65,99,165,.30);
+    border-radius:16px;
+}
+
+.ax-panel-head {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:13px 15px;
+    border-bottom:1px solid rgba(68,98,160,.18);
+}
+
+.ax-panel-head strong {
+    color:#f7f9ff;
+    font-size:11px;
+    letter-spacing:.2px;
+}
+
+.ax-panel-head small {
+    color:#64718d;
+    font-size:6px;
+    font-weight:900;
+    letter-spacing:1.1px;
+}
+
+.ax-session-list {
+    padding:5px 14px 12px;
+}
+
+.ax-session-row {
+    display:grid;
+    grid-template-columns:1fr 1fr auto;
+    gap:10px;
+    align-items:center;
+    padding:10px 0;
+    color:#8f9bb7;
+    font-size:9px;
+    border-bottom:1px solid rgba(67,98,160,.13);
+}
+
+.ax-session-row:last-child { border-bottom:none; }
+.ax-session-row b { color:#e7edfb; font-weight:800; }
+
+.ax-state {
+    padding:4px 7px;
+    border-radius:999px;
+    font-size:6px;
+    font-weight:950;
+    letter-spacing:.5px;
+}
+
+.ax-open {
+    color:#00f58a;
+    background:rgba(0,245,138,.10);
+    border:1px solid rgba(0,245,138,.23);
+}
+
+.ax-closed {
+    color:#7d8aa7;
+    background:rgba(125,138,167,.08);
+    border:1px solid rgba(125,138,167,.18);
+}
+
+.ax-news-empty {
+    min-height:180px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    text-align:center;
+}
+
+.ax-news-empty strong {
+    color:#f7f9ff;
+    font-size:12px;
+}
+
+.ax-news-empty p {
+    max-width:330px;
+    margin:8px 0 0;
+    color:#7e8aa6;
+    font-size:9px;
+    line-height:1.55;
+}
+
+.ax-news-empty span {
+    display:inline-flex;
+    margin-top:11px;
+    padding:5px 9px;
+    color:#ffd166;
+    font-size:6.5px;
+    font-weight:950;
+    background:rgba(255,209,102,.07);
+    border:1px solid rgba(255,209,102,.23);
+    border-radius:999px;
+}
 
 .v2-panel-title {
     display:flex;
@@ -117,45 +216,80 @@ DASHBOARD_CSS = """
     justify-content:space-between;
     gap:12px;
     padding:13px 15px;
-    margin-top:17px;
-    margin-bottom:9px;
+    margin-top:15px;
+    margin-bottom:8px;
     background:linear-gradient(145deg,rgba(7,15,33,.98),rgba(5,10,25,.98));
     border:1px solid rgba(65,99,165,.28);
     border-radius:14px;
 }
 
 .v2-panel-title>div { display:flex; align-items:center; gap:8px; }
-.v2-panel-title strong { color:#f7f9ff; font-size:12px; }
-.v2-panel-icon { color:#19e4ff; font-size:14px; }
-.v2-panel-title small { color:#64718d; font-size:6px; font-weight:850; letter-spacing:1.2px; }
+.v2-panel-title strong { color:#f7f9ff; font-size:11px; }
+.v2-panel-icon { color:#19e4ff; font-size:13px; }
+.v2-panel-title small { color:#64718d; font-size:5.8px; font-weight:850; letter-spacing:1.1px; }
 
 .v2-trades-shell {
     width:100%;
-    min-height:390px;
+    min-height:330px;
     overflow:hidden;
     background:linear-gradient(145deg,rgba(6,14,31,.98),rgba(4,9,23,.98));
     border:1px solid rgba(65,99,165,.30);
     border-radius:16px;
 }
 
-.v2-trades-table { width:100%; table-layout:fixed; border-collapse:collapse; color:#dfe7f8; font-size:10px; }
-.v2-trades-table th { padding:13px 9px; color:#72809e; font-size:7px; font-weight:950; text-align:left; letter-spacing:1px; background:rgba(8,17,38,.99); border-bottom:1px solid rgba(68,98,160,.28); }
-.v2-trades-table td { overflow:hidden; padding:13px 9px; white-space:nowrap; text-overflow:ellipsis; border-bottom:1px solid rgba(68,98,160,.13); }
-.v2-badge { display:inline-flex; align-items:center; justify-content:center; min-width:44px; padding:4px 8px; border-radius:999px; font-size:7px; font-weight:950; }
+.v2-trades-table {
+    width:100%;
+    table-layout:fixed;
+    border-collapse:collapse;
+    color:#dfe7f8;
+    font-size:9px;
+}
+
+.v2-trades-table th {
+    padding:11px 8px;
+    color:#72809e;
+    font-size:6.4px;
+    font-weight:950;
+    text-align:left;
+    letter-spacing:.9px;
+    background:rgba(8,17,38,.99);
+    border-bottom:1px solid rgba(68,98,160,.28);
+}
+
+.v2-trades-table td {
+    overflow:hidden;
+    padding:11px 8px;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    border-bottom:1px solid rgba(68,98,160,.13);
+}
+
+.v2-badge {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:40px;
+    padding:4px 7px;
+    border-radius:999px;
+    font-size:6px;
+    font-weight:950;
+}
+
 .v2-long,.v2-win { color:#00f58a; background:rgba(0,245,138,.12); border:1px solid rgba(0,245,138,.24); }
 .v2-short,.v2-loss { color:#ff7890; background:rgba(255,23,68,.13); border:1px solid rgba(255,23,68,.25); }
 .v2-neutral,.v2-be { color:#91a0bf; background:rgba(130,145,179,.11); }
 
-.v2-summary-card { padding:15px; }
-.v2-summary-row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; color:#8996b3; font-size:9px; border-bottom:1px solid rgba(67,98,160,.14); }
+.v2-summary-card { padding:14px; }
+.v2-summary-row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; color:#8996b3; font-size:8.5px; border-bottom:1px solid rgba(67,98,160,.14); }
 .v2-summary-row:last-child { border-bottom:none; }
-.v2-empty-state { min-height:260px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
-.v2-empty-icon { color:#19e4ff; font-size:31px; }
-.v2-empty-state strong { margin-top:11px; color:#f7f9ff; font-size:13px; }
-.v2-empty-state p { max-width:360px; margin-top:7px; color:#7d89a5; font-size:9px; line-height:1.5; }
 
-@media (max-width: 1000px) {
-    .v2-metric-value { font-size:21px; }
+.v2-empty-state { min-height:230px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:22px; text-align:center; }
+.v2-empty-icon { color:#19e4ff; font-size:28px; }
+.v2-empty-state strong { margin-top:10px; color:#f7f9ff; font-size:12px; }
+.v2-empty-state p { max-width:350px; margin-top:7px; color:#7d89a5; font-size:8.5px; line-height:1.5; }
+
+@media(max-width:1100px) {
+    .v2-metric-value { font-size:20px; }
 }
 </style>
 """
@@ -178,13 +312,15 @@ def _prepare_data(df: pd.DataFrame) -> pd.DataFrame:
         data["beneficio_usd"] = 0.0
 
     data["beneficio_usd"] = pd.to_numeric(
-        data["beneficio_usd"], errors="coerce"
+        data["beneficio_usd"],
+        errors="coerce",
     ).fillna(0.0)
 
     data["fecha_dt"] = pd.to_datetime(
         data["fecha"] if "fecha" in data.columns else pd.NaT,
         errors="coerce",
     )
+
     data["created_at_dt"] = pd.to_datetime(
         data["created_at"] if "created_at" in data.columns else data["fecha_dt"],
         errors="coerce",
@@ -244,6 +380,7 @@ def _equity_data(data: pd.DataFrame, initial_capital: float) -> pd.DataFrame:
 
 def _result_name(value: Any, pnl: float) -> str:
     clean = str(value or "").strip().upper()
+
     if clean in {"WIN", "GANADOR", "GANADA", "PROFIT"}:
         return "WIN"
     if clean in {"LOSS", "PERDEDOR", "PERDIDA", "PÉRDIDA", "LOSE"}:
@@ -255,6 +392,75 @@ def _result_name(value: Any, pnl: float) -> str:
     if pnl < 0:
         return "LOSS"
     return "BE"
+
+
+def _is_open(hour: int, start: int, end: int) -> bool:
+    if start <= end:
+        return start <= hour < end
+    return hour >= start or hour < end
+
+
+def _render_sessions_panel() -> None:
+    now = dt.datetime.now(dt.timezone.utc)
+    sessions = [
+        ("Sídney", 21, 6),
+        ("Tokio", 0, 9),
+        ("Londres", 7, 16),
+        ("Nueva York", 13, 22),
+    ]
+
+    rows = []
+
+    for name, start, end in sessions:
+        opened = _is_open(now.hour, start, end)
+        state = "ABIERTA" if opened else "CERRADA"
+        state_class = "ax-open" if opened else "ax-closed"
+
+        rows.append(
+            f"""
+            <div class="ax-session-row">
+                <b>{name}</b>
+                <span>{start:02d}:00 – {end:02d}:00 UTC</span>
+                <span class="ax-state {state_class}">{state}</span>
+            </div>
+            """
+        )
+
+    st.html(
+        f"""
+        <section class="ax-panel">
+            <div class="ax-panel-head">
+                <strong>SESIONES DE TRADING</strong>
+                <small>{now.strftime('%H:%M')} UTC</small>
+            </div>
+            <div class="ax-session-list">
+                {''.join(rows)}
+            </div>
+        </section>
+        """
+    )
+
+
+def _render_news_panel() -> None:
+    st.html(
+        """
+        <section class="ax-panel">
+            <div class="ax-panel-head">
+                <strong>NOTICIAS DE IMPACTO</strong>
+                <small>CALENDARIO ECONÓMICO</small>
+            </div>
+
+            <div class="ax-news-empty">
+                <strong>Fuente de noticias aún no conectada</strong>
+                <p>
+                    El panel está listo para recibir eventos reales de alto impacto.
+                    No mostramos noticias inventadas ni datos desactualizados.
+                </p>
+                <span>API ECONÓMICA PENDIENTE</span>
+            </div>
+        </section>
+        """
+    )
 
 
 def _render_equity_chart(data: pd.DataFrame, initial_capital: float) -> None:
@@ -273,6 +479,7 @@ def _render_equity_chart(data: pd.DataFrame, initial_capital: float) -> None:
     last_value = _safe_float(equity["equity"].iloc[-1])
 
     figure = go.Figure()
+
     figure.add_trace(
         go.Scatter(
             x=equity["fecha_dt"],
@@ -285,6 +492,7 @@ def _render_equity_chart(data: pd.DataFrame, initial_capital: float) -> None:
             showlegend=False,
         )
     )
+
     figure.add_hline(
         y=maximum,
         line_width=1,
@@ -292,32 +500,54 @@ def _render_equity_chart(data: pd.DataFrame, initial_capital: float) -> None:
         line_color=GREEN,
         annotation_text=f"Máximo ${maximum:,.0f}",
         annotation_position="top right",
-        annotation_font={"color": GREEN, "size": 10},
+        annotation_font={"color": GREEN, "size": 9},
     )
+
     figure.add_trace(
         go.Scatter(
             x=[equity["fecha_dt"].iloc[-1]],
             y=[last_value],
             mode="markers",
-            marker={"size": 11, "color": "#3C7DFF", "line": {"color": WHITE, "width": 2}},
+            marker={
+                "size":10,
+                "color":"#3C7DFF",
+                "line":{"color":WHITE,"width":2},
+            },
             showlegend=False,
         )
     )
+
     figure.update_layout(
-        height=390,
-        margin={"l": 8, "r": 8, "t": 24, "b": 8},
+        height=335,
+        margin={"l":7,"r":7,"t":20,"b":7},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         hovermode="x unified",
-        font={"color": MUTED, "family": "Inter"},
-        xaxis={"showgrid": True, "gridcolor": "rgba(82,111,175,0.11)", "zeroline": False},
-        yaxis={"showgrid": True, "gridcolor": "rgba(82,111,175,0.13)", "zeroline": False, "tickprefix": "$", "tickformat": ",.0f"},
+        font={"color":MUTED,"family":"Inter"},
+        xaxis={
+            "showgrid":True,
+            "gridcolor":"rgba(82,111,175,0.10)",
+            "zeroline":False,
+        },
+        yaxis={
+            "showgrid":True,
+            "gridcolor":"rgba(82,111,175,0.12)",
+            "zeroline":False,
+            "tickprefix":"$",
+            "tickformat":",.0f",
+        },
     )
-    st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False})
+
+    st.plotly_chart(
+        figure,
+        use_container_width=True,
+        config={"displayModeBar":False},
+    )
 
 
 def _direction_badge(direction: Any) -> str:
     clean = str(direction or "").strip().upper()
+
     if clean == "LONG":
         return '<span class="v2-badge v2-long">LONG</span>'
     if clean == "SHORT":
@@ -327,7 +557,11 @@ def _direction_badge(direction: Any) -> str:
 
 def _result_badge(value: Any, pnl: float) -> str:
     result = _result_name(value, pnl)
-    class_name = {"WIN": "v2-win", "LOSS": "v2-loss", "BE": "v2-be"}[result]
+    class_name = {
+        "WIN":"v2-win",
+        "LOSS":"v2-loss",
+        "BE":"v2-be",
+    }[result]
     return f'<span class="v2-badge {class_name}">{result}</span>'
 
 
@@ -343,10 +577,12 @@ def _render_recent_trades(data: pd.DataFrame) -> None:
         return
 
     recent = data.sort_values(
-        ["fecha_dt", "created_at_dt"], ascending=False
+        ["fecha_dt","created_at_dt"],
+        ascending=False,
     ).head(6)
 
     rows = []
+
     for _, trade in recent.iterrows():
         pnl = _safe_float(trade.get("beneficio_usd"))
         date_value = trade.get("fecha_dt")
@@ -363,7 +599,7 @@ def _render_recent_trades(data: pd.DataFrame) -> None:
                 <td>{date_text}</td>
                 <td><strong>{safe_text(trade.get("par","—"))}</strong></td>
                 <td>{_direction_badge(trade.get("direccion"))}</td>
-                <td>{_result_badge(trade.get("resultado"), pnl)}</td>
+                <td>{_result_badge(trade.get("resultado"),pnl)}</td>
                 <td style="color:{pnl_color};font-weight:950">{money(pnl)}</td>
             </tr>
             """
@@ -389,45 +625,18 @@ def _render_recent_trades(data: pd.DataFrame) -> None:
     )
 
 
-def _render_setup(data: pd.DataFrame) -> None:
-    render_panel_title(icon="▧", title="CAPTURA DEL SETUP", subtitle="AI VISION READY")
-
-    if data.empty:
-        render_empty_state(
-            icon="📷",
-            title="Sin captura disponible",
-            description="Registra un setup para activar el análisis visual.",
-        )
-        return
-
-    trade = data.sort_values(
-        ["fecha_dt", "created_at_dt"], ascending=False
-    ).iloc[0]
-
-    image_value = str(
-        trade.get("img_before") or trade.get("img_after") or ""
-    ).strip()
-
-    if image_value:
-        st.image(image_value, use_container_width=True)
-    else:
-        render_empty_state(
-            icon="📷",
-            title="Sin captura disponible",
-            description="El último trade no tiene una imagen guardada.",
-        )
-
-
 def _maximum_drawdown(data: pd.DataFrame, initial_capital: float) -> float:
     equity = _equity_data(data, initial_capital)
+
     if equity.empty:
         return 0.0
 
     drawdown = (
         equity["drawdown"]
-        / equity["peak"].replace(0, pd.NA)
+        / equity["peak"].replace(0,pd.NA)
         * 100
     )
+
     minimum = drawdown.min()
     return 0.0 if pd.isna(minimum) else abs(_safe_float(minimum))
 
@@ -437,7 +646,7 @@ def _render_summary(data: pd.DataFrame, initial_capital: float) -> None:
 
     if data.empty:
         best_day = worst_day = drawdown = 0.0
-        wins = 0
+        wins = losses = 0
     else:
         dated = data.dropna(subset=["fecha_dt"])
         daily = (
@@ -445,15 +654,18 @@ def _render_summary(data: pd.DataFrame, initial_capital: float) -> None:
             if not dated.empty
             else pd.Series(dtype=float)
         )
+
         best_day = _safe_float(daily.max()) if not daily.empty else 0.0
         worst_day = _safe_float(daily.min()) if not daily.empty else 0.0
         drawdown = _maximum_drawdown(data, initial_capital)
         wins = int((data["beneficio_usd"] > 0).sum())
+        losses = int((data["beneficio_usd"] < 0).sum())
 
     rows = [
         ("Mejor día", money(best_day), GREEN),
         ("Peor día", money(worst_day), RED if worst_day < 0 else MUTED),
         ("Operaciones ganadoras", str(wins), GREEN),
+        ("Operaciones perdedoras", str(losses), RED if losses else MUTED),
         ("Drawdown máximo", f"{drawdown:.2f}%", GREEN if drawdown < 5 else RED),
     ]
 
@@ -461,7 +673,7 @@ def _render_summary(data: pd.DataFrame, initial_capital: float) -> None:
         '<div class="v2-summary-card v2-glass">'
         + "".join(
             f'<div class="v2-summary-row"><span>{label}</span><strong style="color:{color}">{value}</strong></div>'
-            for label, value, color in rows
+            for label,value,color in rows
         )
         + "</div>"
     )
@@ -485,45 +697,53 @@ def render_v2_dashboard(
         status=f"{now.strftime('%d %b %Y').upper()} · {now.strftime('%I:%M %p')} · MERCADOS ACTIVOS",
     )
 
-    render_market_stream()
-
     assets = ["Todos"]
+
     if not data.empty:
-        assets.extend(sorted({str(v).strip() for v in data["par"].dropna() if str(v).strip()}))
+        assets.extend(
+            sorted({
+                str(value).strip()
+                for value in data["par"].dropna()
+                if str(value).strip()
+            })
+        )
 
-    filters = st.columns([1, 1, 1, 1.2], gap="medium")
+    filter_cols = st.columns([1,1,1,1.2], gap="medium")
 
-    with filters[0]:
+    with filter_cols[0]:
         period = st.selectbox(
             "Período",
-            ["Todo", "Hoy", "Últimos 7 días", "Este mes"],
+            ["Todo","Hoy","Últimos 7 días","Este mes"],
             label_visibility="collapsed",
-            key="v2_dashboard_period",
+            key="v3_period",
         )
-    with filters[1]:
+
+    with filter_cols[1]:
         asset = st.selectbox(
             "Activo",
             assets,
             label_visibility="collapsed",
-            key="v2_dashboard_asset",
+            key="v3_asset",
         )
-    with filters[2]:
+
+    with filter_cols[2]:
         st.selectbox(
             "Vista",
-            ["Performance Desk", "Risk Desk", "Psychology Desk"],
+            ["Performance Desk","Risk Desk","Psychology Desk"],
             label_visibility="collapsed",
-            key="v2_dashboard_view",
+            key="v3_view",
         )
-    with filters[3]:
+
+    with filter_cols[3]:
         if st.button(
             "＋ REGISTRAR NUEVA OPERACIÓN",
             use_container_width=True,
-            key="v2_dashboard_new_trade",
+            key="v3_new_trade",
         ):
             st.session_state.page = "Registrar Trade"
             st.rerun()
 
-    filtered = _filter_data(data, period, asset)
+    filtered = _filter_data(data,period,asset)
 
     total = len(filtered)
     pnl = _safe_float(filtered["beneficio_usd"].sum()) if not filtered.empty else 0.0
@@ -532,12 +752,17 @@ def render_v2_dashboard(
     losses = int((filtered["beneficio_usd"] < 0).sum()) if not filtered.empty else 0
     win_rate = wins / total * 100 if total > 0 else 0.0
 
-    gross_profit = _safe_float(
-        filtered.loc[filtered["beneficio_usd"] > 0, "beneficio_usd"].sum()
-    ) if not filtered.empty else 0.0
-    gross_loss = abs(_safe_float(
-        filtered.loc[filtered["beneficio_usd"] < 0, "beneficio_usd"].sum()
-    )) if not filtered.empty else 0.0
+    gross_profit = (
+        _safe_float(filtered.loc[filtered["beneficio_usd"] > 0,"beneficio_usd"].sum())
+        if not filtered.empty
+        else 0.0
+    )
+
+    gross_loss = (
+        abs(_safe_float(filtered.loc[filtered["beneficio_usd"] < 0,"beneficio_usd"].sum()))
+        if not filtered.empty
+        else 0.0
+    )
 
     profit_factor = (
         gross_profit / gross_loss
@@ -545,70 +770,52 @@ def render_v2_dashboard(
         else float("inf") if gross_profit > 0 else 0.0
     )
 
-    finite_pf = 3.0 if profit_factor == float("inf") else min(profit_factor, 3.0)
-    score = min(100, max(0, round(50 + win_rate * 0.25 + finite_pf * 8)))
+    finite_pf = 3.0 if profit_factor == float("inf") else min(profit_factor,3.0)
+    score = min(100,max(0,round(50 + win_rate * .25 + finite_pf * 8)))
 
-    top_metrics = st.columns(3, gap="medium")
-    with top_metrics[0]:
-        render_metric_card(
-            icon="▣",
-            label="BALANCE ACTUAL",
-            value=money(balance),
-            subtitle="Capital + PnL",
-            footer=f"{total} trades",
-            accent=WHITE,
-        )
-    with top_metrics[1]:
-        render_metric_card(
-            icon="↗",
-            label="P&L TOTAL",
-            value=money(pnl),
-            subtitle="Resultado acumulado",
-            footer="Performance",
-            accent=GREEN if pnl >= 0 else RED,
-        )
-    with top_metrics[2]:
-        render_metric_card(
-            icon="◎",
-            label="WIN RATE",
-            value=f"{win_rate:.1f}%",
-            subtitle=f"{wins}W / {losses}L",
-            footer="Aciertos",
-            accent=CYAN,
-        )
+    metric_cols = st.columns(5,gap="medium")
 
-    bottom_metrics = st.columns(2, gap="medium")
-    with bottom_metrics[0]:
-        render_metric_card(
-            icon="Σ",
-            label="PROFIT FACTOR",
-            value="∞" if profit_factor == float("inf") else f"{profit_factor:.2f}",
-            subtitle="Objetivo > 1.50",
-            footer="Sistema",
-            accent=PURPLE,
-        )
-    with bottom_metrics[1]:
-        render_metric_card(
-            icon="♢",
-            label="AXION SCORE",
-            value=str(score),
-            subtitle="de 100",
-            footer="AI Engine",
-            accent=GREEN,
-        )
+    metric_data = [
+        ("▣","BALANCE ACTUAL",money(balance),"Capital + PnL",f"{total} trades",WHITE),
+        ("↗","P&L TOTAL",money(pnl),"Resultado acumulado","Performance",GREEN if pnl >= 0 else RED),
+        ("◎","WIN RATE",f"{win_rate:.1f}%",f"{wins}W / {losses}L","Aciertos",CYAN),
+        ("Σ","PROFIT FACTOR","∞" if profit_factor == float("inf") else f"{profit_factor:.2f}","Objetivo > 1.50","Sistema",PURPLE),
+        ("♢","AXION SCORE",str(score),"de 100","AI Engine",GREEN),
+    ]
 
-    render_bull_bear(
-        "bull_bear_futurista.png"
-    )
+    for column, item in zip(metric_cols,metric_data):
+        with column:
+            render_metric_card(
+                icon=item[0],
+                label=item[1],
+                value=item[2],
+                subtitle=item[3],
+                footer=item[4],
+                accent=item[5],
+            )
 
-    main_left, main_right = st.columns([1.08, 1], gap="medium")
-    with main_left:
-        _render_equity_chart(filtered, initial_capital)
-    with main_right:
+    market_left, sessions_right = st.columns([1.72,1],gap="medium")
+
+    with market_left:
+        render_market_stream()
+
+    with sessions_right:
+        _render_sessions_panel()
+
+    bull_left, news_right = st.columns([1.72,1],gap="medium")
+
+    with bull_left:
+        render_bull_bear("bull_bear_futurista.png")
+
+    with news_right:
+        _render_news_panel()
+
+    trades_left, summary_right = st.columns([1.72,1],gap="medium")
+
+    with trades_left:
         _render_recent_trades(filtered)
 
-    setup_column, summary_column = st.columns([1.25, 0.75], gap="medium")
-    with setup_column:
-        _render_setup(filtered)
-    with summary_column:
-        _render_summary(filtered, initial_capital)
+    with summary_right:
+        _render_summary(filtered,initial_capital)
+
+    _render_equity_chart(filtered,initial_capital)
