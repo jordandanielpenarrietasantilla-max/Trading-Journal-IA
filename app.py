@@ -6,7 +6,6 @@ from core.api import list_trades
 from core.config import validate_config
 from core.metrics import prepare_df
 from core.state import init_state
-from core.styles import apply_styles
 
 from ui.track_record import render_track_record
 from ui.trades import render_register_trade
@@ -45,7 +44,6 @@ st.set_page_config(
 
 validate_config()
 init_state()
-apply_styles()
 
 
 # =========================================================
