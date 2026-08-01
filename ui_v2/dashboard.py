@@ -152,8 +152,201 @@ DASHBOARD_CSS = """
 .v2-empty-state strong { margin-top:11px; color:#f7f9ff; font-size:13px; }
 .v2-empty-state p { max-width:360px; margin-top:7px; color:#7d89a5; font-size:9px; line-height:1.5; }
 
+.v2-market-ribbon {
+    position: relative;
+    height: 82px;
+    margin: -6px 0 18px;
+    overflow: hidden;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(0,245,138,.035),
+            rgba(25,228,255,.045),
+            rgba(139,77,255,.055),
+            rgba(255,23,68,.035)
+        );
+    border: 1px solid rgba(68,101,168,.22);
+    border-radius: 16px;
+}
+
+.v2-market-ribbon:before,
+.v2-market-ribbon:after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.v2-market-ribbon:before {
+    background:
+        linear-gradient(rgba(74,105,171,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(74,105,171,.04) 1px, transparent 1px);
+    background-size: 36px 36px;
+}
+
+.v2-candle-track {
+    position: absolute;
+    inset: 0;
+    width: 2100px;
+    animation: v2-candle-flow 30s linear infinite;
+}
+
+.v2-candle {
+    position: absolute;
+    left: var(--x);
+    top: var(--top);
+    width: 8px;
+    height: var(--body);
+    border-radius: 1px;
+    background: var(--c);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--c) 58%, transparent);
+}
+
+.v2-candle:before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: calc(var(--wick-top) * -1);
+    width: 1px;
+    height: calc(var(--body) + var(--wick-top) + var(--wick-bottom));
+    transform: translateX(-50%);
+    background: var(--c);
+    opacity: .92;
+}
+
+.v2-candle-label {
+    position: absolute;
+    z-index: 3;
+    left: 18px;
+    top: 14px;
+    color: #7684a3;
+    font-size: 7px;
+    font-weight: 900;
+    letter-spacing: 1.4px;
+}
+
+@keyframes v2-candle-flow {
+    from { transform: translateX(0); }
+    to { transform: translateX(-620px); }
+}
+
+.v2-bull-bear {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: center;
+    min-height: 190px;
+    margin: 18px 0 4px;
+    padding: 24px 28px;
+    overflow: hidden;
+    position: relative;
+    background:
+        radial-gradient(circle at 17% 50%, rgba(0,245,138,.14), transparent 28%),
+        radial-gradient(circle at 83% 50%, rgba(255,23,68,.15), transparent 28%),
+        linear-gradient(145deg,rgba(6,14,31,.98),rgba(6,6,25,.98));
+    border: 1px solid rgba(73,105,174,.30);
+    border-radius: 20px;
+}
+
+.v2-bull-bear:after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, rgba(0,245,138,.035), transparent 35% 65%, rgba(255,23,68,.035));
+}
+
+.v2-animal {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.v2-animal.bear {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.v2-animal-icon {
+    width: 104px;
+    height: 104px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 58px;
+    filter: drop-shadow(0 0 18px currentColor);
+}
+
+.v2-bull .v2-animal-icon {
+    color: #00f58a;
+    background: radial-gradient(circle, rgba(0,245,138,.18), rgba(0,245,138,.02) 68%);
+    border: 1px solid rgba(0,245,138,.30);
+}
+
+.v2-bear .v2-animal-icon {
+    color: #ff1744;
+    background: radial-gradient(circle, rgba(255,23,68,.18), rgba(255,23,68,.02) 68%);
+    border: 1px solid rgba(255,23,68,.30);
+}
+
+.v2-animal-copy small {
+    display: block;
+    color: #71809d;
+    font-size: 7px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+}
+
+.v2-animal-copy strong {
+    display: block;
+    margin-top: 7px;
+    font-size: 30px;
+    line-height: 1;
+    font-weight: 950;
+}
+
+.v2-bull .v2-animal-copy strong { color: #00f58a; }
+.v2-bear .v2-animal-copy strong { color: #ff1744; }
+
+.v2-animal-copy span {
+    display: block;
+    margin-top: 8px;
+    color: #91a0bf;
+    font-size: 10px;
+}
+
+.v2-axis-core {
+    position: relative;
+    z-index: 2;
+    width: 92px;
+    height: 92px;
+    display: grid;
+    place-items: center;
+    color: white;
+    font-size: 34px;
+    font-weight: 950;
+    background:
+        linear-gradient(145deg,rgba(25,228,255,.18),rgba(60,125,255,.20),rgba(139,77,255,.22));
+    border: 1px solid rgba(103,154,255,.45);
+    border-radius: 24px;
+    box-shadow:
+        0 0 34px rgba(60,125,255,.20),
+        inset 0 1px 0 rgba(255,255,255,.08);
+}
+
 @media (max-width: 1000px) {
     .v2-metric-value { font-size:21px; }
+    .v2-bull-bear { grid-template-columns: 1fr; text-align: center; }
+    .v2-animal,
+    .v2-animal.bear { justify-content: center; text-align: center; }
+    .v2-axis-core { margin: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .v2-candle-track { animation: none; }
 }
 </style>
 """
@@ -254,6 +447,79 @@ def _result_name(value: Any, pnl: float) -> str:
         return "LOSS"
     return "BE"
 
+
+
+def _render_candle_ribbon() -> None:
+    colors = [GREEN, RED, GREEN, GREEN, RED, GREEN, RED, RED]
+    bodies = [20, 31, 17, 27, 22, 34, 19, 29]
+    tops = [32, 21, 40, 24, 35, 17, 38, 25]
+    candles: list[str] = []
+
+    for index in range(52):
+        color = colors[index % len(colors)]
+        body = bodies[index % len(bodies)]
+        top = tops[index % len(tops)]
+        x = index * 41 + 110
+        wick_top = 9 + (index % 4) * 2
+        wick_bottom = 8 + ((index + 2) % 4) * 2
+
+        candles.append(
+            f"""
+            <span class="v2-candle"
+                style="
+                    --x:{x}px;
+                    --top:{top}px;
+                    --body:{body}px;
+                    --wick-top:{wick_top}px;
+                    --wick-bottom:{wick_bottom}px;
+                    --c:{color};
+                ">
+            </span>
+            """
+        )
+
+    st.html(
+        f"""
+        <section class="v2-market-ribbon">
+            <div class="v2-candle-label">
+                LIVE MARKET PULSE · BULL / BEAR FLOW
+            </div>
+            <div class="v2-candle-track">
+                {''.join(candles)}
+            </div>
+        </section>
+        """
+    )
+
+
+def _render_bull_bear_panel() -> None:
+    st.html(
+        """
+        <section class="v2-bull-bear">
+
+            <div class="v2-animal v2-bull">
+                <div class="v2-animal-icon">🐂</div>
+                <div class="v2-animal-copy">
+                    <small>MARKET PRESSURE</small>
+                    <strong>BULL</strong>
+                    <span>Impulso · expansión · ejecución</span>
+                </div>
+            </div>
+
+            <div class="v2-axis-core">A</div>
+
+            <div class="v2-animal v2-bear">
+                <div class="v2-animal-copy">
+                    <small>RISK AWARENESS</small>
+                    <strong>BEAR</strong>
+                    <span>Protección · paciencia · control</span>
+                </div>
+                <div class="v2-animal-icon">🐻</div>
+            </div>
+
+        </section>
+        """
+    )
 
 def _render_equity_chart(data: pd.DataFrame, initial_capital: float) -> None:
     render_panel_title(icon="◈", title="CURVA DE EQUITY", subtitle="BALANCE ACUMULADO")
@@ -483,6 +749,8 @@ def render_v2_dashboard(
         status=f"{now.strftime('%d %b %Y').upper()} · {now.strftime('%I:%M %p')} · MERCADOS ACTIVOS",
     )
 
+    _render_candle_ribbon()
+
     assets = ["Todos"]
     if not data.empty:
         assets.extend(sorted({str(v).strip() for v in data["par"].dropna() if str(v).strip()}))
@@ -592,6 +860,8 @@ def render_v2_dashboard(
             footer="AI Engine",
             accent=GREEN,
         )
+
+    _render_bull_bear_panel()
 
     main_left, main_right = st.columns([1.08, 1], gap="medium")
     with main_left:
