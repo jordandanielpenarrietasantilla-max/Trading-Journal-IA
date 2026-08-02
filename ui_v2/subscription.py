@@ -64,6 +64,33 @@ def _safe_dict(value: Any) -> dict[str, Any]:
         return {}
 
 
+def _is_owner() -> bool:
+    """
+    Detecta la cuenta del dueño usando ADMIN_EMAIL en Streamlit Secrets.
+    """
+
+    user = _safe_dict(
+        st.session_state.get("user", {})
+    )
+
+    email = str(
+        user.get("email", "")
+        or ""
+    ).strip().lower()
+
+    try:
+        admin_email = str(
+            st.secrets.get("ADMIN_EMAIL", "")
+        ).strip().lower()
+    except Exception:
+        admin_email = ""
+
+    return bool(
+        admin_email
+        and email == admin_email
+    )
+
+
 def _parse_date(value: Any) -> dt.datetime | None:
     if not value:
         return None
@@ -77,24 +104,79 @@ def _parse_date(value: Any) -> dt.datetime | None:
 
 
 def _trial_information() -> dict[str, Any]:
+    """
+    Devuelve el estado visual de la membresía.
+
+    La cuenta ADMIN_EMAIL se reconoce como FOUNDER con acceso total
+    y sin vencimiento. Los demás usuarios reciben 7 días de prueba.
+    """
+
     now = dt.datetime.now(dt.timezone.utc)
-    user = _safe_dict(st.session_state.get("user", {}))
-    metadata = _safe_dict(user.get("user_metadata", {}))
-    created_at = user.get("created_at") or metadata.get("trial_started_at") or st.session_state.get("trial_started_at")
+
+    if _is_owner():
+        return {
+            "plan": "FOUNDER",
+            "status": "ACTIVO",
+            "end": None,
+            "days_remaining": None,
+            "progress": 100.0,
+            "access": "ILIMITADO",
+            "is_owner": True,
+        }
+
+    user = _safe_dict(
+        st.session_state.get("user", {})
+    )
+
+    metadata = _safe_dict(
+        user.get("user_metadata", {})
+    )
+
+    created_at = (
+        user.get("created_at")
+        or metadata.get("trial_started_at")
+        or st.session_state.get("trial_started_at")
+    )
+
     start = _parse_date(created_at)
+
     if start is None:
         start = now
         st.session_state.trial_started_at = start.isoformat()
+
     end = start + dt.timedelta(days=7)
-    remaining_seconds = max(0, int((end - now).total_seconds()))
-    days_remaining = max(0, int((remaining_seconds + 86399) // 86400))
-    progress = min(100.0, max(0.0, (now - start).total_seconds() / (7 * 86400) * 100))
+    remaining_seconds = max(
+        0,
+        int((end - now).total_seconds()),
+    )
+
+    days_remaining = max(
+        0,
+        int((remaining_seconds + 86399) // 86400),
+    )
+
+    progress = min(
+        100.0,
+        max(
+            0.0,
+            (now - start).total_seconds()
+            / (7 * 86400)
+            * 100,
+        ),
+    )
+
     return {
         "plan": metadata.get("plan", "TRIAL"),
-        "status": "ACTIVO" if remaining_seconds > 0 else "FINALIZADO",
+        "status": (
+            "ACTIVO"
+            if remaining_seconds > 0
+            else "FINALIZADO"
+        ),
         "end": end,
         "days_remaining": days_remaining,
         "progress": progress,
+        "access": "COMPLETO",
+        "is_owner": False,
     }
 
 
@@ -102,6 +184,30 @@ def render_subscription() -> None:
     apply_v2_theme()
     st.markdown(SUBSCRIPTION_CSS, unsafe_allow_html=True)
     trial = _trial_information()
+
+    end_text = (
+        "NO APLICA"
+        if trial["is_owner"]
+        else trial["end"].strftime("%d/%m/%Y")
+    )
+
+    days_text = (
+        "∞"
+        if trial["is_owner"]
+        else str(trial["days_remaining"])
+    )
+
+    access_text = (
+        "ILIMITADO"
+        if trial["is_owner"]
+        else "COMPLETO"
+    )
+
+    trial_badge = (
+        "👑 FOUNDER · ACCESO TOTAL DE POR VIDA"
+        if trial["is_owner"]
+        else "{trial_badge}"
+    )
 
     st.html(
         f"""
@@ -120,11 +226,11 @@ def render_subscription() -> None:
           <div class="ax-status-grid">
             <div class="ax-status-card">
               <small>ESTADO ACTUAL</small><strong>{html.escape(str(trial["plan"]))}</strong>
-              <span>Estado: {trial["status"]} · Finaliza {trial["end"].strftime("%d/%m/%Y")}</span>
+              <span>Estado: {trial["status"]} · Renovación: {end_text}</span>
               <div class="ax-progress" style="--progress:{trial["progress"]:.1f}%"><div></div></div>
             </div>
-            <div class="ax-status-card"><small>DÍAS RESTANTES</small><strong style="color:#31ff9c">{trial["days_remaining"]}</strong><span>Prueba gratuita de 7 días.</span></div>
-            <div class="ax-status-card"><small>ACCESO</small><strong style="color:#2bdcff">COMPLETO</strong><span>Todas las funciones durante el trial.</span></div>
+            <div class="ax-status-card"><small>{'ACCESO' if trial["is_owner"] else 'DÍAS RESTANTES'}</small><strong style="color:#31ff9c">{days_text}</strong><span>{'Cuenta del propietario · Sin vencimiento.' if trial["is_owner"] else 'Prueba gratuita de 7 días.'}</span></div>
+            <div class="ax-status-card"><small>NIVEL DE ACCESO</small><strong style="color:#2bdcff">{access_text}</strong><span>{'Todas las funciones sin límite.' if trial["is_owner"] else 'Todas las funciones durante el trial.'}</span></div>
           </div>
 
           <div class="ax-plan-grid">
@@ -184,10 +290,27 @@ def render_subscription() -> None:
         """
     )
 
+    if trial["is_owner"]:
+        st.success(
+            "👑 Cuenta FOUNDER detectada: acceso total, ilimitado y sin renovación."
+        )
+
     monthly, annual = st.columns(2, gap="medium")
     with monthly:
-        if st.button("💎 SUSCRIBIRME · US$3 / MES", use_container_width=True, type="primary", key="subscription_monthly_button"):
+        if st.button(
+            "💎 SUSCRIBIRME · US$3 / MES",
+            use_container_width=True,
+            type="primary",
+            key="subscription_monthly_button",
+            disabled=trial["is_owner"],
+        ):
             st.info("La pantalla visual está lista. El siguiente paso es conectar Mercado Pago y Binance Pay.")
     with annual:
-        if st.button("👑 ELEGIR PLAN ANUAL · US$20", use_container_width=True, type="primary", key="subscription_annual_button"):
+        if st.button(
+            "👑 ELEGIR PLAN ANUAL · US$20",
+            use_container_width=True,
+            type="primary",
+            key="subscription_annual_button",
+            disabled=trial["is_owner"],
+        ):
             st.info("La pantalla visual está lista. El siguiente paso es conectar Mercado Pago y Binance Pay.")
