@@ -268,7 +268,7 @@ EXTRA_CHAT_X10_CSS = r"""
 
 .ax-chat-main-grid {
     display:grid;
-    grid-template-columns:minmax(0,1fr) 270px;
+    grid-template-columns:minmax(0,1fr) 235px;
     gap:14px;
     align-items:start;
 }
@@ -445,7 +445,7 @@ EXTRA_CHAT_X10_CSS = r"""
     text-align:center;
 }
 
-@media(max-width:1280px) {
+@media(max-width:1040px) {
     .ax-chat-main-grid {
         grid-template-columns:1fr;
     }
@@ -463,6 +463,43 @@ EXTRA_CHAT_X10_CSS = r"""
 
     .ax-chat-side-column {
         grid-template-columns:1fr;
+    }
+}
+</style>
+"""
+
+CHAT_X10_LAYOUT_FIX = r"""
+<style>
+[data-testid="stBottomBlockContainer"] {
+    max-width: calc(100vw - 240px) !important;
+    left: 220px !important;
+    right: 18px !important;
+    padding: 8px 18px 12px !important;
+    background:
+        linear-gradient(180deg,transparent,rgba(3,7,18,.94) 35%) !important;
+}
+
+[data-testid="stChatInput"] {
+    min-height: 64px !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    min-height: 42px !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+}
+
+.block-container {
+    padding-bottom: 7.5rem !important;
+}
+
+@media(max-width:1040px) {
+    [data-testid="stBottomBlockContainer"] {
+        max-width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
     }
 }
 </style>
@@ -714,6 +751,7 @@ def render_chat(
 
     st.markdown(CHAT_CSS, unsafe_allow_html=True)
     st.markdown(EXTRA_CHAT_X10_CSS, unsafe_allow_html=True)
+    st.markdown(CHAT_X10_LAYOUT_FIX, unsafe_allow_html=True)
 
     summary = calculate_summary(
         df,
@@ -1918,4 +1956,3 @@ def render_lotage() -> None:
         "copia de tu broker el tamaño de tick, valor del tick, comisión "
         "y paso mínimo de volumen del activo seleccionado."
     )
-
