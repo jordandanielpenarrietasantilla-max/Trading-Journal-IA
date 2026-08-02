@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import datetime as dt
 import html
+import io
 from typing import Any
+
+import qrcode
 
 import streamlit as st
 
@@ -50,6 +53,112 @@ SUBSCRIPTION_CSS = """
 .stButton>button[kind="primary"]{min-height:52px;background:linear-gradient(90deg,#2bdcff,#4e72ff,#9e3dff,#ff46c8)!important;border:1px solid rgba(126,102,255,.55)!important;border-radius:14px!important;font-weight:950!important}
 @media(max-width:1000px){.ax-sub-hero-copy{max-width:68%}.ax-sub-orb{width:190px;height:190px;right:3%}.ax-status-grid{grid-template-columns:1fr}.ax-payment-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.ax-sub-hero{min-height:auto;padding:28px}.ax-sub-hero-copy{max-width:100%}.ax-sub-orb{display:none}.ax-plan-grid,.ax-payment-grid{grid-template-columns:1fr}}
+
+.ax-crypto-panel {
+    margin-top:16px;
+    padding:20px;
+    border:1px solid rgba(106,82,255,.38);
+    border-radius:18px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(141,72,255,.14),transparent 35%),
+        linear-gradient(145deg,rgba(7,15,35,.99),rgba(5,9,24,.99));
+    box-shadow:0 18px 48px rgba(0,0,0,.26);
+}
+
+.ax-crypto-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:14px;
+}
+
+.ax-crypto-head strong {
+    color:#eef4ff;
+    font-size:13px;
+}
+
+.ax-crypto-head span {
+    color:#31ff9c;
+    font-size:7px;
+    font-weight:950;
+    letter-spacing:.7px;
+}
+
+.ax-crypto-grid {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+}
+
+.ax-crypto-card {
+    min-width:0;
+    padding:15px;
+    border-radius:14px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(var(--coin),.13),transparent 42%),
+        rgba(5,11,28,.92);
+    border:1px solid rgba(var(--coin),.32);
+}
+
+.ax-crypto-card strong {
+    display:block;
+    color:#eef4ff;
+    font-size:10px;
+}
+
+.ax-crypto-card span {
+    display:block;
+    margin-top:6px;
+    color:#8fa0bd;
+    font-size:7px;
+    line-height:1.45;
+}
+
+.ax-wallet-summary {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+    margin:14px 0;
+}
+
+.ax-wallet-summary div {
+    padding:12px;
+    border-radius:12px;
+    background:rgba(5,11,28,.86);
+    border:1px solid rgba(72,96,158,.22);
+}
+
+.ax-wallet-summary small {
+    display:block;
+    color:#7284a5;
+    font-size:7px;
+    font-weight:900;
+}
+
+.ax-wallet-summary strong {
+    display:block;
+    margin-top:6px;
+    color:#eef4ff;
+    font-size:12px;
+}
+
+@media(max-width:900px) {
+    .ax-crypto-grid {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .ax-wallet-summary {
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:600px) {
+    .ax-crypto-grid {
+        grid-template-columns:1fr;
+    }
+}
+
 </style>
 """
 
@@ -180,6 +289,263 @@ def _trial_information() -> dict[str, Any]:
     }
 
 
+def _secret(name: str, default: str = "") -> str:
+    """
+    Lee un valor de Streamlit Secrets sin detener la aplicación.
+    """
+
+    try:
+        return str(
+            st.secrets.get(name, default)
+            or default
+        ).strip()
+    except Exception:
+        return default
+
+
+def _crypto_wallets() -> dict[str, dict[str, str]]:
+    """
+    Direcciones públicas de cobro.
+
+    Nunca guardes frases semilla ni claves privadas en la aplicación.
+    """
+
+    return {
+        "Bitcoin (BTC)": {
+            "symbol": "BTC",
+            "network": "Bitcoin",
+            "address": _secret("BTC_WALLET_ADDRESS"),
+            "color": "247,147,26",
+        },
+        "Ethereum (ETH)": {
+            "symbol": "ETH",
+            "network": "Ethereum ERC-20",
+            "address": _secret("ETH_WALLET_ADDRESS"),
+            "color": "98,126,234",
+        },
+        "USDT (TRC20)": {
+            "symbol": "USDT",
+            "network": "TRON TRC20",
+            "address": _secret("USDT_TRC20_WALLET_ADDRESS"),
+            "color": "38,161,123",
+        },
+    }
+
+
+def _make_qr(value: str) -> bytes:
+    """
+    Crea un QR PNG para una dirección pública.
+    """
+
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=3,
+    )
+
+    qr.add_data(value)
+    qr.make(fit=True)
+
+    image = qr.make_image(
+        fill_color="black",
+        back_color="white",
+    )
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+
+    return buffer.getvalue()
+
+
+def _render_crypto_payment_section(
+    *,
+    is_owner: bool,
+) -> None:
+    """
+    Sección visual y operativa para pagos directos a wallet.
+
+    Esta fase muestra dirección y QR. No activa PRO automáticamente.
+    La confirmación en blockchain y el webhook se conectarán después.
+    """
+
+    wallets = _crypto_wallets()
+
+    st.html(
+        """
+        <section class="ax-crypto-panel">
+            <div class="ax-crypto-head">
+                <strong>🪙 PAGAR CON CRIPTOMONEDAS</strong>
+                <span>BTC · ETH · USDT · BINANCE PAY</span>
+            </div>
+
+            <div class="ax-crypto-grid">
+                <div class="ax-crypto-card" style="--coin:247,147,26">
+                    <strong>₿ BITCOIN</strong>
+                    <span>Red Bitcoin · Pago directo a wallet.</span>
+                </div>
+
+                <div class="ax-crypto-card" style="--coin:98,126,234">
+                    <strong>◆ ETHEREUM</strong>
+                    <span>Red Ethereum · Confirma siempre la red.</span>
+                </div>
+
+                <div class="ax-crypto-card" style="--coin:38,161,123">
+                    <strong>₮ USDT</strong>
+                    <span>Red TRON TRC20 · No enviar por otra red.</span>
+                </div>
+
+                <div class="ax-crypto-card" style="--coin:255,196,0">
+                    <strong>🟡 BINANCE PAY</strong>
+                    <span>Checkout comercial en la siguiente integración.</span>
+                </div>
+            </div>
+        </section>
+        """
+    )
+
+    plan = st.radio(
+        "Selecciona el plan que vas a pagar",
+        options=[
+            "PRO MENSUAL · US$3",
+            "PRO ANUAL · US$20",
+        ],
+        horizontal=True,
+        key="crypto_payment_plan",
+        disabled=is_owner,
+    )
+
+    currency = st.selectbox(
+        "Selecciona la criptomoneda",
+        options=list(wallets.keys()),
+        key="crypto_payment_currency",
+        disabled=is_owner,
+    )
+
+    selected = wallets[currency]
+
+    usd_amount = (
+        3
+        if plan.startswith("PRO MENSUAL")
+        else 20
+    )
+
+    st.html(
+        f"""
+        <div class="ax-wallet-summary">
+            <div>
+                <small>PLAN</small>
+                <strong>{html.escape(plan)}</strong>
+            </div>
+
+            <div>
+                <small>IMPORTE</small>
+                <strong>US${usd_amount}</strong>
+            </div>
+
+            <div>
+                <small>RED OBLIGATORIA</small>
+                <strong>{html.escape(selected["network"])}</strong>
+            </div>
+        </div>
+        """
+    )
+
+    address = selected["address"]
+
+    if is_owner:
+        st.info(
+            "Tu cuenta FOUNDER tiene acceso de por vida; "
+            "no necesita realizar pagos."
+        )
+        return
+
+    if not address:
+        st.warning(
+            "La dirección de esta moneda todavía no está configurada "
+            "en Streamlit Secrets."
+        )
+
+        st.code(
+            (
+                "BTC_WALLET_ADDRESS = \"...\"\n"
+                "ETH_WALLET_ADDRESS = \"...\"\n"
+                "USDT_TRC20_WALLET_ADDRESS = \"...\""
+            ),
+            language="toml",
+        )
+
+        return
+
+    qr_column, address_column = st.columns(
+        [0.34, 0.66],
+        gap="medium",
+    )
+
+    with qr_column:
+        st.image(
+            _make_qr(address),
+            caption=f"{selected['symbol']} · {selected['network']}",
+            width=220,
+        )
+
+    with address_column:
+        st.markdown(
+            f"### Dirección de pago {selected['symbol']}"
+        )
+
+        st.code(
+            address,
+            language=None,
+        )
+
+        st.error(
+            f"Envía únicamente {selected['symbol']} mediante "
+            f"la red {selected['network']}. Una red incorrecta "
+            "puede causar pérdida de fondos."
+        )
+
+        st.caption(
+            "El importe exacto en BTC o ETH debe calcularse con la "
+            "cotización vigente al momento del pago. Esta primera fase "
+            "no activa la cuenta automáticamente."
+        )
+
+        transaction_hash = st.text_input(
+            "Hash de la transacción (TXID)",
+            placeholder="Pega aquí el TXID después del pago",
+            key=f"crypto_txid_{selected['symbol']}",
+        )
+
+        if st.button(
+            "📨 ENVIAR PAGO PARA VERIFICACIÓN",
+            use_container_width=True,
+            key=f"crypto_verify_{selected['symbol']}",
+        ):
+            if not transaction_hash.strip():
+                st.warning(
+                    "Debes pegar el hash de la transacción."
+                )
+            else:
+                st.session_state.pending_crypto_payment = {
+                    "plan": plan,
+                    "usd_amount": usd_amount,
+                    "currency": selected["symbol"],
+                    "network": selected["network"],
+                    "wallet_address": address,
+                    "txid": transaction_hash.strip(),
+                    "status": "pending_manual_review",
+                    "submitted_at": dt.datetime.now(
+                        dt.timezone.utc
+                    ).isoformat(),
+                }
+
+                st.success(
+                    "Pago enviado para verificación. "
+                    "La cuenta todavía no se activará hasta comprobar "
+                    "la transacción en la blockchain."
+                )
+
 def render_subscription() -> None:
     apply_v2_theme()
     st.markdown(SUBSCRIPTION_CSS, unsafe_allow_html=True)
@@ -269,7 +635,17 @@ def render_subscription() -> None:
               <div class="ax-payment-method">🟡<strong>BINANCE PAY</strong></div>
             </div>
           </section>
+        </div>
+        """
+    )
 
+    _render_crypto_payment_section(
+        is_owner=trial["is_owner"],
+    )
+
+    st.html(
+        """
+        <div class="ax-sub-stage">
           <section class="ax-compare-panel">
             <div class="ax-panel-title"><strong>COMPARACIÓN DE ACCESO</strong><span>TRIAL VS PRO</span></div>
             <table class="ax-compare">
