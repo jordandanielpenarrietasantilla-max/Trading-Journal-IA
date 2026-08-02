@@ -158,18 +158,27 @@ CHAT_CSS = """
     padding-bottom: 1.5rem;
 }
 
+/* =====================================================
+   HERO CHAT IA
+   ===================================================== */
+
 .ax-tool-hero {
     position: relative;
     overflow: hidden;
-    padding: 28px 30px;
-    margin-bottom: 18px;
+    min-height: 250px;
+    padding: 34px 34px;
+    margin-bottom: 22px;
     background:
-        radial-gradient(circle at 88% 10%, rgba(129,67,255,.22), transparent 28%),
-        radial-gradient(circle at 70% 0%, rgba(39,216,255,.10), transparent 34%),
-        linear-gradient(145deg, rgba(7,14,32,.99), rgba(4,8,20,.99));
-    border: 1px solid rgba(39,216,255,.28);
-    border-radius: 22px;
-    box-shadow: 0 26px 80px rgba(0,0,0,.38);
+        radial-gradient(circle at 82% 42%, rgba(39,216,255,.18), transparent 20%),
+        radial-gradient(circle at 84% 42%, rgba(123,92,255,.22), transparent 33%),
+        radial-gradient(circle at 98% 0%, rgba(255,45,196,.14), transparent 31%),
+        linear-gradient(135deg, rgba(5,12,30,.995), rgba(6,7,25,.995));
+    border: 1px solid rgba(72,106,255,.42);
+    border-radius: 24px;
+    box-shadow:
+        0 26px 85px rgba(0,0,0,.48),
+        0 0 40px rgba(68,82,255,.08),
+        inset 0 1px 0 rgba(255,255,255,.045);
 }
 
 .ax-tool-hero::before {
@@ -177,73 +186,136 @@ CHAT_CSS = """
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background-image:
-        linear-gradient(rgba(60,91,157,.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(60,91,157,.035) 1px, transparent 1px);
-    background-size: 42px 42px;
+    background:
+        linear-gradient(rgba(49,80,157,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(49,80,157,.04) 1px, transparent 1px);
+    background-size: 38px 38px;
+    mask-image: linear-gradient(90deg, transparent, black 28%, black 100%);
+}
+
+.ax-tool-hero::after {
+    content: "";
+    position: absolute;
+    right: 8%;
+    top: 50%;
+    width: 210px;
+    height: 210px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 38% 34%, rgba(255,255,255,.28), transparent 4%),
+        radial-gradient(circle, rgba(29,224,255,.22) 0 16%, transparent 17%),
+        radial-gradient(circle, transparent 0 34%, rgba(75,102,255,.42) 35% 36%, transparent 37%),
+        radial-gradient(circle, transparent 0 48%, rgba(187,55,255,.34) 49% 50%, transparent 51%),
+        radial-gradient(circle, rgba(42,61,185,.38), rgba(8,10,35,.05) 66%, transparent 67%);
+    border: 1px solid rgba(89,91,255,.48);
+    box-shadow:
+        0 0 28px rgba(39,216,255,.22),
+        0 0 65px rgba(123,92,255,.30),
+        inset 0 0 32px rgba(39,216,255,.15);
+    animation: axHeroOrb 5s ease-in-out infinite alternate;
+}
+
+@keyframes axHeroOrb {
+    from { transform: translateY(-50%) scale(.96) rotate(0deg); filter: hue-rotate(0deg); }
+    to   { transform: translateY(-50%) scale(1.04) rotate(8deg); filter: hue-rotate(18deg); }
 }
 
 .ax-tool-hero > * {
     position: relative;
     z-index: 2;
+    max-width: 68%;
 }
 
 .ax-tool-kicker {
-    color: #27d8ff;
-    font-size: 8px;
+    color: #2edcff;
+    font-size: 9px;
     font-weight: 950;
-    letter-spacing: 1.9px;
+    letter-spacing: 2.6px;
 }
 
 .ax-tool-title {
-    margin-top: 8px;
-    font-size: clamp(34px, 3vw, 50px);
-    line-height: 1;
+    margin-top: 12px;
+    font-size: clamp(43px, 4.7vw, 72px);
+    line-height: .95;
     font-weight: 950;
-    letter-spacing: -1.8px;
-    background: linear-gradient(90deg,#27d8ff,#7b5cff,#ff45cc);
+    letter-spacing: -3px;
+    background: linear-gradient(90deg,#20d9ff 0%,#5ca6ff 36%,#8d63ff 66%,#ff4bd2 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    text-shadow: 0 0 38px rgba(83,100,255,.14);
 }
 
 .ax-tool-sub {
-    max-width: 780px;
-    margin-top: 12px;
-    color: #93a6c7;
-    font-size: 11px;
-    line-height: 1.6;
+    max-width: 760px;
+    margin-top: 18px;
+    color: #b0bdd7;
+    font-size: 13px;
+    line-height: 1.7;
 }
 
+/* =====================================================
+   PANEL AXION COACH
+   ===================================================== */
+
 .ax-chat-shell {
-    padding: 15px 16px;
-    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    padding: 20px 22px;
+    margin-bottom: 16px;
     background:
-        radial-gradient(circle at 100% 0%, rgba(39,216,255,.10), transparent 38%),
-        linear-gradient(145deg, rgba(8,16,35,.98), rgba(5,9,22,.98));
-    border: 1px solid rgba(61,91,158,.30);
-    border-radius: 16px;
+        radial-gradient(circle at 93% 50%, rgba(39,216,255,.13), transparent 22%),
+        linear-gradient(135deg, rgba(8,18,42,.99), rgba(7,8,28,.99));
+    border: 1px solid rgba(57,137,255,.38);
+    border-radius: 19px;
+    box-shadow:
+        0 18px 48px rgba(0,0,0,.28),
+        inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.ax-chat-shell::after {
+    content: "";
+    position: absolute;
+    right: 26px;
+    bottom: 17px;
+    width: 115px;
+    height: 2px;
+    background: linear-gradient(90deg,transparent,#31ff9c,transparent);
+    box-shadow: 0 0 12px #31ff9c;
+    animation: axSignal 2.2s ease-in-out infinite;
+}
+
+@keyframes axSignal {
+    0%,100% { opacity:.30; transform:scaleX(.75); }
+    50% { opacity:1; transform:scaleX(1); }
 }
 
 .ax-chat-status {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 16px;
 }
 
 .ax-chat-status strong {
-    color: #eef4ff;
-    font-size: 12px;
+    color: #f3f6ff;
+    font-size: 16px;
+    font-weight: 950;
 }
 
 .ax-chat-status span {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
+    padding: 7px 11px;
     color: #31ff9c;
     font-size: 7px;
     font-weight: 950;
+    letter-spacing: .7px;
+    background: rgba(49,255,156,.07);
+    border: 1px solid rgba(49,255,156,.28);
+    border-radius: 999px;
 }
 
 .ax-chat-status span::before {
@@ -252,84 +324,127 @@ CHAT_CSS = """
     height: 7px;
     border-radius: 50%;
     background: #31ff9c;
-    box-shadow: 0 0 12px #31ff9c;
+    box-shadow: 0 0 14px #31ff9c;
 }
 
 .ax-chat-hint {
-    margin-top: 8px;
+    max-width: 780px;
+    margin-top: 9px;
     color: #93a6c7;
-    font-size: 9px;
+    font-size: 10px;
+    line-height: 1.55;
 }
+
+/* =====================================================
+   TARJETAS DE CAPACIDADES
+   ===================================================== */
 
 .ax-quick-grid {
     display: grid;
     grid-template-columns: repeat(4,minmax(0,1fr));
-    gap: 10px;
-    margin: 12px 0 18px;
+    gap: 12px;
+    margin: 14px 0 21px;
 }
 
 .ax-quick-card {
+    position: relative;
+    overflow: hidden;
     min-width: 0;
-    padding: 13px;
-    color: #93a6c7;
-    font-size: 8px;
-    line-height: 1.45;
+    min-height: 116px;
+    padding: 17px;
+    color: #99a8c5;
+    font-size: 9px;
+    line-height: 1.5;
     background:
-        radial-gradient(circle at 100% 0%, rgba(123,92,255,.10), transparent 38%),
-        rgba(8,14,31,.94);
-    border: 1px solid rgba(78,100,170,.30);
-    border-radius: 13px;
+        radial-gradient(circle at 100% 0%, rgba(var(--card-rgb),.14), transparent 42%),
+        linear-gradient(145deg, rgba(8,16,37,.98), rgba(5,9,24,.98));
+    border: 1px solid rgba(var(--card-rgb),.32);
+    border-radius: 16px;
+    box-shadow: 0 16px 38px rgba(0,0,0,.22);
+    transition: transform .24s ease, border-color .24s ease, box-shadow .24s ease;
+}
+
+.ax-quick-card::after {
+    content: "";
+    position: absolute;
+    left: 17px;
+    right: 17px;
+    bottom: 13px;
+    height: 3px;
+    border-radius: 999px;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(var(--card-rgb),1) 0 22%,
+            rgba(var(--card-rgb),.42) 22% 49%,
+            rgba(var(--card-rgb),.14) 49% 100%
+        );
+    box-shadow: 0 0 13px rgba(var(--card-rgb),.26);
+}
+
+.ax-quick-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(var(--card-rgb),.78);
+    box-shadow:
+        0 22px 48px rgba(0,0,0,.30),
+        0 0 26px rgba(var(--card-rgb),.10);
 }
 
 .ax-quick-card strong {
     display: block;
-    margin-bottom: 5px;
-    color: #eef4ff;
-    font-size: 9px;
+    margin-bottom: 7px;
+    color: rgb(var(--card-rgb));
+    font-size: 11px;
+    font-weight: 950;
 }
+
+/* =====================================================
+   MENSAJES DEL CHAT
+   ===================================================== */
 
 [data-testid="stChatMessage"] {
     position: relative;
-    padding: 16px 18px !important;
-    margin-bottom: 12px !important;
-    border-radius: 18px !important;
-    box-shadow: 0 16px 38px rgba(0,0,0,.24) !important;
+    padding: 18px 20px !important;
+    margin-bottom: 14px !important;
+    border-radius: 20px !important;
+    box-shadow: 0 18px 42px rgba(0,0,0,.28) !important;
+    backdrop-filter: blur(15px);
 }
 
 [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-    margin-left: 7% !important;
+    margin-left: 8% !important;
     background:
-        radial-gradient(circle at 100% 0%, rgba(39,216,255,.10), transparent 34%),
-        linear-gradient(145deg, rgba(6,27,58,.98), rgba(5,12,31,.98)) !important;
-    border: 1px solid rgba(39,216,255,.48) !important;
+        radial-gradient(circle at 100% 0%, rgba(39,216,255,.12), transparent 34%),
+        linear-gradient(145deg, rgba(7,29,63,.98), rgba(5,13,33,.98)) !important;
+    border: 1px solid rgba(39,216,255,.55) !important;
 }
 
 [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
-    margin-right: 4% !important;
+    margin-right: 5% !important;
     background:
-        radial-gradient(circle at 100% 0%, rgba(123,92,255,.16), transparent 36%),
-        linear-gradient(145deg, rgba(20,10,47,.98), rgba(7,9,28,.98)) !important;
-    border: 1px solid rgba(170,72,255,.48) !important;
+        radial-gradient(circle at 100% 0%, rgba(143,76,255,.18), transparent 38%),
+        linear-gradient(145deg, rgba(23,10,54,.98), rgba(7,9,30,.98)) !important;
+    border: 1px solid rgba(169,77,255,.56) !important;
 }
 
 [data-testid="stChatMessageAvatarUser"],
 [data-testid="stChatMessageAvatarAssistant"] {
-    width: 46px !important;
-    height: 46px !important;
-    min-width: 46px !important;
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
     border-radius: 50% !important;
     overflow: hidden !important;
-    background: #050816 !important;
+    background: #040817 !important;
 }
 
 [data-testid="stChatMessageAvatarUser"] {
     border: 2px solid #27d8ff !important;
-    box-shadow: 0 0 20px rgba(39,216,255,.46) !important;
+    box-shadow: 0 0 22px rgba(39,216,255,.52) !important;
 }
 
 [data-testid="stChatMessageAvatarAssistant"] {
-    border: 2px solid #9b59ff !important;
-    box-shadow: 0 0 22px rgba(155,89,255,.52) !important;
+    border: 2px solid #9c59ff !important;
+    box-shadow: 0 0 25px rgba(156,89,255,.58) !important;
 }
 
 [data-testid="stChatMessageAvatarUser"] img,
@@ -340,29 +455,66 @@ CHAT_CSS = """
     border-radius: 50% !important;
 }
 
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] {
+    color: #eef4ff;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+[data-testid="stChatMessage"] [data-testid="stCaptionContainer"] {
+    color: #7f93b7 !important;
+    font-size: 9px !important;
+    font-weight: 850 !important;
+    letter-spacing: .7px;
+}
+
+/* =====================================================
+   INPUT DEL CHAT
+   ===================================================== */
+
 [data-testid="stChatInput"] {
-    background: linear-gradient(145deg, rgba(8,16,35,.98), rgba(5,9,22,.98)) !important;
-    border: 1px solid rgba(39,216,255,.40) !important;
-    border-radius: 17px !important;
-    box-shadow: 0 18px 48px rgba(0,0,0,.34) !important;
+    background:
+        radial-gradient(circle at 5% 50%, rgba(39,216,255,.08), transparent 17%),
+        linear-gradient(145deg, rgba(8,17,38,.99), rgba(5,9,24,.99)) !important;
+    border: 1px solid rgba(81,89,255,.55) !important;
+    border-radius: 20px !important;
+    box-shadow:
+        0 20px 55px rgba(0,0,0,.42),
+        0 0 30px rgba(123,92,255,.12) !important;
+}
+
+[data-testid="stChatInput"]:focus-within {
+    border-color: rgba(39,216,255,.76) !important;
+    box-shadow:
+        0 20px 55px rgba(0,0,0,.42),
+        0 0 32px rgba(39,216,255,.18) !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    min-height: 56px !important;
+    color: #eef4ff !important;
+    font-size: 14px !important;
 }
 
 [data-testid="stChatInput"] button {
-    width: 42px !important;
-    height: 42px !important;
-    background: linear-gradient(135deg,#27d8ff,#3d73ff,#9b3dff) !important;
-    border-radius: 12px !important;
+    width: 46px !important;
+    height: 46px !important;
+    background: linear-gradient(135deg,#26d8ff,#4e72ff,#a33dff,#ff46c8) !important;
+    border-radius: 14px !important;
+    box-shadow:
+        0 0 24px rgba(107,80,255,.45),
+        inset 0 1px 0 rgba(255,255,255,.24) !important;
 }
 
 .ax-chat-divider {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 18px 0 14px;
-    color: #7485a6;
+    gap: 14px;
+    margin: 20px 0 16px;
+    color: #7789ad;
     font-size: 7px;
-    font-weight: 900;
-    letter-spacing: 1px;
+    font-weight: 950;
+    letter-spacing: 1.5px;
 }
 
 .ax-chat-divider::before,
@@ -370,22 +522,50 @@ CHAT_CSS = """
     content: "";
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg,transparent,rgba(39,216,255,.42),transparent);
+    background: linear-gradient(90deg,transparent,rgba(81,110,255,.48),rgba(198,55,255,.35),transparent);
 }
 
-@media (max-width: 900px) {
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 1000px) {
+    .ax-tool-hero > * {
+        max-width: 72%;
+    }
+
+    .ax-tool-hero::after {
+        right: 3%;
+        width: 175px;
+        height: 175px;
+    }
+
     .ax-quick-grid {
         grid-template-columns: repeat(2,minmax(0,1fr));
     }
+}
+
+@media (max-width: 700px) {
+    .ax-tool-hero {
+        min-height: auto;
+        padding: 24px;
+    }
+
+    .ax-tool-hero > * {
+        max-width: 100%;
+    }
+
+    .ax-tool-hero::after {
+        display: none;
+    }
+
+    .ax-quick-grid {
+        grid-template-columns: 1fr;
+    }
+
     [data-testid="stChatMessage"] {
         margin-left: 0 !important;
         margin-right: 0 !important;
-    }
-}
-
-@media (max-width: 600px) {
-    .ax-quick-grid {
-        grid-template-columns: 1fr;
     }
 }
 </style>
@@ -654,35 +834,38 @@ def render_chat(
         """
         <section class="ax-chat-shell">
             <div class="ax-chat-status">
-                <strong>AXION Coach</strong>
+                <strong>AXION Coach · Neural Trading Intelligence</strong>
                 <span>IA ACTIVA</span>
             </div>
             <div class="ax-chat-hint">
-                Analiza disciplina, riesgo, emociones y rendimiento usando
-                exclusivamente tus operaciones guardadas.
+                Analiza disciplina, riesgo, emociones y rendimiento utilizando
+                exclusivamente los datos reales de tu journal.
             </div>
         </section>
 
         <div class="ax-quick-grid">
-            <div class="ax-quick-card">
-                <strong>◎ Disciplina</strong>
-                Detecta si estás respetando tus reglas.
+            <div class="ax-quick-card" style="--card-rgb:39,216,255">
+                <strong>◎ DISCIPLINA</strong>
+                Detecta si estás respetando tus reglas y tu plan operativo.
             </div>
-            <div class="ax-quick-card">
-                <strong>◇ Riesgo</strong>
-                Revisa pérdidas, drawdown y consistencia.
+
+            <div class="ax-quick-card" style="--card-rgb:171,74,255">
+                <strong>◇ RIESGO</strong>
+                Revisa pérdidas, exposición, drawdown y consistencia.
             </div>
-            <div class="ax-quick-card">
-                <strong>◉ Psicología</strong>
-                Relaciona emociones con tus resultados.
+
+            <div class="ax-quick-card" style="--card-rgb:255,74,204">
+                <strong>◉ PSICOLOGÍA</strong>
+                Relaciona emociones, decisiones y resultados.
             </div>
-            <div class="ax-quick-card">
-                <strong>↗ Rendimiento</strong>
-                Identifica fortalezas y debilidades reales.
+
+            <div class="ax-quick-card" style="--card-rgb:49,255,156">
+                <strong>↗ RENDIMIENTO</strong>
+                Identifica fortalezas, patrones y debilidades reales.
             </div>
         </div>
 
-        <div class="ax-chat-divider">HOY</div>
+        <div class="ax-chat-divider">CENTRO DE CONVERSACIÓN</div>
         """
     )
 
