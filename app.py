@@ -24,6 +24,7 @@ from ui_v2.login import render_v2_auth
 from ui_v2.market_tools import render_news, render_sessions
 from ui_v2.profile import render_v2_profile
 from ui_v2.sidebar import render_v2_sidebar
+from ui_v2.subscription import render_subscription
 
 
 # =========================================================
@@ -40,9 +41,15 @@ st.set_page_config(
 )
 
 
+# =========================================================
+# HELPERS
+# =========================================================
+
+
 def _as_dict(value: Any) -> dict[str, Any]:
     """
-    Convierte de forma segura objetos de usuario/metadata en diccionario.
+    Convierte de forma segura objetos de usuario o metadata
+    en un diccionario estándar.
     """
 
     if isinstance(value, dict):
@@ -50,13 +57,16 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
     try:
         dumped = value.model_dump()
+
         if isinstance(dumped, dict):
             return dumped
+
     except Exception:
         pass
 
     try:
         return dict(value)
+
     except Exception:
         return {}
 
@@ -79,15 +89,35 @@ def _first_value(
     return default
 
 
+def _safe_float(
+    value: Any,
+    default: float,
+) -> float:
+    """
+    Convierte un valor a float sin romper la aplicación.
+    """
+
+    try:
+        return float(value)
+
+    except (TypeError, ValueError):
+        return default
+
+
 def _sync_profile_state() -> tuple[str, float, float]:
     """
-    Sincroniza nombre, capital y fotografía del perfil con session_state.
+    Sincroniza nombre, capital, meta y fotografía del perfil
+    con st.session_state.
 
-    Esto permite que ui/tools.py use la misma foto del trader
-    dentro del Chat IA.
+    Esto permite que todas las pantallas usen los mismos datos
+    del trader, incluyendo Chat IA y sidebar.
     """
 
-    raw_user = st.session_state.get("user", {})
+    raw_user = st.session_state.get(
+        "user",
+        {},
+    )
+
     user = _as_dict(raw_user)
 
     raw_metadata = (
@@ -107,25 +137,40 @@ def _sync_profile_state() -> tuple[str, float, float]:
             "display_name",
             "nombre_trader",
         ),
-        st.session_state.get("nombre_trader", "Trader Pro"),
+        st.session_state.get(
+            "nombre_trader",
+            "Trader Pro",
+        ),
     )
 
-    capital_actual = float(
+    capital_actual = _safe_float(
         _first_value(
             metadata,
-            ("capital_actual", "current_capital"),
-            st.session_state.get("capital_actual", 10000.0),
-        )
-        or 10000.0
+            (
+                "capital_actual",
+                "current_capital",
+            ),
+            st.session_state.get(
+                "capital_actual",
+                10000.0,
+            ),
+        ),
+        10000.0,
     )
 
-    capital_meta = float(
+    capital_meta = _safe_float(
         _first_value(
             metadata,
-            ("capital_meta", "target_capital"),
-            st.session_state.get("capital_meta", 15000.0),
-        )
-        or 15000.0
+            (
+                "capital_meta",
+                "target_capital",
+            ),
+            st.session_state.get(
+                "capital_meta",
+                15000.0,
+            ),
+        ),
+        15000.0,
     )
 
     avatar_value = _first_value(
@@ -153,14 +198,23 @@ def _sync_profile_state() -> tuple[str, float, float]:
                 "photo_url",
                 "picture",
             ),
-            st.session_state.get("profile_image"),
+            st.session_state.get(
+                "profile_image",
+            ),
         )
 
-    st.session_state.nombre_trader = str(trader_name)
-    st.session_state.capital_actual = capital_actual
-    st.session_state.capital_meta = capital_meta
+    st.session_state.nombre_trader = str(
+        trader_name,
+    )
 
-    # Guardamos la misma foto con varias claves compatibles.
+    st.session_state.capital_actual = (
+        capital_actual
+    )
+
+    st.session_state.capital_meta = (
+        capital_meta
+    )
+
     if avatar_value not in (None, ""):
         st.session_state.profile_image = avatar_value
         st.session_state.profile_photo = avatar_value
@@ -168,40 +222,88 @@ def _sync_profile_state() -> tuple[str, float, float]:
         st.session_state.user_avatar = avatar_value
         st.session_state.user_photo = avatar_value
 
-    return str(trader_name), capital_actual, capital_meta
+    return (
+        str(trader_name),
+        capital_actual,
+        capital_meta,
+    )
+
+
+def _load_trades() -> list[dict[str, Any]]:
+    """
+    Carga los trades desde Supabase sin detener toda la app
+    si ocurre un error.
+    """
+
+    try:
+        trades = list_trades()
+
+        if isinstance(trades, list):
+            return trades
+
+        return []
+
+    except Exception as exc:
+        st.error(
+            "No se pudieron cargar los trades desde Supabase."
+        )
+
+        with st.expander(
+            "Ver detalle técnico",
+            expanded=False,
+        ):
+            st.code(str(exc))
+
+        return []
+
+
+# =========================================================
+# INICIALIZACIÓN
+# =========================================================
 
 
 validate_config()
 init_state()
 
-if not st.session_state.get("authenticated", False):
+
+# =========================================================
+# AUTENTICACIÓN
+# =========================================================
+
+
+if not st.session_state.get(
+    "authenticated",
+    False,
+):
     render_v2_auth()
     st.stop()
 
 
-# Sincronizar antes de renderizar sidebar y páginas.
-trader_name, capital_actual, capital_meta = _sync_profile_state()
+# =========================================================
+# PERFIL Y SIDEBAR
+# =========================================================
+
+
+trader_name, capital_actual, capital_meta = (
+    _sync_profile_state()
+)
 
 render_v2_sidebar()
 
-try:
-    trades = list_trades()
 
-except Exception as exc:
-    trades = []
-
-    st.error(
-        "No se pudieron cargar los trades desde Supabase."
-    )
-
-    with st.expander(
-        "Ver detalle técnico",
-        expanded=False,
-    ):
-        st.code(str(exc))
+# =========================================================
+# DATOS DEL JOURNAL
+# =========================================================
 
 
+trades = _load_trades()
 df = prepare_df(trades)
+
+
+# =========================================================
+# NAVEGACIÓN
+# =========================================================
+
 
 page = st.session_state.get(
     "page",
@@ -245,6 +347,9 @@ elif page == "Sesiones":
 
 elif page == "Noticias":
     render_news()
+
+elif page == "AXION PRIME PRO":
+    render_subscription()
 
 else:
     st.session_state.page = "Dashboard"
