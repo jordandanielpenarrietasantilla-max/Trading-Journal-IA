@@ -198,6 +198,276 @@ CHAT_CSS = """
 """
 
 
+EXTRA_CHAT_X10_CSS = r"""
+<style>
+/* =====================================================
+   AXION CHAT X10 PRO · CAPA ESTÉTICA ADICIONAL
+   ===================================================== */
+
+.ax-market-ticker {
+    display:grid;
+    grid-template-columns:1.1fr repeat(4,1fr) auto;
+    gap:10px;
+    align-items:center;
+    padding:10px 14px;
+    margin-bottom:12px;
+    overflow:hidden;
+    border:1px solid rgba(54,111,255,.30);
+    border-radius:13px;
+    background:
+        linear-gradient(90deg,rgba(6,13,31,.98),rgba(4,8,22,.98));
+    box-shadow:0 14px 36px rgba(0,0,0,.20);
+}
+
+.ax-ticker-live {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:#31ff9c;
+    font-size:7px;
+    font-weight:950;
+    letter-spacing:.7px;
+}
+
+.ax-ticker-live::before {
+    content:"";
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#31ff9c;
+    box-shadow:0 0 13px #31ff9c;
+}
+
+.ax-ticker-item {
+    min-width:0;
+    padding-left:10px;
+    border-left:1px solid rgba(84,105,166,.20);
+    color:#8fa2c3;
+    font-size:7px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.ax-ticker-item strong {
+    margin-right:5px;
+    color:#edf3ff;
+    font-size:8px;
+}
+
+.ax-ticker-positive {
+    color:#31ff9c;
+    font-weight:900;
+}
+
+.ax-ticker-time {
+    color:#8ea1c1;
+    font-size:7px;
+    text-align:right;
+}
+
+.ax-chat-main-grid {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 270px;
+    gap:14px;
+    align-items:start;
+}
+
+.ax-chat-main-column {
+    min-width:0;
+}
+
+.ax-chat-side-column {
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.ax-side-panel {
+    overflow:hidden;
+    border:1px solid rgba(80,95,255,.35);
+    border-radius:16px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(106,72,255,.11),transparent 34%),
+        linear-gradient(145deg,rgba(7,15,35,.99),rgba(5,9,24,.99));
+    box-shadow:0 16px 42px rgba(0,0,0,.23);
+}
+
+.ax-side-head {
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+    padding:13px 14px;
+    color:#eef4ff;
+    font-size:9px;
+    font-weight:950;
+    border-bottom:1px solid rgba(74,96,161,.20);
+}
+
+.ax-online-pill {
+    padding:4px 7px;
+    color:#31ff9c;
+    font-size:6px;
+    border-radius:999px;
+    background:rgba(49,255,156,.08);
+    border:1px solid rgba(49,255,156,.23);
+}
+
+.ax-side-body {
+    padding:13px 14px 15px;
+}
+
+.ax-diagnostic {
+    margin-bottom:12px;
+}
+
+.ax-diagnostic:last-child {
+    margin-bottom:0;
+}
+
+.ax-diagnostic-top {
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    color:#8fa1c1;
+    font-size:7px;
+}
+
+.ax-diagnostic-top strong {
+    color:#eef4ff;
+    font-size:8px;
+}
+
+.ax-diagnostic-track {
+    height:5px;
+    margin-top:7px;
+    overflow:hidden;
+    border-radius:999px;
+    background:rgba(255,255,255,.05);
+}
+
+.ax-diagnostic-fill {
+    width:var(--diag);
+    height:100%;
+    border-radius:999px;
+    background:linear-gradient(90deg,#2bdcff,#6a5bff,#d34dff);
+    box-shadow:0 0 12px rgba(43,220,255,.30);
+}
+
+.ax-confidence {
+    display:grid;
+    place-items:center;
+    min-height:110px;
+    margin-top:12px;
+    text-align:center;
+    border:1px solid rgba(43,220,255,.24);
+    border-radius:13px;
+    background:
+        radial-gradient(circle,rgba(43,220,255,.12),transparent 62%);
+}
+
+.ax-confidence small {
+    display:block;
+    color:#7d8eaf;
+    font-size:7px;
+}
+
+.ax-confidence strong {
+    display:block;
+    margin-top:4px;
+    color:#31ff9c;
+    font-size:28px;
+    text-shadow:0 0 22px rgba(49,255,156,.32);
+}
+
+.ax-side-stat {
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 0;
+    color:#8495b5;
+    font-size:7px;
+    border-bottom:1px solid rgba(72,96,158,.15);
+}
+
+.ax-side-stat:last-child {
+    border-bottom:none;
+}
+
+.ax-side-stat strong {
+    color:#eef4ff;
+    font-size:9px;
+}
+
+.ax-activity-item {
+    display:grid;
+    grid-template-columns:30px 1fr auto;
+    gap:9px;
+    align-items:center;
+    padding:9px 0;
+    border-bottom:1px solid rgba(72,96,158,.15);
+}
+
+.ax-activity-item:last-child {
+    border-bottom:none;
+}
+
+.ax-activity-icon {
+    display:grid;
+    place-items:center;
+    width:29px;
+    height:29px;
+    border-radius:9px;
+    color:rgb(var(--rgb));
+    background:rgba(var(--rgb),.09);
+    border:1px solid rgba(var(--rgb),.24);
+}
+
+.ax-activity-copy strong {
+    display:block;
+    color:#dce5f7;
+    font-size:7px;
+}
+
+.ax-activity-copy span,
+.ax-activity-time {
+    color:#7182a3;
+    font-size:6px;
+}
+
+.ax-chat-footer-brand {
+    padding:13px 0 3px;
+    color:#52678f;
+    font-size:7px;
+    font-weight:900;
+    letter-spacing:2px;
+    text-align:center;
+}
+
+@media(max-width:1280px) {
+    .ax-chat-main-grid {
+        grid-template-columns:1fr;
+    }
+
+    .ax-chat-side-column {
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+}
+
+@media(max-width:780px) {
+    .ax-market-ticker {
+        grid-template-columns:1fr 1fr;
+    }
+
+    .ax-chat-side-column {
+        grid-template-columns:1fr;
+    }
+}
+</style>
+"""
+
 # =========================================================
 # CHAT IA
 # =========================================================
@@ -443,6 +713,7 @@ def render_chat(
     """
 
     st.markdown(CHAT_CSS, unsafe_allow_html=True)
+    st.markdown(EXTRA_CHAT_X10_CSS, unsafe_allow_html=True)
 
     summary = calculate_summary(
         df,
@@ -464,75 +735,161 @@ def render_chat(
     st.html(
         f"""
         <div class="ax-chat-stage">
-          <section class="ax-chat-hero">
-            <div class="ax-chat-hero-copy">
-              <div class="ax-chat-kicker">AXION PRIME · AI COACH</div>
-              <div class="ax-chat-title">Chat IA</div>
-              <div class="ax-chat-slogan">Inteligencia que analiza. Disciplina que ejecuta.</div>
-              <div class="ax-chat-description">
-                Consulta patrones de rendimiento, disciplina, riesgo y psicología
-                utilizando los datos reales de tu journal.
-              </div>
-              <div class="ax-neural-badge">⚡ NEURAL ENGINE 4.0 · MÁXIMA PRECISIÓN EN ANÁLISIS</div>
-            </div>
-            <img class="ax-chat-brain" src="{CHAT_BRAIN_IMAGE}" alt="AXION Neural Engine"/>
-            <div class="ax-brain-scan"></div>
-          </section>
 
-          <section class="ax-coach-panel">
-            <div class="ax-coach-avatar-wrap">
-              <img class="ax-coach-avatar" src="data:image/png;base64,{AI_AVATAR_BASE64}" alt="AXION Coach"/>
-            </div>
-            <div>
-              <div class="ax-coach-name-row">
-                <div class="ax-coach-name">AXION COACH</div>
-                <div class="ax-pro-badge">PRO</div>
-              </div>
-              <div class="ax-coach-subtitle">◉ NEURAL TRADING INTELLIGENCE · ONLINE</div>
-              <div class="ax-coach-stats">
-                <div class="ax-coach-stat"><small>MODELO IA</small><strong>{html.escape(str(OPENROUTER_MODEL))}</strong></div>
-                <div class="ax-coach-stat"><small>OPERACIONES ANALIZADAS</small><strong>{total_trades}</strong></div>
-                <div class="ax-coach-stat"><small>WIN RATE</small><strong>{win_rate:.1f}%</strong></div>
-                <div class="ax-coach-stat"><small>PROFIT FACTOR</small><strong>{profit_factor:.2f}</strong></div>
-              </div>
-            </div>
-            <div class="ax-live-orb"><div><small>SISTEMA</small><strong>LIVE</strong><small>NEURAL CORE</small></div></div>
-          </section>
-
-          <div class="ax-quick-grid">
-            <div class="ax-quick-card" style="--rgb:39,216,255;--pct:{discipline_score}%">
-              <div class="ax-quick-icon">◇</div><strong>DISCIPLINA</strong>
-              Detecta si estás respetando tus reglas y tu plan operativo.
-              <div class="ax-quick-score">{discipline_score}%</div>
-              <div class="ax-progress-track"><div class="ax-progress-fill"></div></div>
-            </div>
-            <div class="ax-quick-card" style="--rgb:255,74,204;--pct:{risk_score}%">
-              <div class="ax-quick-icon">◎</div><strong>RIESGO</strong>
-              Revisa pérdidas, exposición, drawdown y consistencia.
-              <div class="ax-quick-score">{risk_score}%</div>
-              <div class="ax-progress-track"><div class="ax-progress-fill"></div></div>
-            </div>
-            <div class="ax-quick-card" style="--rgb:109,82,255;--pct:{psychology_score}%">
-              <div class="ax-quick-icon">◉</div><strong>PSICOLOGÍA</strong>
-              Relaciona emociones, decisiones y resultados.
-              <div class="ax-quick-score">{psychology_score}%</div>
-              <div class="ax-progress-track"><div class="ax-progress-fill"></div></div>
-            </div>
-            <div class="ax-quick-card" style="--rgb:49,255,156;--pct:{performance_score}%">
-              <div class="ax-quick-icon">↗</div><strong>RENDIMIENTO</strong>
-              Identifica fortalezas, patrones y debilidades reales.
-              <div class="ax-quick-score">{performance_score}%</div>
-              <div class="ax-progress-track"><div class="ax-progress-fill"></div></div>
-            </div>
+          <div class="ax-market-ticker">
+            <div class="ax-ticker-live">MERCADOS EN VIVO</div>
+            <div class="ax-ticker-item"><strong>XAUUSD</strong> {pnl_value:,.2f} <span class="ax-ticker-positive">▲ ACTIVO</span></div>
+            <div class="ax-ticker-item"><strong>WIN RATE</strong> {win_rate:.1f}%</div>
+            <div class="ax-ticker-item"><strong>PROFIT FACTOR</strong> {profit_factor:.2f}</div>
+            <div class="ax-ticker-item"><strong>TRADES</strong> {total_trades}</div>
+            <div class="ax-ticker-time">AXION CORE · ONLINE</div>
           </div>
 
-          <section class="ax-today-panel">
-            <div class="ax-today-item"><small>OPERACIONES</small><strong>{total_trades}</strong></div>
-            <div class="ax-today-item"><small>GANADAS / PERDIDAS</small><strong>{wins} / {losses}</strong></div>
-            <div class="ax-today-item"><small>WIN RATE</small><strong style="--value-color:#2bdcff">{win_rate:.1f}%</strong></div>
-            <div class="ax-today-item"><small>P&amp;L ACUMULADO</small><strong style="--value-color:{'#31ff9c' if pnl_value >= 0 else '#ff5378'}">${pnl_value:,.2f}</strong></div>
-            <div class="ax-today-item"><small>AXION SCORE</small><strong style="--value-color:#31ff9c">{performance_score}</strong></div>
-          </section>
+          <div class="ax-chat-main-grid">
+            <div class="ax-chat-main-column">
+
+              <section class="ax-chat-hero">
+                <div class="ax-chat-hero-copy">
+                  <div class="ax-chat-kicker">AXION PRIME · AI COACH</div>
+                  <div class="ax-chat-title">Chat IA X10</div>
+                  <div class="ax-chat-slogan">Inteligencia que analiza. Disciplina que ejecuta.</div>
+                  <div class="ax-chat-description">
+                    Consulta patrones de rendimiento, disciplina, riesgo y psicología
+                    utilizando los datos reales de tu journal.
+                  </div>
+                  <div class="ax-neural-badge">⚡ NEURAL ENGINE 4.0 · MÁXIMA PRECISIÓN EN ANÁLISIS</div>
+                </div>
+                <img class="ax-chat-brain" src="{CHAT_BRAIN_IMAGE}" alt="AXION Neural Engine"/>
+                <div class="ax-brain-scan"></div>
+              </section>
+
+              <section class="ax-coach-panel">
+                <div class="ax-coach-avatar-wrap">
+                  <img class="ax-coach-avatar" src="data:image/png;base64,{AI_AVATAR_BASE64}" alt="AXION Coach"/>
+                </div>
+                <div>
+                  <div class="ax-coach-name-row">
+                    <div class="ax-coach-name">AXION COACH</div>
+                    <div class="ax-pro-badge">PRO</div>
+                  </div>
+                  <div class="ax-coach-subtitle">◉ NEURAL TRADING INTELLIGENCE · ONLINE</div>
+                  <div class="ax-coach-stats">
+                    <div class="ax-coach-stat"><small>MODELO IA</small><strong>{html.escape(str(OPENROUTER_MODEL))}</strong></div>
+                    <div class="ax-coach-stat"><small>OPERACIONES ANALIZADAS</small><strong>{total_trades}</strong></div>
+                    <div class="ax-coach-stat"><small>WIN RATE</small><strong>{win_rate:.1f}%</strong></div>
+                    <div class="ax-coach-stat"><small>PROFIT FACTOR</small><strong>{profit_factor:.2f}</strong></div>
+                  </div>
+                </div>
+                <div class="ax-live-orb">
+                  <div><small>SISTEMA</small><strong>LIVE</strong><small>NEURAL CORE</small></div>
+                </div>
+              </section>
+
+              <div class="ax-quick-grid">
+                <div class="ax-quick-card" style="--rgb:39,216,255;--pct:{discipline_score}%">
+                  <div class="ax-quick-icon">◇</div><strong>DISCIPLINA</strong>
+                  Detecta si estás respetando tus reglas y tu plan operativo.
+                  <div class="ax-quick-score">{discipline_score}%</div>
+                  <div class="ax-progress-track"><div class="ax-progress-fill"></div></div>
+                </div>
+                <div class="ax-quick-card" style="--rgb:255,74,204;--pct:{risk_score}%">
+                  <div class="ax-quick-icon">◎</div><strong>RIESGO</strong>
+                  Revisa pérdidas, exposición, drawdown y consistencia.
+                  <div class="ax-quick-score">{risk_score}%</div>
+                  <div class="ax-progress-track"><div class="ax-progress-fill"></div></div>
+                </div>
+                <div class="ax-quick-card" style="--rgb:109,82,255;--pct:{psychology_score}%">
+                  <div class="ax-quick-icon">◉</div><strong>PSICOLOGÍA</strong>
+                  Relaciona emociones, decisiones y resultados.
+                  <div class="ax-quick-score">{psychology_score}%</div>
+                  <div class="ax-progress-track"><div class="ax-progress-fill"></div></div>
+                </div>
+                <div class="ax-quick-card" style="--rgb:49,255,156;--pct:{performance_score}%">
+                  <div class="ax-quick-icon">↗</div><strong>RENDIMIENTO</strong>
+                  Identifica fortalezas, patrones y debilidades reales.
+                  <div class="ax-quick-score">{performance_score}%</div>
+                  <div class="ax-progress-track"><div class="ax-progress-fill"></div></div>
+                </div>
+              </div>
+
+              <section class="ax-today-panel">
+                <div class="ax-today-item"><small>OPERACIONES</small><strong>{total_trades}</strong></div>
+                <div class="ax-today-item"><small>GANADAS / PERDIDAS</small><strong>{wins} / {losses}</strong></div>
+                <div class="ax-today-item"><small>WIN RATE</small><strong style="--value-color:#2bdcff">{win_rate:.1f}%</strong></div>
+                <div class="ax-today-item"><small>P&amp;L ACUMULADO</small><strong style="--value-color:{'#31ff9c' if pnl_value >= 0 else '#ff5378'}">${pnl_value:,.2f}</strong></div>
+                <div class="ax-today-item"><small>AXION SCORE</small><strong style="--value-color:#31ff9c">{performance_score}</strong></div>
+              </section>
+
+            </div>
+
+            <aside class="ax-chat-side-column">
+
+              <section class="ax-side-panel">
+                <div class="ax-side-head">
+                  <span>NEURAL ENGINE 4.0</span>
+                  <span class="ax-online-pill">ONLINE</span>
+                </div>
+                <div class="ax-side-body">
+                  <div class="ax-diagnostic" style="--diag:100%">
+                    <div class="ax-diagnostic-top"><span>PROCESAMIENTO</span><strong>100%</strong></div>
+                    <div class="ax-diagnostic-track"><div class="ax-diagnostic-fill"></div></div>
+                  </div>
+                  <div class="ax-diagnostic" style="--diag:{discipline_score}%">
+                    <div class="ax-diagnostic-top"><span>PATRONES DETECTADOS</span><strong>{discipline_score}%</strong></div>
+                    <div class="ax-diagnostic-track"><div class="ax-diagnostic-fill"></div></div>
+                  </div>
+                  <div class="ax-diagnostic" style="--diag:{psychology_score}%">
+                    <div class="ax-diagnostic-top"><span>ANÁLISIS EMOCIONAL</span><strong>{psychology_score}%</strong></div>
+                    <div class="ax-diagnostic-track"><div class="ax-diagnostic-fill"></div></div>
+                  </div>
+                  <div class="ax-diagnostic" style="--diag:{performance_score}%">
+                    <div class="ax-diagnostic-top"><span>CORRELACIÓN DE DATOS</span><strong>{performance_score}%</strong></div>
+                    <div class="ax-diagnostic-track"><div class="ax-diagnostic-fill"></div></div>
+                  </div>
+                  <div class="ax-confidence">
+                    <div><small>CONFIANZA IA</small><strong>{performance_score:.1f}%</strong></div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="ax-side-panel">
+                <div class="ax-side-head"><span>RESUMEN DE HOY</span><span>LIVE</span></div>
+                <div class="ax-side-body">
+                  <div class="ax-side-stat"><span>OPERACIONES</span><strong>{total_trades}</strong></div>
+                  <div class="ax-side-stat"><span>GANADORAS</span><strong style="color:#31ff9c">{wins}</strong></div>
+                  <div class="ax-side-stat"><span>PERDEDORAS</span><strong style="color:#ff5378">{losses}</strong></div>
+                  <div class="ax-side-stat"><span>P&amp;L</span><strong style="color:{'#31ff9c' if pnl_value >= 0 else '#ff5378'}">${pnl_value:,.2f}</strong></div>
+                  <div class="ax-side-stat"><span>AXION SCORE</span><strong style="color:#31ff9c">{performance_score}</strong></div>
+                </div>
+              </section>
+
+              <section class="ax-side-panel">
+                <div class="ax-side-head"><span>ACTIVIDAD RECIENTE</span><span>CORE</span></div>
+                <div class="ax-side-body">
+                  <div class="ax-activity-item" style="--rgb:49,255,156">
+                    <div class="ax-activity-icon">↗</div>
+                    <div class="ax-activity-copy"><strong>Análisis completado</strong><span>Journal sincronizado</span></div>
+                    <div class="ax-activity-time">Ahora</div>
+                  </div>
+                  <div class="ax-activity-item" style="--rgb:171,74,255">
+                    <div class="ax-activity-icon">◉</div>
+                    <div class="ax-activity-copy"><strong>Patrones actualizados</strong><span>Motor psicológico</span></div>
+                    <div class="ax-activity-time">LIVE</div>
+                  </div>
+                  <div class="ax-activity-item" style="--rgb:39,216,255">
+                    <div class="ax-activity-icon">◇</div>
+                    <div class="ax-activity-copy"><strong>Riesgo calculado</strong><span>Datos del trader</span></div>
+                    <div class="ax-activity-time">OK</div>
+                  </div>
+                </div>
+              </section>
+
+            </aside>
+          </div>
+
+          <div class="ax-chat-footer-brand">
+            AXION COACH · INTELIGENCIA QUE POTENCIA TU TRADING
+          </div>
         </div>
         """
     )
