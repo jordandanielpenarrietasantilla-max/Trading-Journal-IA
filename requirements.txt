@@ -6,3 +6,4 @@ plotly>=5.24,<7
 Pillow>=10,<13
 requests>=2.31,<3
 tzdata>=2025.2
+qrcode[pil]>=7.4,<9
