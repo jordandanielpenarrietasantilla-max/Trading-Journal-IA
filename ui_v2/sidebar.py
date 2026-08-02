@@ -366,7 +366,8 @@ def _user_data() -> tuple[str, str, str]:
 
 def _is_owner(email: str) -> bool:
     """
-    Detecta la cuenta del dueño usando ADMIN_EMAIL en Streamlit Secrets.
+    La única cuenta FOUNDER es la configurada como ADMIN_EMAIL
+    en Streamlit Secrets.
     """
 
     try:
@@ -407,6 +408,12 @@ def render_v2_sidebar() -> None:
     progress = max(0.0, min(100.0, capital / target * 100 if target else 0.0))
     active = str(st.session_state.get("page", "Dashboard"))
     is_owner = _is_owner(email)
+
+    role_label = (
+        "FOUNDER"
+        if is_owner
+        else "TRADER"
+    )
 
     plan_label = (
         "FOUNDER · ACCESO TOTAL"
@@ -453,7 +460,7 @@ def render_v2_sidebar() -> None:
                     {avatar_html}
                     <div style="min-width:0">
                         <div class="ax-name">{_safe(name)}</div>
-                        <div class="ax-role">FOUNDER</div>
+                        <div class="ax-role">{_safe(role_label)}</div>
                         <div class="ax-email">{_safe(email)}</div>
                     </div>
                 </div>
