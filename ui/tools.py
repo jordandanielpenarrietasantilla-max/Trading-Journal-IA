@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import base64
+import html
+from textwrap import dedent
 from typing import Any
 
 import pandas as pd
@@ -61,36 +63,221 @@ def _section_header(
     description: str,
 ) -> None:
     """
-    Encabezado reutilizable para las herramientas.
+    Encabezado reutilizable.
+
+    Usa st.html para evitar que Streamlit interprete el HTML
+    indentado como un bloque de código Markdown.
     """
 
-    st.markdown(
-        f"""
-        <div class="ax-hero">
+    safe_eyebrow = html.escape(str(eyebrow))
+    safe_title = html.escape(str(title))
+    safe_description = html.escape(str(description))
 
-            <div
-                style="
-                    color:#25e5ff;
-                    font-size:9px;
-                    font-weight:950;
-                    letter-spacing:2px;
-                "
-            >
-                {eyebrow}
-            </div>
+    st.html(
+        dedent(
+            f"""
+            <section class="ax-tool-hero">
+                <div class="ax-tool-kicker">
+                    {safe_eyebrow}
+                </div>
 
-            <div class="ax-title">
-                {title}
-            </div>
+                <div class="ax-tool-title">
+                    {safe_title}
+                </div>
 
-            <div class="ax-sub">
-                {description}
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True,
+                <div class="ax-tool-sub">
+                    {safe_description}
+                </div>
+            </section>
+            """
+        )
     )
+
+
+CHAT_CSS = """
+<style>
+.block-container {
+    max-width: 1500px;
+    padding-top: 1rem;
+    padding-bottom: 1.5rem;
+}
+
+.ax-tool-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 24px 27px;
+    margin-bottom: 18px;
+    background:
+        radial-gradient(circle at 90% 5%, rgba(123,92,255,.18), transparent 34%),
+        linear-gradient(145deg, rgba(7,14,32,.99), rgba(4,8,20,.99));
+    border: 1px solid rgba(39,216,255,.25);
+    border-radius: 20px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.34);
+}
+
+.ax-tool-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(60,91,157,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(60,91,157,.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+}
+
+.ax-tool-hero > * {
+    position: relative;
+    z-index: 2;
+}
+
+.ax-tool-kicker {
+    color: #27d8ff;
+    font-size: 8px;
+    font-weight: 950;
+    letter-spacing: 1.9px;
+}
+
+.ax-tool-title {
+    margin-top: 8px;
+    color: #eef4ff;
+    font-size: clamp(31px, 3vw, 46px);
+    line-height: 1;
+    font-weight: 950;
+    letter-spacing: -1.6px;
+}
+
+.ax-tool-sub {
+    max-width: 850px;
+    margin-top: 10px;
+    color: #93a6c7;
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+.ax-chat-shell {
+    padding: 14px;
+    margin-bottom: 12px;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(39,216,255,.08), transparent 38%),
+        linear-gradient(145deg, rgba(8,16,35,.98), rgba(5,9,22,.98));
+    border: 1px solid rgba(61,91,158,.28);
+    border-radius: 16px;
+}
+
+.ax-chat-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ax-chat-status strong {
+    color: #eef4ff;
+    font-size: 12px;
+}
+
+.ax-chat-status span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #31ff9c;
+    font-size: 7px;
+    font-weight: 950;
+}
+
+.ax-chat-status span::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #31ff9c;
+    box-shadow: 0 0 12px #31ff9c;
+}
+
+.ax-chat-hint {
+    margin-top: 8px;
+    color: #93a6c7;
+    font-size: 9px;
+}
+
+[data-testid="stChatMessage"] {
+    padding: 14px 16px !important;
+    margin-bottom: 10px !important;
+    background: linear-gradient(145deg, rgba(8,16,35,.96), rgba(5,9,22,.96)) !important;
+    border: 1px solid rgba(61,91,158,.26) !important;
+    border-radius: 15px !important;
+    box-shadow: 0 12px 28px rgba(0,0,0,.18) !important;
+}
+
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+    border-color: rgba(123,92,255,.34) !important;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(123,92,255,.10), transparent 36%),
+        linear-gradient(145deg, rgba(12,12,37,.98), rgba(6,8,24,.98)) !important;
+}
+
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+    border-color: rgba(39,216,255,.30) !important;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(39,216,255,.08), transparent 36%),
+        linear-gradient(145deg, rgba(7,17,37,.98), rgba(5,9,22,.98)) !important;
+}
+
+[data-testid="stChatInput"] {
+    background: rgba(5,10,24,.97) !important;
+    border: 1px solid rgba(61,91,158,.35) !important;
+    border-radius: 15px !important;
+    box-shadow: 0 14px 40px rgba(0,0,0,.28) !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    color: #eef4ff !important;
+}
+
+[data-testid="stChatInput"] button {
+    background: linear-gradient(135deg,#27d8ff,#3d73ff,#7b5cff) !important;
+    border-radius: 10px !important;
+}
+
+.ax-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: 9px;
+    margin: 12px 0 16px;
+}
+
+.ax-quick-card {
+    min-width: 0;
+    padding: 11px;
+    color: #93a6c7;
+    font-size: 8px;
+    line-height: 1.45;
+    background: rgba(8,14,31,.92);
+    border: 1px solid rgba(61,88,148,.27);
+    border-radius: 11px;
+}
+
+.ax-quick-card strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #eef4ff;
+    font-size: 9px;
+}
+
+@media (max-width: 900px) {
+    .ax-quick-grid {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .ax-quick-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+"""
 
 
 # =========================================================
@@ -336,6 +523,11 @@ def render_chat(
     Chat del trader basado en sus operaciones guardadas.
     """
 
+    st.markdown(
+        CHAT_CSS,
+        unsafe_allow_html=True,
+    )
+
     _section_header(
         "AXION PRIME · AI COACH",
         "Chat IA",
@@ -344,6 +536,41 @@ def render_chat(
             "riesgo y psicología utilizando los datos "
             "reales de tu journal."
         ),
+    )
+
+
+    st.html(
+        """
+        <section class="ax-chat-shell">
+            <div class="ax-chat-status">
+                <strong>AXION Coach</strong>
+                <span>IA ACTIVA</span>
+            </div>
+            <div class="ax-chat-hint">
+                Analiza disciplina, riesgo, emociones y rendimiento usando
+                exclusivamente tus operaciones guardadas.
+            </div>
+        </section>
+
+        <div class="ax-quick-grid">
+            <div class="ax-quick-card">
+                <strong>Disciplina</strong>
+                Detecta si estás respetando tus reglas.
+            </div>
+            <div class="ax-quick-card">
+                <strong>Riesgo</strong>
+                Revisa pérdidas, drawdown y consistencia.
+            </div>
+            <div class="ax-quick-card">
+                <strong>Psicología</strong>
+                Relaciona emociones con tus resultados.
+            </div>
+            <div class="ax-quick-card">
+                <strong>Rendimiento</strong>
+                Identifica fortalezas y debilidades reales.
+            </div>
+        </div>
+        """
     )
 
     if "chat_history" not in st.session_state:
