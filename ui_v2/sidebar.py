@@ -300,23 +300,15 @@ SIDEBAR_CSS = """
     font-size:5.6px;
 }
 
-[data-testid="stSidebar"] .stButton > button[key="ax_pro"] {
-    color:#fff7d6 !important;
+.ax-owner-strip {
     background:
-        radial-gradient(circle at 100% 0%,rgba(255,209,102,.16),transparent 40%),
-        linear-gradient(95deg,rgba(70,42,6,.96),rgba(116,66,12,.95),rgba(87,50,8,.96)) !important;
-    border-color:rgba(255,209,102,.52) !important;
-    box-shadow:
-        0 8px 22px rgba(255,191,56,.13),
-        inset 0 1px 0 rgba(255,255,255,.05) !important;
+        radial-gradient(circle at 100% 0%,rgba(49,255,156,.13),transparent 38%),
+        linear-gradient(145deg,rgba(7,26,25,.96),rgba(7,10,25,.96));
+    border-color:rgba(49,255,156,.30);
 }
 
-[data-testid="stSidebar"] .stButton > button[key="ax_pro"]:hover {
-    transform:translateX(3px);
-    border-color:rgba(255,225,135,.78) !important;
-    box-shadow:
-        0 10px 28px rgba(255,191,56,.20),
-        0 0 20px rgba(255,209,102,.10) !important;
+.ax-owner-strip strong {
+    color:#31ff9c;
 }
 
 </style>
@@ -372,6 +364,24 @@ def _user_data() -> tuple[str, str, str]:
     return str(name), email, avatar
 
 
+def _is_owner(email: str) -> bool:
+    """
+    Detecta la cuenta del dueño usando ADMIN_EMAIL en Streamlit Secrets.
+    """
+
+    try:
+        admin_email = str(
+            st.secrets.get("ADMIN_EMAIL", "")
+        ).strip().lower()
+    except Exception:
+        admin_email = ""
+
+    return bool(
+        admin_email
+        and email.strip().lower() == admin_email
+    )
+
+
 def _go(page: str) -> None:
     st.session_state.page = page
     st.rerun()
@@ -396,6 +406,25 @@ def render_v2_sidebar() -> None:
     target = _float(st.session_state.get("capital_meta", 15000), 15000)
     progress = max(0.0, min(100.0, capital / target * 100 if target else 0.0))
     active = str(st.session_state.get("page", "Dashboard"))
+    is_owner = _is_owner(email)
+
+    plan_label = (
+        "FOUNDER · ACCESO TOTAL"
+        if is_owner
+        else "TRIAL · 7 DÍAS"
+    )
+
+    plan_detail = (
+        "LIFETIME"
+        if is_owner
+        else "AXION PRIME PRO"
+    )
+
+    plan_class = (
+        "ax-plan-strip ax-owner-strip"
+        if is_owner
+        else "ax-plan-strip"
+    )
 
     avatar_html = (
         f'<div class="ax-avatar"><img src="{_safe(avatar)}" alt="Avatar"></div>'
@@ -441,9 +470,9 @@ def render_v2_sidebar() -> None:
                     <div style="width:{progress:.1f}%"></div>
                 </div>
 
-                <div class="ax-plan-strip">
-                    <strong>TRIAL · 7 DÍAS</strong>
-                    <span>AXION PRIME PRO</span>
+                <div class="{plan_class}">
+                    <strong>{_safe(plan_label)}</strong>
+                    <span>{_safe(plan_detail)}</span>
                 </div>
             </section>
             """
