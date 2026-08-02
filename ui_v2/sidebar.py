@@ -273,6 +273,52 @@ SIDEBAR_CSS = """
     border-color:rgba(104,217,255,.42) !important;
     box-shadow:0 8px 20px rgba(60,125,255,.16) !important;
 }
+
+.ax-plan-strip {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:8px;
+    padding:8px 9px;
+    border-radius:10px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(255,209,102,.13),transparent 38%),
+        linear-gradient(145deg,rgba(20,15,35,.96),rgba(7,10,25,.96));
+    border:1px solid rgba(255,209,102,.28);
+}
+
+.ax-plan-strip strong {
+    color:#ffd166;
+    font-size:6.3px;
+    font-weight:950;
+    letter-spacing:.8px;
+}
+
+.ax-plan-strip span {
+    color:#9ca8bf;
+    font-size:5.6px;
+}
+
+[data-testid="stSidebar"] .stButton > button[key="ax_pro"] {
+    color:#fff7d6 !important;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(255,209,102,.16),transparent 40%),
+        linear-gradient(95deg,rgba(70,42,6,.96),rgba(116,66,12,.95),rgba(87,50,8,.96)) !important;
+    border-color:rgba(255,209,102,.52) !important;
+    box-shadow:
+        0 8px 22px rgba(255,191,56,.13),
+        inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+
+[data-testid="stSidebar"] .stButton > button[key="ax_pro"]:hover {
+    transform:translateX(3px);
+    border-color:rgba(255,225,135,.78) !important;
+    box-shadow:
+        0 10px 28px rgba(255,191,56,.20),
+        0 0 20px rgba(255,209,102,.10) !important;
+}
+
 </style>
 """
 
@@ -394,6 +440,11 @@ def render_v2_sidebar() -> None:
                 <div class="ax-progress">
                     <div style="width:{progress:.1f}%"></div>
                 </div>
+
+                <div class="ax-plan-strip">
+                    <strong>TRIAL · 7 DÍAS</strong>
+                    <span>AXION PRIME PRO</span>
+                </div>
             </section>
             """
         )
@@ -411,6 +462,9 @@ def render_v2_sidebar() -> None:
         _nav("🧠 Psicotrading", "Psicotrading", "ax_psy", active)
         _nav("🔍 Auditoría / Análisis IA", "Análisis IA", "ax_analysis", active)
         _nav("📈 Proyecciones", "Proyecciones", "ax_proj", active)
+
+        st.html('<div class="ax-section">MEMBRESÍA</div>')
+        _nav("💎 AXION PRIME PRO", "AXION PRIME PRO", "ax_pro", active)
 
         st.html('<div class="ax-section">HERRAMIENTAS</div>')
         _nav("🧮 Calculadora de lotaje", "Lotaje", "ax_lot", active)
