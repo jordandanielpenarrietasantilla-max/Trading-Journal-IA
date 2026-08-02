@@ -361,6 +361,25 @@ def _safe_float(
         return default
 
 
+def _is_owner(email: str) -> bool:
+    """
+    La única cuenta FOUNDER es la configurada como ADMIN_EMAIL
+    en Streamlit Secrets.
+    """
+
+    try:
+        admin_email = str(
+            st.secrets.get("ADMIN_EMAIL", "")
+        ).strip().lower()
+    except Exception:
+        admin_email = ""
+
+    return bool(
+        admin_email
+        and email.strip().lower() == admin_email
+    )
+
+
 def _normalize_image(
     uploaded_file: Any,
 ) -> tuple[bytes, str]:
@@ -421,6 +440,7 @@ def _render_profile_header(
     email: str,
     avatar_url: str,
     score: int,
+    is_owner: bool,
 ) -> None:
     avatar_html = (
         f"""
@@ -434,6 +454,18 @@ def _render_profile_header(
             {_initials(name)}
         </div>
         """
+    )
+
+    role_badge_class = (
+        "v2-profile-founder"
+        if is_owner
+        else "v2-profile-secure"
+    )
+
+    role_badge_text = (
+        "FOUNDER"
+        if is_owner
+        else "TRIAL USER"
     )
 
     st.html(
@@ -462,9 +494,9 @@ def _render_profile_header(
 
                     <span class="
                         v2-profile-badge
-                        v2-profile-founder
+                        {role_badge_class}
                     ">
-                        FOUNDER
+                        {role_badge_text}
                     </span>
 
                     <span class="
@@ -528,6 +560,8 @@ def render_v2_profile() -> None:
         or ""
     )
 
+    is_owner = _is_owner(email)
+
     name = str(
         metadata.get("username")
         or metadata.get("full_name")
@@ -584,6 +618,7 @@ def render_v2_profile() -> None:
         email=email,
         avatar_url=avatar_url,
         score=score,
+        is_owner=is_owner,
     )
 
     left, right = st.columns(
