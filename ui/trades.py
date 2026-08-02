@@ -321,6 +321,7 @@ def _initialize_trade_state() -> None:
         "trade_scan_result": None,
         "trade_scan_message": "",
         "trade_scan_error": "",
+        "trade_pending_scan": None,
     }
 
     for key, value in defaults.items():
@@ -401,6 +402,7 @@ def _clear_trade_form() -> None:
         "trade_scan_result": None,
         "trade_scan_message": "",
         "trade_scan_error": "",
+        "trade_pending_scan": None,
     }
 
     for key, value in logical_keys.items():
@@ -427,6 +429,14 @@ def _clear_trade_form() -> None:
 
 
 def _apply_scan_result(result: dict[str, Any]) -> None:
+    """
+    Aplica los datos detectados ANTES de crear los widgets.
+
+    Streamlit no permite modificar una key de widget después de
+    haber instanciado ese widget en la misma ejecución. Por eso
+    este método se llama al inicio del siguiente rerun.
+    """
+
     asset = result.get("asset")
     direction = result.get("direction")
     entry = result.get("entry")
@@ -460,6 +470,21 @@ def _apply_scan_result(result: dict[str, Any]) -> None:
     if timeframe in TIMEFRAMES:
         st.session_state.trade_timeframe = timeframe
         st.session_state.trade_timeframe_widget = timeframe
+
+
+def _apply_pending_scan_before_widgets() -> None:
+    """
+    Si existe un escaneo pendiente, lo aplica antes de que
+    Streamlit cree los selectbox/number_input del formulario.
+    """
+
+    pending = st.session_state.get("trade_pending_scan")
+
+    if not isinstance(pending, dict):
+        return
+
+    _apply_scan_result(pending)
+    st.session_state.trade_pending_scan = None
 
 
 # =========================================================
@@ -517,6 +542,7 @@ def _render_ai_scanner(uploaded_file) -> None:
             key="clear_scan_button",
         ):
             st.session_state.trade_scan_result = None
+            st.session_state.trade_pending_scan = None
             st.session_state.trade_scan_message = ""
             st.session_state.trade_scan_error = ""
             st.rerun()
@@ -532,12 +558,12 @@ def _render_ai_scanner(uploaded_file) -> None:
             )
 
         st.session_state.trade_scan_result = result
+        st.session_state.trade_pending_scan = result
         st.session_state.trade_scan_error = ""
         st.session_state.trade_scan_message = (
             "Lectura completada. Revisa los campos antes de guardar."
         )
 
-        _apply_scan_result(result)
         st.rerun()
 
     except VisionError as exc:
@@ -629,6 +655,7 @@ def _save_trade(trade_data: dict[str, Any]) -> dict[str, Any]:
 
 def render_register_trade() -> None:
     _initialize_trade_state()
+    _apply_pending_scan_before_widgets()
     _initialize_widget_state()
 
     st.markdown(TRADE_CSS, unsafe_allow_html=True)
@@ -812,6 +839,7 @@ def render_register_trade() -> None:
 
     if rescan_button:
         st.session_state.trade_scan_result = None
+        st.session_state.trade_pending_scan = None
         st.session_state.trade_scan_message = ""
         st.session_state.trade_scan_error = ""
         st.session_state.pop("trade_image_before", None)
