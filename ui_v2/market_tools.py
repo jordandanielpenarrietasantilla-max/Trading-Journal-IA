@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import html
+from pathlib import Path
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Callable
@@ -90,126 +91,29 @@ SESSIONS: tuple[MarketSession, ...] = (
 
 
 # =========================================================
-# SVG FUTURISTAS EMBEBIDOS
-# No necesitas subir imágenes adicionales.
+# FONDOS FUTURISTAS DESDE ASSETS LOCALES
+# Ruta esperada: assets/sessions/*.webp
 # =========================================================
 
 
-def _svg_data(svg: str) -> str:
-    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
-    return f"data:image/svg+xml;base64,{encoded}"
+def _asset_data_url(relative_path: str) -> str:
+    project_root = Path(__file__).resolve().parents[1]
+    image_path = project_root / relative_path
+
+    if not image_path.exists():
+        return ""
+
+    mime = "image/webp"
+    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
 
 
-def _city_svg(session: MarketSession) -> str:
-    common_start = f"""
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420">
-      <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#020817"/>
-          <stop offset=".52" stop-color="#07142b"/>
-          <stop offset="1" stop-color="#030713"/>
-        </linearGradient>
-        <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#05152c"/>
-          <stop offset="1" stop-color="#01030a"/>
-        </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="5" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        <filter id="soft">
-          <feGaussianBlur stdDeviation="18"/>
-        </filter>
-      </defs>
-      <rect width="900" height="420" fill="url(#sky)"/>
-      <circle cx="690" cy="82" r="120" fill="rgb({session.rgb})" opacity=".08" filter="url(#soft)"/>
-      <g fill="#fff" opacity=".58">
-        <circle cx="90" cy="50" r="1.4"/><circle cx="180" cy="83" r="1"/>
-        <circle cx="330" cy="45" r="1.2"/><circle cx="520" cy="65" r="1.1"/>
-        <circle cx="770" cy="42" r="1.5"/><circle cx="840" cy="98" r="1"/>
-      </g>
-    """
-
-    if session.landmark == "opera":
-        landmark = f"""
-        <rect y="305" width="900" height="115" fill="url(#water)"/>
-        <g stroke="{session.color}" fill="none" opacity=".82" filter="url(#glow)">
-          <path d="M0 302 Q125 240 250 302 T500 302 T900 302" stroke-width="4"/>
-          <path d="M210 304 Q305 188 400 304" stroke-width="7"/>
-          <path d="M310 304 Q405 165 500 304" stroke-width="6"/>
-        </g>
-        <g fill="#091327" stroke="{session.color}" stroke-width="3" filter="url(#glow)">
-          <path d="M90 306 Q130 185 205 304 Z"/>
-          <path d="M140 306 Q215 145 292 304 Z"/>
-          <path d="M235 306 Q290 205 350 304 Z"/>
-        </g>
-        <g stroke="{session.color}" opacity=".45">
-          <path d="M0 335 H900"/><path d="M0 365 H900"/>
-        </g>
-        """
-    elif session.landmark == "tower":
-        landmark = f"""
-        <rect y="320" width="900" height="100" fill="url(#water)"/>
-        <g fill="#071224" stroke="#163663" stroke-width="2">
-          <rect x="20" y="230" width="85" height="90"/><rect x="115" y="270" width="70" height="50"/>
-          <rect x="620" y="220" width="100" height="100"/><rect x="735" y="245" width="145" height="75"/>
-        </g>
-        <g stroke="{session.color}" fill="none" filter="url(#glow)">
-          <path d="M435 318 L478 115 L521 318" stroke-width="7"/>
-          <path d="M451 250 H505 M461 205 H495 M470 160 H488" stroke-width="6"/>
-          <path d="M478 115 L478 70" stroke-width="5"/>
-        </g>
-        <g fill="{session.color}" opacity=".72">
-          <rect x="40" y="252" width="8" height="4"/><rect x="72" y="275" width="8" height="4"/>
-          <rect x="650" y="250" width="8" height="4"/><rect x="780" y="280" width="8" height="4"/>
-        </g>
-        """
-    elif session.landmark == "bigben":
-        landmark = f"""
-        <rect y="330" width="900" height="90" fill="url(#water)"/>
-        <g fill="#071224" stroke="#163663" stroke-width="2">
-          <rect x="0" y="265" width="250" height="65"/><rect x="570" y="255" width="330" height="75"/>
-        </g>
-        <g fill="#081224" stroke="{session.color}" stroke-width="4" filter="url(#glow)">
-          <rect x="405" y="132" width="92" height="198"/>
-          <path d="M420 132 L451 72 L482 132 Z"/>
-          <circle cx="451" cy="175" r="25"/>
-          <path d="M451 175 L451 158 M451 175 L468 184"/>
-        </g>
-        <g stroke="{session.color}" fill="none" opacity=".70">
-          <path d="M0 332 Q200 280 400 332 T900 332" stroke-width="5"/>
-          <path d="M0 346 H900"/>
-        </g>
-        """
-    else:
-        landmark = f"""
-        <rect y="325" width="900" height="95" fill="url(#water)"/>
-        <g fill="#071224" stroke="#163663" stroke-width="2">
-          <rect x="0" y="250" width="90" height="75"/><rect x="105" y="225" width="88" height="100"/>
-          <rect x="220" y="270" width="100" height="55"/><rect x="580" y="210" width="95" height="115"/>
-          <rect x="690" y="245" width="95" height="80"/><rect x="800" y="190" width="80" height="135"/>
-        </g>
-        <g stroke="{session.color}" fill="none" filter="url(#glow)">
-          <path d="M460 315 L460 180 L440 145 L455 133 L455 105 L465 105 L465 133 L480 145 L460 180" stroke-width="5"/>
-          <path d="M460 205 L420 242 M460 205 L502 242" stroke-width="4"/>
-          <path d="M442 315 L460 250 L478 315" stroke-width="5"/>
-        </g>
-        <g fill="{session.color}" opacity=".70">
-          <rect x="25" y="275" width="7" height="4"/><rect x="140" y="250" width="7" height="4"/>
-          <rect x="620" y="245" width="7" height="4"/><rect x="838" y="225" width="7" height="4"/>
-        </g>
-        """
-
-    common_end = """
-      <g opacity=".35">
-        <path d="M0 390 Q180 368 360 390 T720 390 T900 390" stroke="#1c5ea9" fill="none"/>
-      </g>
-    </svg>
-    """
-    return _svg_data(common_start + landmark + common_end)
-
-
-CITY_IMAGES = {session.key: _city_svg(session) for session in SESSIONS}
+CITY_IMAGES: dict[str, str] = {
+    "sydney": _asset_data_url("assets/sessions/sydney.webp"),
+    "tokyo": _asset_data_url("assets/sessions/tokyo.webp"),
+    "london": _asset_data_url("assets/sessions/london.webp"),
+    "new_york": _asset_data_url("assets/sessions/new_york.webp"),
+}
 
 
 # =========================================================
@@ -332,19 +236,33 @@ SESSION_CSS = """
     border:1px solid rgba(var(--rgb),.58);
     border-radius:16px;
     background:#050a15;
-    box-shadow:0 20px 50px rgba(0,0,0,.26),0 0 28px rgba(var(--rgb),.07);
+    box-shadow:0 24px 64px rgba(0,0,0,.42),0 0 36px rgba(var(--rgb),.14);
+    transition:transform .25s ease, box-shadow .25s ease;
 }
+
+.ax-city-card:hover {
+    transform:translateY(-4px);
+    box-shadow:0 30px 80px rgba(0,0,0,.50),0 0 52px rgba(var(--rgb),.22);
+}
+
+@keyframes axCityDrift {
+    from { transform:scale(1.04) translateX(-.4%); }
+    to { transform:scale(1.10) translateX(.8%); }
+}
+
 
 .ax-city-bg {
     position:absolute;
     inset:0;
     background-image:
-      linear-gradient(180deg,rgba(2,6,16,.12),rgba(2,6,16,.32) 40%,rgba(2,6,16,.98) 100%),
+      linear-gradient(180deg,rgba(2,6,16,.16),rgba(2,6,16,.25) 38%,rgba(2,6,16,.96) 100%),
       var(--city);
     background-size:cover;
-    background-position:center bottom;
-    opacity:.90;
-    transform:scale(1.01);
+    background-position:center center;
+    opacity:.98;
+    transform:scale(1.04);
+    filter:saturate(1.22) contrast(1.08) brightness(.90);
+    animation:axCityDrift 15s ease-in-out infinite alternate;
 }
 
 .ax-city-card:after {
@@ -623,6 +541,16 @@ SESSION_CSS = """
     .ax-hours{display:none}
     .ax-t-row{grid-template-columns:1fr}
 }
+.ax-city-noise {
+    position:absolute;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    opacity:.12;
+    background:repeating-linear-gradient(180deg,transparent 0,transparent 3px,rgba(var(--rgb),.15) 4px);
+    mix-blend-mode:screen;
+}
+
 </style>
 """
 
@@ -828,7 +756,7 @@ def _render_clock_content() -> None:
             <article class="ax-city-card"
               style="--color:{session.color};--rgb:{session.rgb};
                      --city:url('{CITY_IMAGES[session.key]}')">
-              <div class="ax-city-bg"></div>
+              <div class="ax-city-bg"></div><div class="ax-city-noise"></div>
               <div class="ax-city-body">
                 <div class="ax-city-top">
                   <div>
