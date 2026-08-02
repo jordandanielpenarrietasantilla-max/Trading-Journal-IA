@@ -1295,22 +1295,223 @@ def render_projections() -> None:
 
 def render_lotage() -> None:
     """
-    Calculadora general de tamaño de posición.
+    Calculadora de tamaño de posición por activo.
+
+    La fórmula usa las especificaciones reales del contrato:
+    distancia al SL, tamaño mínimo de movimiento y valor monetario
+    de ese movimiento por 1 lote.
+
+    Los valores predeterminados son comunes, pero cada broker puede
+    usar contratos distintos. El trader puede modificarlos antes
+    de calcular.
     """
 
     _section_header(
         "AXION PRIME · RISK CORE",
-        "Calculadora de lotaje",
+        "Calculadora de lotaje por activo",
         (
-            "Calcula el riesgo monetario y un tamaño "
-            "estimado de posición antes de ejecutar."
+            "Selecciona el instrumento y calcula el tamaño de posición "
+            "según tu balance, riesgo, Stop Loss y especificaciones del contrato."
         ),
     )
 
-    left, right = st.columns(2)
+    # ---------------------------------------------------------
+    # Especificaciones predeterminadas.
+    #
+    # tick_size:
+    #   movimiento mínimo usado para el cálculo.
+    #
+    # tick_value:
+    #   dinero ganado/perdido por ese movimiento usando 1 lote.
+    #
+    # Estos valores pueden variar según el broker y tipo de cuenta.
+    # ---------------------------------------------------------
 
-    with left:
+    asset_specs: dict[str, dict[str, Any]] = {
+        "🥇 XAU/USD · Oro": {
+            "symbol": "XAU/USD",
+            "tick_size": 0.01,
+            "tick_value": 1.00,
+            "example": "SL de 20.00 dólares = 2,000 ticks",
+            "note": "Contrato común: 100 onzas por lote.",
+        },
+        "🥈 XAG/USD · Plata": {
+            "symbol": "XAG/USD",
+            "tick_size": 0.001,
+            "tick_value": 5.00,
+            "example": "SL de 0.50 dólares = 500 ticks",
+            "note": "Contrato común: 5,000 onzas por lote.",
+        },
+        "💱 EUR/USD": {
+            "symbol": "EUR/USD",
+            "tick_size": 0.0001,
+            "tick_value": 10.00,
+            "example": "SL de 0.0020 = 20 pips",
+            "note": "Valor aproximado de 1 pip por lote estándar.",
+        },
+        "💱 GBP/USD": {
+            "symbol": "GBP/USD",
+            "tick_size": 0.0001,
+            "tick_value": 10.00,
+            "example": "SL de 0.0030 = 30 pips",
+            "note": "Valor aproximado de 1 pip por lote estándar.",
+        },
+        "💱 AUD/USD": {
+            "symbol": "AUD/USD",
+            "tick_size": 0.0001,
+            "tick_value": 10.00,
+            "example": "SL de 0.0015 = 15 pips",
+            "note": "Valor aproximado de 1 pip por lote estándar.",
+        },
+        "💱 NZD/USD": {
+            "symbol": "NZD/USD",
+            "tick_size": 0.0001,
+            "tick_value": 10.00,
+            "example": "SL de 0.0025 = 25 pips",
+            "note": "Valor aproximado de 1 pip por lote estándar.",
+        },
+        "💱 USD/JPY": {
+            "symbol": "USD/JPY",
+            "tick_size": 0.01,
+            "tick_value": 6.70,
+            "example": "SL de 0.30 = 30 pips",
+            "note": (
+                "El valor del pip cambia con el precio USD/JPY. "
+                "Confirma el valor mostrado por tu broker."
+            ),
+        },
+        "📊 US100 · Nasdaq": {
+            "symbol": "US100",
+            "tick_size": 1.00,
+            "tick_value": 1.00,
+            "example": "SL de 100 puntos = 100 ticks",
+            "note": "El valor por punto cambia mucho entre brokers CFD.",
+        },
+        "📊 US30 · Dow Jones": {
+            "symbol": "US30",
+            "tick_size": 1.00,
+            "tick_value": 1.00,
+            "example": "SL de 150 puntos = 150 ticks",
+            "note": "El valor por punto cambia mucho entre brokers CFD.",
+        },
+        "📊 US500 · S&P 500": {
+            "symbol": "US500",
+            "tick_size": 1.00,
+            "tick_value": 1.00,
+            "example": "SL de 25 puntos = 25 ticks",
+            "note": "El valor por punto cambia mucho entre brokers CFD.",
+        },
+        "🪙 BTC/USD · Bitcoin": {
+            "symbol": "BTC/USD",
+            "tick_size": 1.00,
+            "tick_value": 1.00,
+            "example": "SL de 1,000 dólares = 1,000 ticks",
+            "note": "La unidad de contrato depende del broker o exchange.",
+        },
+        "🛢️ USOIL · Petróleo WTI": {
+            "symbol": "USOIL",
+            "tick_size": 0.01,
+            "tick_value": 10.00,
+            "example": "SL de 1.00 dólar = 100 ticks",
+            "note": "Contrato común CFD: 1,000 barriles por lote.",
+        },
+        "⚙️ Personalizado / Mi broker": {
+            "symbol": "CUSTOM",
+            "tick_size": 0.01,
+            "tick_value": 1.00,
+            "example": "Introduce las especificaciones de tu broker.",
+            "note": "Usa el tamaño de tick y valor de tick exactos del contrato.",
+        },
+    }
 
+    st.markdown(
+        """
+        <style>
+        .ax-risk-card {
+            padding: 15px;
+            margin: 8px 0 16px;
+            background:
+                radial-gradient(circle at 100% 0%, rgba(39,216,255,.08), transparent 40%),
+                linear-gradient(145deg, rgba(8,16,35,.98), rgba(5,9,22,.98));
+            border: 1px solid rgba(61,91,158,.28);
+            border-radius: 15px;
+        }
+
+        .ax-risk-card strong {
+            color: #eef4ff;
+            font-size: 12px;
+        }
+
+        .ax-risk-card p {
+            margin: 7px 0 0;
+            color: #93a6c7;
+            font-size: 9px;
+            line-height: 1.5;
+        }
+
+        .ax-risk-result {
+            padding: 16px;
+            margin-top: 14px;
+            background:
+                radial-gradient(circle at 100% 0%, rgba(49,255,156,.10), transparent 38%),
+                linear-gradient(145deg, rgba(7,20,32,.98), rgba(5,9,22,.98));
+            border: 1px solid rgba(49,255,156,.25);
+            border-radius: 15px;
+        }
+
+        .ax-risk-result small {
+            display: block;
+            color: #8190ae;
+            font-size: 7px;
+            font-weight: 900;
+            letter-spacing: .7px;
+        }
+
+        .ax-risk-result strong {
+            display: block;
+            margin-top: 8px;
+            color: #31ff9c;
+            font-size: 30px;
+            line-height: 1;
+            font-weight: 950;
+        }
+
+        .ax-risk-result span {
+            display: block;
+            margin-top: 8px;
+            color: #93a6c7;
+            font-size: 8px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    selected_asset = st.selectbox(
+        "Activo / instrumento",
+        list(asset_specs.keys()),
+        key="lotage_asset",
+    )
+
+    spec = asset_specs[selected_asset]
+    asset_key = spec["symbol"].replace("/", "_").replace(" ", "_")
+
+    st.html(
+        f"""
+        <section class="ax-risk-card">
+            <strong>{selected_asset}</strong>
+            <p>{spec["example"]}</p>
+            <p>{spec["note"]}</p>
+        </section>
+        """
+    )
+
+    account_column, risk_column, commission_column = st.columns(
+        [1.2, 1, 1],
+        gap="medium",
+    )
+
+    with account_column:
         balance = st.number_input(
             "Balance de la cuenta ($)",
             min_value=0.0,
@@ -1324,6 +1525,7 @@ def render_lotage() -> None:
             key="lotage_balance",
         )
 
+    with risk_column:
         risk_percent = st.number_input(
             "Riesgo por operación (%)",
             min_value=0.01,
@@ -1333,88 +1535,228 @@ def render_lotage() -> None:
             key="lotage_risk_percent",
         )
 
-        stop_distance = st.number_input(
-            "Distancia al Stop Loss",
-            min_value=0.00001,
-            value=20.0,
-            step=1.0,
-            format="%.5f",
-            key="lotage_stop_distance",
-        )
-
-    with right:
-
-        value_per_point = st.number_input(
-            "Valor por punto de 1 lote ($)",
-            min_value=0.00001,
-            value=10.0,
-            step=1.0,
-            format="%.5f",
-            key="lotage_value_per_point",
-        )
-
-        commission = st.number_input(
-            "Comisión estimada ($)",
+    with commission_column:
+        commission_per_lot = st.number_input(
+            "Comisión ida y vuelta por lote ($)",
             min_value=0.0,
             value=0.0,
-            step=1.0,
-            key="lotage_commission",
+            step=0.5,
+            key="lotage_commission_per_lot",
         )
 
-    risk_money = (
-        balance
-        * risk_percent
-        / 100
+    st.markdown("#### Precios de la operación")
+
+    price_left, price_middle, price_right = st.columns(
+        3,
+        gap="medium",
     )
 
-    usable_risk = max(
-        0.0,
-        risk_money
-        - commission,
+    with price_left:
+        entry_price = st.number_input(
+            "Precio de entrada",
+            min_value=0.0,
+            value=0.0,
+            step=float(spec["tick_size"]),
+            format="%.5f",
+            key=f"lotage_entry_{asset_key}",
+        )
+
+    with price_middle:
+        stop_price = st.number_input(
+            "Precio del Stop Loss",
+            min_value=0.0,
+            value=0.0,
+            step=float(spec["tick_size"]),
+            format="%.5f",
+            key=f"lotage_stop_{asset_key}",
+        )
+
+    with price_right:
+        direction = st.selectbox(
+            "Dirección",
+            ["LONG 🟢", "SHORT 🔴"],
+            key="lotage_direction",
+        )
+
+    st.markdown("#### Especificaciones del contrato")
+
+    spec_left, spec_middle, spec_right = st.columns(
+        3,
+        gap="medium",
     )
 
-    denominator = (
-        stop_distance
-        * value_per_point
-    )
+    with spec_left:
+        tick_size = st.number_input(
+            "Tamaño de tick / pip",
+            min_value=0.00000001,
+            value=float(spec["tick_size"]),
+            step=float(spec["tick_size"]),
+            format="%.8f",
+            key=f"lotage_tick_size_{asset_key}",
+            help=(
+                "Movimiento de precio usado para calcular un tick o pip. "
+                "Ejemplo: XAU/USD 0.01; EUR/USD 0.0001."
+            ),
+        )
 
-    lot_size = (
-        usable_risk
-        / denominator
-        if denominator > 0
+    with spec_middle:
+        tick_value = st.number_input(
+            "Valor monetario del tick por 1 lote ($)",
+            min_value=0.00000001,
+            value=float(spec["tick_value"]),
+            step=0.1,
+            format="%.5f",
+            key=f"lotage_tick_value_{asset_key}",
+            help=(
+                "Dinero ganado o perdido por cada tick usando exactamente 1 lote."
+            ),
+        )
+
+    with spec_right:
+        lot_step = st.number_input(
+            "Paso mínimo de lotaje",
+            min_value=0.001,
+            value=0.01,
+            step=0.001,
+            format="%.3f",
+            key=f"lotage_lot_step_{asset_key}",
+            help="Ejemplo habitual: 0.01 lote.",
+        )
+
+    risk_money = balance * risk_percent / 100
+
+    stop_distance = abs(entry_price - stop_price)
+
+    stop_ticks = (
+        stop_distance / tick_size
+        if tick_size > 0
         else 0.0
     )
 
-    metrics = st.columns(4)
+    loss_per_lot_before_commission = stop_ticks * tick_value
+    total_loss_per_lot = (
+        loss_per_lot_before_commission
+        + commission_per_lot
+    )
 
-    metrics[0].metric(
+    raw_lot_size = (
+        risk_money / total_loss_per_lot
+        if total_loss_per_lot > 0
+        else 0.0
+    )
+
+    # Redondeamos hacia abajo para no superar el riesgo seleccionado.
+    if lot_step > 0:
+        lot_size = int(raw_lot_size / lot_step) * lot_step
+    else:
+        lot_size = raw_lot_size
+
+    lot_size = max(0.0, lot_size)
+
+    estimated_loss = lot_size * total_loss_per_lot
+    risk_used_percent = (
+        estimated_loss / balance * 100
+        if balance > 0
+        else 0.0
+    )
+
+    validation_errors = []
+
+    if entry_price <= 0:
+        validation_errors.append(
+            "Introduce un precio de entrada mayor que cero."
+        )
+
+    if stop_price <= 0:
+        validation_errors.append(
+            "Introduce un precio de Stop Loss mayor que cero."
+        )
+
+    if entry_price == stop_price:
+        validation_errors.append(
+            "La entrada y el Stop Loss no pueden ser iguales."
+        )
+
+    if direction.startswith("LONG") and stop_price >= entry_price:
+        validation_errors.append(
+            "En una operación LONG, el Stop Loss normalmente debe quedar debajo de la entrada."
+        )
+
+    if direction.startswith("SHORT") and stop_price <= entry_price:
+        validation_errors.append(
+            "En una operación SHORT, el Stop Loss normalmente debe quedar encima de la entrada."
+        )
+
+    if tick_size <= 0 or tick_value <= 0:
+        validation_errors.append(
+            "El tamaño y valor del tick deben ser mayores que cero."
+        )
+
+    if validation_errors:
+        for error in validation_errors:
+            st.warning(error)
+
+    metric_columns = st.columns(
+        5,
+        gap="medium",
+    )
+
+    metric_columns[0].metric(
         "Riesgo máximo",
-        _money(
-            risk_money
-        ),
+        _money(risk_money),
     )
 
-    metrics[1].metric(
-        "Riesgo después de comisión",
-        _money(
-            usable_risk
-        ),
+    metric_columns[1].metric(
+        "Distancia al SL",
+        f"{stop_distance:.5f}",
     )
 
-    metrics[2].metric(
-        "Lotaje estimado",
-        f"{lot_size:.3f}",
+    metric_columns[2].metric(
+        "Ticks / pips al SL",
+        f"{stop_ticks:,.1f}",
     )
 
-    metrics[3].metric(
-        "Pérdida máxima estimada",
-        _money(
-            risk_money
-        ),
+    metric_columns[3].metric(
+        "Pérdida por 1 lote",
+        _money(total_loss_per_lot),
     )
 
-    st.info(
-        "El valor del punto cambia según el activo, "
-        "broker y tipo de contrato. Verifica siempre "
-        "la especificación del instrumento antes de operar."
+    metric_columns[4].metric(
+        "Riesgo usado",
+        f"{risk_used_percent:.2f}%",
+    )
+
+    st.html(
+        f"""
+        <section class="ax-risk-result">
+            <small>LOTAJE RECOMENDADO · REDONDEADO HACIA ABAJO</small>
+            <strong>{lot_size:.3f}</strong>
+            <span>
+                Pérdida estimada al tocar SL:
+                {_money(estimated_loss)}
+                · Paso mínimo: {lot_step:.3f}
+            </span>
+        </section>
+        """
+    )
+
+    with st.expander(
+        "Ver fórmula del cálculo",
+        expanded=False,
+    ):
+        st.code(
+            (
+                "distancia = abs(entrada - stop_loss)\n"
+                "ticks = distancia / tamaño_tick\n"
+                "pérdida_por_lote = ticks × valor_tick + comisión_por_lote\n"
+                "lotaje = riesgo_monetario / pérdida_por_lote\n"
+                "lotaje_final = redondear_hacia_abajo(lotaje, paso_mínimo)"
+            ),
+            language="text",
+        )
+
+    st.warning(
+        "Los presets son referencias comunes. Para un cálculo exacto, "
+        "copia de tu broker el tamaño de tick, valor del tick, comisión "
+        "y paso mínimo de volumen del activo seleccionado."
     )
