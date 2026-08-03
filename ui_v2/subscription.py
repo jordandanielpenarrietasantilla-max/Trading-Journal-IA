@@ -496,6 +496,238 @@ SUBSCRIPTION_CSS = """
         grid-template-columns: 1fr;
     }
 }
+
+/* =========================================================
+   CONTRASTE STREAMLIT · SELECTORES · ALERTAS · FORMULARIOS
+   ========================================================= */
+
+.ax-sub-root,
+.ax-sub-root p,
+.ax-sub-root span,
+.ax-sub-root div,
+.ax-sub-root small,
+.ax-sub-root strong,
+.ax-sub-root label {
+    opacity: 1 !important;
+}
+
+/* Etiquetas de widgets */
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] span,
+[data-testid="stWidgetLabel"] div {
+    color: #edf3ff !important;
+    opacity: 1 !important;
+}
+
+/* Selectbox cerrado */
+[data-baseweb="select"] > div,
+[data-baseweb="select"] input,
+[data-baseweb="select"] span,
+[data-baseweb="select"] svg {
+    color: #f4f7ff !important;
+    -webkit-text-fill-color: #f4f7ff !important;
+    opacity: 1 !important;
+}
+
+[data-baseweb="select"] > div {
+    min-height: 48px;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(7, 16, 37, .99),
+            rgba(4, 10, 25, .99)
+        ) !important;
+    border:
+        1px solid
+        rgba(74, 110, 190, .48) !important;
+    border-radius: 12px !important;
+}
+
+/* Menú desplegable */
+[data-baseweb="popover"],
+[data-baseweb="menu"],
+[data-baseweb="menu"] ul,
+[role="listbox"] {
+    color: #f4f7ff !important;
+    background: #071024 !important;
+}
+
+[data-baseweb="menu"] li,
+[role="option"],
+[role="option"] span,
+[role="option"] div {
+    color: #f4f7ff !important;
+    -webkit-text-fill-color: #f4f7ff !important;
+    background: #071024 !important;
+    opacity: 1 !important;
+}
+
+[data-baseweb="menu"] li:hover,
+[role="option"]:hover,
+[aria-selected="true"][role="option"] {
+    color: #ffffff !important;
+    background: rgba(43, 220, 255, .13) !important;
+}
+
+/* Inputs */
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea {
+    color: #f4f7ff !important;
+    -webkit-text-fill-color: #f4f7ff !important;
+    caret-color: #2bdcff !important;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(7, 16, 37, .99),
+            rgba(4, 10, 25, .99)
+        ) !important;
+    border:
+        1px solid
+        rgba(74, 110, 190, .46) !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder {
+    color: #8fa0bd !important;
+    -webkit-text-fill-color: #8fa0bd !important;
+    opacity: 1 !important;
+}
+
+/* Alertas */
+[data-testid="stAlert"] {
+    color: #eef4ff !important;
+    background: rgba(7, 16, 37, .97) !important;
+    border:
+        1px solid
+        rgba(75, 110, 190, .36) !important;
+    border-radius: 13px !important;
+}
+
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] span,
+[data-testid="stAlert"] div,
+[data-testid="stAlert"] strong,
+[data-testid="stAlert"] li {
+    color: #eef4ff !important;
+    opacity: 1 !important;
+}
+
+/* Captions, Markdown y código en esta pantalla */
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] *,
+.stCaption,
+.stCaption * {
+    color: #aebbd2 !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stCodeBlock"] {
+    color: #edf6ff !important;
+    background: #030916 !important;
+    border:
+        1px solid
+        rgba(43, 220, 255, .25) !important;
+    border-radius: 12px !important;
+}
+
+[data-testid="stCodeBlock"] code,
+[data-testid="stCodeBlock"] pre,
+[data-testid="stCodeBlock"] span {
+    color: #edf6ff !important;
+    opacity: 1 !important;
+}
+
+/* Panel Binance Pay */
+.ax-binance-panel {
+    margin-top: 14px;
+    padding: 18px;
+    border:
+        1px solid
+        rgba(255, 196, 0, .46);
+    border-radius: 17px;
+    background:
+        radial-gradient(
+            circle at 100% 0%,
+            rgba(255, 196, 0, .12),
+            transparent 36%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(8, 16, 35, .99),
+            rgba(5, 9, 24, .99)
+        );
+}
+
+.ax-binance-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ax-binance-head strong {
+    color: #ffc400;
+    font-size: 15px;
+    font-weight: 950;
+}
+
+.ax-binance-head span {
+    color: #f4f7ff;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.ax-binance-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+    margin-top: 13px;
+}
+
+.ax-binance-grid div {
+    padding: 11px;
+    border:
+        1px solid
+        rgba(255, 196, 0, .22);
+    border-radius: 11px;
+    background: rgba(5, 11, 28, .86);
+}
+
+.ax-binance-grid small {
+    display: block;
+    color: #9eabc2;
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.ax-binance-grid strong {
+    display: block;
+    margin-top: 5px;
+    color: #f4f7ff;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.ax-binance-instructions {
+    margin-top: 13px;
+    padding: 13px;
+    color: #d5def0;
+    font-size: 11px;
+    line-height: 1.6;
+    border-left: 3px solid #ffc400;
+    border-radius: 5px 11px 11px 5px;
+    background: rgba(255, 196, 0, .055);
+}
+
+@media (max-width: 700px) {
+    .ax-binance-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 </style>
 """
 
@@ -731,6 +963,251 @@ def _select_checkout(
     }
 
 
+
+def _first_secret(
+    *names: str,
+) -> tuple[str, str]:
+    """
+    Devuelve el primer secreto configurado junto a su nombre.
+
+    No imprime ni expone claves privadas.
+    """
+
+    for name in names:
+        value = _secret(
+            name,
+        )
+
+        if value:
+            return name, value
+
+    return "", ""
+
+
+def _binance_payment_information() -> dict[str, str]:
+    """
+    Obtiene la información pública disponible para Binance Pay.
+
+    Este flujo es manual: registra una referencia de pago para
+    revisión. No afirma verificar ni activar automáticamente
+    una orden sin credenciales comerciales y webhook.
+    """
+
+    identifier_name, identifier = _first_secret(
+        "BINANCE_PAY_ID",
+        "BINANCE_PAY_EMAIL",
+        "BINANCE_PAY_PHONE",
+        "BINANCE_PAY_MERCHANT_ID",
+    )
+
+    payment_link = _secret(
+        "BINANCE_PAY_LINK",
+    )
+
+    display_labels = {
+        "BINANCE_PAY_ID": "PAY ID",
+        "BINANCE_PAY_EMAIL": "CORREO BINANCE",
+        "BINANCE_PAY_PHONE": "TELÉFONO BINANCE",
+        "BINANCE_PAY_MERCHANT_ID": "MERCHANT ID",
+    }
+
+    return {
+        "identifier_name": identifier_name,
+        "identifier_label": display_labels.get(
+            identifier_name,
+            "IDENTIFICADOR",
+        ),
+        "identifier": identifier,
+        "payment_link": payment_link,
+    }
+
+
+def _render_binance_checkout(
+    *,
+    checkout: dict[str, Any],
+    plan_label: str,
+    amount: int,
+) -> None:
+    """
+    Renderiza un pago manual con Binance Pay.
+
+    El usuario paga desde Binance y envía una referencia,
+    Order ID o comprobante para revisión administrativa.
+    """
+
+    information = _binance_payment_information()
+
+    identifier = information[
+        "identifier"
+    ]
+
+    identifier_label = information[
+        "identifier_label"
+    ]
+
+    payment_link = information[
+        "payment_link"
+    ]
+
+    if not identifier and not payment_link:
+        st.warning(
+            "Binance Pay todavía no está configurado. "
+            "Añade BINANCE_PAY_ID o BINANCE_PAY_LINK en "
+            "Streamlit Secrets."
+        )
+
+        st.code(
+            (
+                'BINANCE_PAY_ID = "TU_PAY_ID"\n'
+                'BINANCE_PAY_LINK = "https://..."'
+            ),
+            language="toml",
+        )
+
+        return
+
+    safe_identifier = html.escape(
+        identifier,
+    )
+
+    st.html(
+        f"""
+        <section class="ax-binance-panel">
+            <div class="ax-binance-head">
+                <strong>◈ BINANCE PAY · VERIFICACIÓN MANUAL</strong>
+                <span>IMPORTE EXACTO: US${amount}</span>
+            </div>
+
+            <div class="ax-binance-grid">
+                <div>
+                    <small>PLAN</small>
+                    <strong>{html.escape(plan_label)}</strong>
+                </div>
+
+                <div>
+                    <small>IMPORTE</small>
+                    <strong>US${amount}</strong>
+                </div>
+
+                <div>
+                    <small>{html.escape(identifier_label)}</small>
+                    <strong>
+                        {safe_identifier if identifier else "ABRIR ENLACE DE PAGO"}
+                    </strong>
+                </div>
+            </div>
+
+            <div class="ax-binance-instructions">
+                1. Abre Binance y entra en Binance Pay.<br>
+                2. Envía exactamente US${amount} al identificador mostrado
+                o utiliza el enlace de cobro.<br>
+                3. Copia el Order ID, referencia o identificador de la
+                operación.<br>
+                4. Envíalo abajo para revisión. El plan no se activa hasta
+                confirmar el pago.
+            </div>
+        </section>
+        """
+    )
+
+    qr_value = (
+        payment_link
+        or identifier
+    )
+
+    qr_column, details_column = st.columns(
+        [
+            .34,
+            .66,
+        ],
+        gap="medium",
+    )
+
+    with qr_column:
+        if qr_value:
+            st.image(
+                _make_qr(
+                    qr_value,
+                ),
+                caption="Binance Pay",
+                width=220,
+            )
+
+    with details_column:
+        if identifier:
+            st.markdown(
+                f"### {identifier_label}"
+            )
+
+            st.code(
+                identifier,
+                language=None,
+            )
+
+        if payment_link:
+            st.link_button(
+                "🟡 ABRIR BINANCE PAY",
+                payment_link,
+                use_container_width=True,
+            )
+
+        payer_email = st.text_input(
+            "Correo del pagador",
+            placeholder="correo usado en Binance",
+            key=(
+                "subscription_binance_email_"
+                f"{checkout.get('plan_code', 'plan')}"
+            ),
+        )
+
+        payment_reference = st.text_input(
+            "Order ID o referencia del pago",
+            placeholder="Pega aquí la referencia de Binance Pay",
+            key=(
+                "subscription_binance_reference_"
+                f"{checkout.get('plan_code', 'plan')}"
+            ),
+        )
+
+        if st.button(
+            "📨 ENVIAR BINANCE PAY PARA VERIFICACIÓN",
+            use_container_width=True,
+            type="primary",
+            key=(
+                "subscription_binance_verify_"
+                f"{checkout.get('plan_code', 'plan')}"
+            ),
+        ):
+            clean_reference = payment_reference.strip()
+
+            if not clean_reference:
+                st.warning(
+                    "Debes escribir el Order ID o la referencia "
+                    "del pago antes de enviarlo."
+                )
+                return
+
+            st.session_state.pending_binance_payment = {
+                "plan_code": checkout.get(
+                    "plan_code",
+                ),
+                "plan_label": plan_label,
+                "usd_amount": amount,
+                "payment_method": "Binance Pay",
+                "payer_email": payer_email.strip(),
+                "reference": clean_reference,
+                "merchant_identifier": identifier,
+                "status": "pending_manual_review",
+                "submitted_at": dt.datetime.now(
+                    dt.timezone.utc,
+                ).isoformat(),
+            }
+
+            st.success(
+                "Pago enviado para revisión. Tu acceso PRO se "
+                "activará después de confirmar la operación."
+            )
+
 # =========================================================
 # CHECKOUT
 # =========================================================
@@ -826,22 +1303,11 @@ def _render_checkout(
         return
 
     if payment_method == "Binance Pay":
-        merchant_id = _secret(
-            "BINANCE_PAY_MERCHANT_ID",
+        _render_binance_checkout(
+            checkout=checkout,
+            plan_label=plan_label,
+            amount=amount,
         )
-
-        if merchant_id:
-            st.info(
-                "Binance Pay está identificado con tu Merchant ID. "
-                "Falta conectar la API comercial para crear y "
-                "verificar órdenes automáticamente."
-            )
-        else:
-            st.warning(
-                "Falta configurar BINANCE_PAY_MERCHANT_ID "
-                "en Streamlit Secrets."
-            )
-
         return
 
     wallets = _wallets()
@@ -998,9 +1464,8 @@ def _render_checkout(
 def render_subscription() -> None:
     apply_v2_theme()
 
-    st.markdown(
-        SUBSCRIPTION_CSS,
-        unsafe_allow_html=True,
+    st.html(
+        SUBSCRIPTION_CSS
     )
 
     membership = _membership_information()
