@@ -502,6 +502,146 @@ CHAT_X10_LAYOUT_FIX = r"""
         padding-right: 16px !important;
     }
 }
+
+/* =====================================================
+   CORRECCIÓN DEFINITIVA DE CONTRASTE DEL CHAT
+   Compatible con versiones nuevas y antiguas de Streamlit
+   ===================================================== */
+
+[data-testid="stChatMessage"] {
+    color: #f4f7ff !important;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(8, 18, 40, 0.98),
+            rgba(5, 10, 27, 0.98)
+        ) !important;
+    border:
+        1px solid
+        rgba(88, 111, 186, 0.38) !important;
+    opacity: 1 !important;
+}
+
+/* Primera burbuja: usuario */
+[data-testid="stChatMessage"]:nth-of-type(odd) {
+    background:
+        radial-gradient(
+            circle at 100% 0%,
+            rgba(39, 216, 255, 0.13),
+            transparent 35%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(8, 31, 67, 0.99),
+            rgba(5, 14, 34, 0.99)
+        ) !important;
+}
+
+/* Texto, títulos, listas y etiquetas */
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] span,
+[data-testid="stChatMessage"] div,
+[data-testid="stChatMessage"] li,
+[data-testid="stChatMessage"] ul,
+[data-testid="stChatMessage"] ol,
+[data-testid="stChatMessage"] strong,
+[data-testid="stChatMessage"] em,
+[data-testid="stChatMessage"] small,
+[data-testid="stChatMessage"] h1,
+[data-testid="stChatMessage"] h2,
+[data-testid="stChatMessage"] h3,
+[data-testid="stChatMessage"] h4,
+[data-testid="stChatMessage"] h5,
+[data-testid="stChatMessage"] h6,
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"],
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] * {
+    color: #f4f7ff !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+    text-shadow: none !important;
+}
+
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] li {
+    font-size: 14px !important;
+    line-height: 1.72 !important;
+}
+
+[data-testid="stChatMessage"] strong {
+    color: #43e6ff !important;
+    font-weight: 900 !important;
+}
+
+[data-testid="stChatMessage"] [data-testid="stCaptionContainer"],
+[data-testid="stChatMessage"] [data-testid="stCaptionContainer"] *,
+[data-testid="stChatMessage"] .stCaption,
+[data-testid="stChatMessage"] .stCaption * {
+    color: #a9b8d5 !important;
+    opacity: 1 !important;
+}
+
+/* Código */
+[data-testid="stChatMessage"] code {
+    color: #91f4ff !important;
+    background: #030a19 !important;
+    border:
+        1px solid
+        rgba(43, 220, 255, 0.28) !important;
+}
+
+[data-testid="stChatMessage"] pre {
+    color: #eef7ff !important;
+    background: #020816 !important;
+    border:
+        1px solid
+        rgba(43, 220, 255, 0.28) !important;
+}
+
+/* Campo de escritura completo */
+[data-testid="stChatInput"],
+[data-testid="stChatInput"] > div,
+[data-testid="stChatInput"] [data-baseweb="textarea"],
+[data-testid="stChatInput"] [data-baseweb="base-input"] {
+    color: #f4f7ff !important;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(7, 16, 37, 0.99),
+            rgba(4, 10, 25, 0.99)
+        ) !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    color: #f4f7ff !important;
+    -webkit-text-fill-color: #f4f7ff !important;
+    background: transparent !important;
+    caret-color: #2bdcff !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #91a1c1 !important;
+    -webkit-text-fill-color: #91a1c1 !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stChatInput"] button,
+[data-testid="stChatInput"] button * {
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+/* Evita cualquier capa o transparencia heredada */
+[data-testid="stChatMessage"],
+[data-testid="stChatMessage"] *,
+[data-testid="stChatInput"],
+[data-testid="stChatInput"] * {
+    filter: none !important;
+    text-shadow: none !important;
+}
+
 </style>
 """
 
