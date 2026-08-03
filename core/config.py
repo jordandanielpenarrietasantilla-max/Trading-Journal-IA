@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import streamlit as st
 
 
@@ -35,9 +37,48 @@ def _read_secret(
     ).strip()
 
 
+def _read_float_secret(
+    key: str,
+    default: float,
+) -> float:
+    """
+    Lee un número desde Streamlit Secrets.
+    """
+
+    value = _read_secret(
+        key,
+        str(default),
+    )
+
+    try:
+        return float(
+            value
+        )
+
+    except (TypeError, ValueError):
+        return float(
+            default
+        )
+
+
+def _configured(
+    value: Any,
+) -> str:
+    """
+    Devuelve un estado seguro para diagnóstico.
+    """
+
+    return (
+        "Sí"
+        if str(value or "").strip()
+        else "No"
+    )
+
+
 # =========================================================
 # SUPABASE
 # =========================================================
+
 
 SUPABASE_URL = _read_secret(
     "SUPABASE_URL"
@@ -51,6 +92,7 @@ SUPABASE_KEY = _read_secret(
 # =========================================================
 # OPENROUTER
 # =========================================================
+
 
 OPENROUTER_API_KEY = _read_secret(
     "OPENROUTER_API_KEY"
@@ -66,72 +108,370 @@ OPENROUTER_MODEL = _read_secret(
 # APLICACIÓN
 # =========================================================
 
+
 ADMIN_EMAIL = _read_secret(
     "ADMIN_EMAIL"
 )
 
 APP_URL = _read_secret(
     "APP_URL"
+).rstrip("/")
+
+
+# =========================================================
+# MERCADO PAGO
+# =========================================================
+
+
+MERCADOPAGO_PUBLIC_KEY = _read_secret(
+    "MERCADOPAGO_PUBLIC_KEY"
+)
+
+MERCADOPAGO_ACCESS_TOKEN = _read_secret(
+    "MERCADOPAGO_ACCESS_TOKEN"
+)
+
+MERCADOPAGO_MODE = _read_secret(
+    "MERCADOPAGO_MODE",
+    "test",
+).lower()
+
+MERCADOPAGO_CURRENCY = _read_secret(
+    "MERCADOPAGO_CURRENCY",
+    "CLP",
+).upper()
+
+MERCADOPAGO_MONTHLY_AMOUNT = _read_float_secret(
+    "MERCADOPAGO_MONTHLY_AMOUNT",
+    3000.0,
+)
+
+MERCADOPAGO_ANNUAL_AMOUNT = _read_float_secret(
+    "MERCADOPAGO_ANNUAL_AMOUNT",
+    20000.0,
+)
+
+MERCADOPAGO_WEBHOOK_URL = _read_secret(
+    "MERCADOPAGO_WEBHOOK_URL"
 )
 
 
 # =========================================================
-# VALIDACIÓN
+# BINANCE PAY
 # =========================================================
+
+
+BINANCE_PAY_ID = _read_secret(
+    "BINANCE_PAY_ID"
+)
+
+BINANCE_PAY_EMAIL = _read_secret(
+    "BINANCE_PAY_EMAIL"
+)
+
+BINANCE_PAY_PHONE = _read_secret(
+    "BINANCE_PAY_PHONE"
+)
+
+BINANCE_PAY_MERCHANT_ID = _read_secret(
+    "BINANCE_PAY_MERCHANT_ID"
+)
+
+BINANCE_PAY_LINK = _read_secret(
+    "BINANCE_PAY_LINK"
+)
+
+
+# =========================================================
+# BILLETERAS CRIPTO
+# =========================================================
+
+
+BTC_BEP20_WALLET_ADDRESS = _read_secret(
+    "BTC_BEP20_WALLET_ADDRESS"
+)
+
+ETH_BEP20_WALLET_ADDRESS = _read_secret(
+    "ETH_BEP20_WALLET_ADDRESS"
+)
+
+USDT_TRC20_WALLET_ADDRESS = _read_secret(
+    "USDT_TRC20_WALLET_ADDRESS"
+)
+
+
+# =========================================================
+# VALIDACIONES INTERNAS
+# =========================================================
+
+
+def _validate_url(
+    name: str,
+    value: str,
+    *,
+    required: bool = False,
+) -> list[str]:
+    """
+    Valida una URL sin exponer su contenido.
+    """
+
+    errors: list[str] = []
+
+    clean_value = str(
+        value or ""
+    ).strip()
+
+    if required and not clean_value:
+        errors.append(
+            name
+        )
+
+        return errors
+
+    if (
+        clean_value
+        and not clean_value.startswith(
+            (
+                "https://",
+                "http://localhost",
+                "http://127.0.0.1",
+            )
+        )
+    ):
+        errors.append(
+            f"{name} no tiene una URL válida"
+        )
+
+    return errors
+
+
+def _validate_mercadopago() -> list[str]:
+    """
+    Valida Mercado Pago únicamente cuando
+    existen credenciales configuradas.
+    """
+
+    errors: list[str] = []
+
+    has_any_credential = bool(
+        MERCADOPAGO_PUBLIC_KEY
+        or MERCADOPAGO_ACCESS_TOKEN
+    )
+
+    if not has_any_credential:
+        return errors
+
+    if not MERCADOPAGO_PUBLIC_KEY:
+        errors.append(
+            "MERCADOPAGO_PUBLIC_KEY"
+        )
+
+    if not MERCADOPAGO_ACCESS_TOKEN:
+        errors.append(
+            "MERCADOPAGO_ACCESS_TOKEN"
+        )
+
+    if MERCADOPAGO_MODE not in {
+        "test",
+        "production",
+    }:
+        errors.append(
+            "MERCADOPAGO_MODE debe ser "
+            "'test' o 'production'"
+        )
+
+    if len(
+        MERCADOPAGO_CURRENCY
+    ) != 3:
+        errors.append(
+            "MERCADOPAGO_CURRENCY debe usar "
+            "tres letras, por ejemplo CLP"
+        )
+
+    if MERCADOPAGO_MONTHLY_AMOUNT <= 0:
+        errors.append(
+            "MERCADOPAGO_MONTHLY_AMOUNT debe "
+            "ser mayor que cero"
+        )
+
+    if MERCADOPAGO_ANNUAL_AMOUNT <= 0:
+        errors.append(
+            "MERCADOPAGO_ANNUAL_AMOUNT debe "
+            "ser mayor que cero"
+        )
+
+    return errors
+
+
+# =========================================================
+# VALIDACIÓN PRINCIPAL
+# =========================================================
+
 
 def validate_config() -> None:
     """
-    Comprueba que las variables esenciales existan.
-    Nunca muestra las claves completas.
+    Comprueba las variables esenciales.
+
+    Supabase es obligatorio para iniciar la aplicación.
+
+    Mercado Pago, OpenRouter, Binance y las billeteras
+    se validan solamente cuando están configurados,
+    evitando bloquear toda la aplicación por un método
+    de pago opcional.
     """
 
-    missing = []
+    errors: list[str] = []
 
     if not SUPABASE_URL:
-        missing.append(
+        errors.append(
             "SUPABASE_URL"
         )
 
     if not SUPABASE_KEY:
-        missing.append(
+        errors.append(
             "SUPABASE_KEY"
         )
 
-    if missing:
+    errors.extend(
+        _validate_url(
+            "SUPABASE_URL",
+            SUPABASE_URL,
+            required=bool(
+                SUPABASE_URL
+            ),
+        )
+    )
+
+    errors.extend(
+        _validate_url(
+            "APP_URL",
+            APP_URL,
+            required=False,
+        )
+    )
+
+    errors.extend(
+        _validate_url(
+            "MERCADOPAGO_WEBHOOK_URL",
+            MERCADOPAGO_WEBHOOK_URL,
+            required=False,
+        )
+    )
+
+    errors.extend(
+        _validate_mercadopago()
+    )
+
+    if errors:
         raise RuntimeError(
-            "Faltan variables obligatorias en "
-            "Streamlit Secrets: "
+            "Hay variables incorrectas o faltantes "
+            "en Streamlit Secrets: "
             + ", ".join(
-                missing
+                errors
             )
         )
 
 
-def get_public_config() -> dict[str, str]:
+# =========================================================
+# CONFIGURACIÓN PÚBLICA
+# =========================================================
+
+
+def get_public_config() -> dict[str, Any]:
     """
-    Devuelve datos de configuración no sensibles
-    para diagnóstico.
+    Devuelve únicamente información segura.
+
+    Nunca devuelve claves, tokens ni direcciones completas.
     """
+
+    binance_configured = bool(
+        BINANCE_PAY_ID
+        or BINANCE_PAY_EMAIL
+        or BINANCE_PAY_PHONE
+        or BINANCE_PAY_MERCHANT_ID
+        or BINANCE_PAY_LINK
+    )
+
+    crypto_configured = bool(
+        BTC_BEP20_WALLET_ADDRESS
+        and ETH_BEP20_WALLET_ADDRESS
+        and USDT_TRC20_WALLET_ADDRESS
+    )
+
+    mercadopago_configured = bool(
+        MERCADOPAGO_PUBLIC_KEY
+        and MERCADOPAGO_ACCESS_TOKEN
+    )
 
     return {
         "supabase_configured":
-            "Sí"
-            if SUPABASE_URL and SUPABASE_KEY
-            else "No",
+            _configured(
+                SUPABASE_URL
+                and SUPABASE_KEY
+            ),
 
         "openrouter_configured":
-            "Sí"
-            if OPENROUTER_API_KEY
-            else "No",
+            _configured(
+                OPENROUTER_API_KEY
+            ),
 
         "openrouter_model":
             OPENROUTER_MODEL,
 
-        "app_url":
-            APP_URL,
+        "app_url_configured":
+            _configured(
+                APP_URL
+            ),
 
         "admin_configured":
-            "Sí"
-            if ADMIN_EMAIL
-            else "No",
+            _configured(
+                ADMIN_EMAIL
+            ),
+
+        "mercadopago_configured":
+            _configured(
+                mercadopago_configured
+            ),
+
+        "mercadopago_mode":
+            MERCADOPAGO_MODE,
+
+        "mercadopago_currency":
+            MERCADOPAGO_CURRENCY,
+
+        "mercadopago_monthly_amount":
+            MERCADOPAGO_MONTHLY_AMOUNT,
+
+        "mercadopago_annual_amount":
+            MERCADOPAGO_ANNUAL_AMOUNT,
+
+        "mercadopago_webhook_configured":
+            _configured(
+                MERCADOPAGO_WEBHOOK_URL
+            ),
+
+        "binance_pay_configured":
+            _configured(
+                binance_configured
+            ),
+
+        "crypto_wallets_configured":
+            _configured(
+                crypto_configured
+            ),
+
+        "btc_bep20_configured":
+            _configured(
+                BTC_BEP20_WALLET_ADDRESS
+            ),
+
+        "eth_bep20_configured":
+            _configured(
+                ETH_BEP20_WALLET_ADDRESS
+            ),
+
+        "usdt_trc20_configured":
+            _configured(
+                USDT_TRC20_WALLET_ADDRESS
+            ),
     }
