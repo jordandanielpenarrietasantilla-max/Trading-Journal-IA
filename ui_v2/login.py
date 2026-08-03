@@ -677,6 +677,203 @@ body,
         grid-column: span 1;
     }
 }
+
+/* =========================================================
+   MEJORA DE LEGIBILIDAD AXION PRIME
+   ========================================================= */
+
+.st-key-login_left,
+.st-key-login_center,
+.st-key-login_right {
+    font-size: 14px;
+}
+
+.st-key-login_left p,
+.st-key-login_center p,
+.st-key-login_right p,
+.st-key-login_left span,
+.st-key-login_center span,
+.st-key-login_right span {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+
+.st-key-login_center label,
+.st-key-login_center [data-testid="stWidgetLabel"] p {
+    color: #EAF0FF !important;
+    font-size: 14px !important;
+    font-weight: 750 !important;
+}
+
+.st-key-login_center input {
+    color: #F4F7FF !important;
+    font-size: 14px !important;
+}
+
+[data-baseweb="tab"] {
+    font-size: 13px !important;
+    letter-spacing: .1px;
+}
+
+.v2-brand small {
+    color: #AAB6D0 !important;
+    font-size: 9px !important;
+}
+
+.v2-hero-chip {
+    font-size: 10px !important;
+}
+
+.v2-hero-copy p {
+    color: #C0CAE0 !important;
+    font-size: 14px !important;
+    line-height: 1.65 !important;
+}
+
+.v2-feature-item {
+    padding: 14px !important;
+}
+
+.v2-feature-item strong {
+    color: #F4F7FF !important;
+    font-size: 13px !important;
+    letter-spacing: .15px;
+}
+
+.v2-feature-item span {
+    color: #BBC7DE !important;
+    font-size: 11px !important;
+    line-height: 1.55 !important;
+}
+
+.v2-security-card {
+    padding: 14px !important;
+}
+
+.v2-security-card strong {
+    font-size: 12px !important;
+}
+
+.v2-security-card span {
+    color: #BBC7DE !important;
+    font-size: 11px !important;
+    line-height: 1.55 !important;
+}
+
+.v2-form-head p {
+    color: #C0CAE0 !important;
+    font-size: 12px !important;
+}
+
+.v2-center-benefit {
+    padding: 14px 10px !important;
+}
+
+.v2-center-benefit strong {
+    font-size: 12px !important;
+}
+
+.v2-center-benefit span {
+    color: #BBC7DE !important;
+    font-size: 11px !important;
+    line-height: 1.55 !important;
+}
+
+.v2-legal-panel strong {
+    font-size: 12px !important;
+}
+
+.v2-legal-panel span {
+    color: #BBC7DE !important;
+    font-size: 11px !important;
+    line-height: 1.6 !important;
+}
+
+.v2-payment-title {
+    font-size: 13px !important;
+}
+
+.v2-pay-card {
+    min-height: 96px !important;
+    padding: 14px !important;
+}
+
+.v2-pay-logo {
+    font-size: 24px !important;
+}
+
+.v2-pay-card strong {
+    font-size: 12px !important;
+    letter-spacing: .15px;
+}
+
+.v2-pay-card span {
+    color: #BBC7DE !important;
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+}
+
+.v2-trial {
+    padding: 16px !important;
+}
+
+.v2-trial strong {
+    font-size: 22px !important;
+}
+
+.v2-trial span {
+    color: #C6D1E6 !important;
+    font-size: 11px !important;
+}
+
+.v2-price-card {
+    padding: 16px !important;
+}
+
+.v2-price-card small {
+    font-size: 11px !important;
+}
+
+.v2-price-card strong {
+    font-size: 34px !important;
+}
+
+.v2-price-card span {
+    color: #BBC7DE !important;
+    font-size: 11px !important;
+}
+
+.v2-trust-card {
+    padding: 13px 9px !important;
+}
+
+.v2-trust-card strong {
+    font-size: 11px !important;
+}
+
+.v2-trust-card span {
+    color: #BBC7DE !important;
+    font-size: 10px !important;
+    line-height: 1.5 !important;
+}
+
+.v2-payment-footer,
+.v2-terms {
+    color: #B3C0DA !important;
+    font-size: 11px !important;
+    line-height: 1.55 !important;
+}
+
+@media (max-width: 1200px) {
+    .v2-feature-item span,
+    .v2-pay-card span,
+    .v2-center-benefit span,
+    .v2-trust-card span,
+    .v2-security-card span {
+        font-size: 12px !important;
+    }
+}
+
 </style>
 """
 
