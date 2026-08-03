@@ -8,6 +8,11 @@ from typing import Any
 import qrcode
 import streamlit as st
 
+from core.payments import (
+    PaymentError,
+    create_plan_checkout,
+    get_plan_checkout_data,
+)
 from ui_v2.theme import apply_v2_theme
 
 
@@ -728,6 +733,76 @@ SUBSCRIPTION_CSS = """
     }
 }
 
+
+/* MERCADO PAGO */
+.ax-mp-panel {
+    margin-top: 14px;
+    padding: 18px;
+    border: 1px solid rgba(51,151,255,.48);
+    border-radius: 17px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(51,151,255,.14),transparent 36%),
+        linear-gradient(145deg,rgba(7,16,37,.99),rgba(5,9,24,.99));
+}
+.ax-mp-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.ax-mp-head strong { color:#42a5ff; font-size:15px; font-weight:950; }
+.ax-mp-head span { color:#f4f7ff; font-size:11px; font-weight:900; }
+.ax-mp-grid {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:9px;
+    margin-top:13px;
+}
+.ax-mp-grid div {
+    padding:11px;
+    border:1px solid rgba(51,151,255,.22);
+    border-radius:11px;
+    background:rgba(5,11,28,.86);
+}
+.ax-mp-grid small {
+    display:block;
+    color:#9eabc2;
+    font-size:9px;
+    font-weight:900;
+}
+.ax-mp-grid strong {
+    display:block;
+    margin-top:5px;
+    color:#f4f7ff;
+    font-size:12px;
+    overflow-wrap:anywhere;
+}
+.ax-mp-note {
+    margin-top:13px;
+    padding:13px;
+    color:#d5def0;
+    font-size:11px;
+    line-height:1.6;
+    border-left:3px solid #42a5ff;
+    border-radius:5px 11px 11px 5px;
+    background:rgba(51,151,255,.06);
+}
+.ax-mp-secure {
+    display:inline-flex;
+    margin-top:12px;
+    padding:7px 10px;
+    color:#31ff9c;
+    font-size:10px;
+    font-weight:900;
+    border:1px solid rgba(49,255,156,.24);
+    border-radius:999px;
+    background:rgba(49,255,156,.055);
+}
+@media (max-width:700px) {
+    .ax-mp-grid { grid-template-columns:1fr; }
+}
+
 </style>
 """
 
@@ -1208,6 +1283,268 @@ def _render_binance_checkout(
                 "activará después de confirmar la operación."
             )
 
+
+def _checkout_cache_key(plan_code: str) -> str:
+    return (
+        "mercadopago_preference_"
+        f"{str(plan_code or '').strip().upper()}"
+    )
+
+
+def _clear_other_checkout_preferences(
+    current_plan_code: str,
+) -> None:
+    current_key = _checkout_cache_key(
+        current_plan_code
+    )
+
+    for key in list(st.session_state.keys()):
+        if (
+            str(key).startswith(
+                "mercadopago_preference_"
+            )
+            and key != current_key
+        ):
+            st.session_state.pop(
+                key,
+                None,
+            )
+
+
+def _render_payment_return_status() -> None:
+    try:
+        result = str(
+            st.query_params.get(
+                "payment_result",
+                "",
+            )
+            or ""
+        ).strip().lower()
+
+        provider = str(
+            st.query_params.get(
+                "provider",
+                "",
+            )
+            or ""
+        ).strip().lower()
+
+    except Exception:
+        return
+
+    if provider != "mercadopago":
+        return
+
+    if result == "success":
+        st.success(
+            "Mercado Pago informó que el proceso terminó "
+            "correctamente. La membresía se activará cuando "
+            "el webhook confirme el pago."
+        )
+
+    elif result == "pending":
+        st.warning(
+            "El pago quedó pendiente. La membresía se activará "
+            "cuando Mercado Pago lo confirme."
+        )
+
+    elif result == "failure":
+        st.error(
+            "El pago no fue aprobado o fue cancelado."
+        )
+
+
+def _render_mercadopago_checkout(
+    *,
+    checkout: dict[str, Any],
+    payment_method: str,
+) -> None:
+    plan_code = str(
+        checkout.get(
+            "plan_code",
+            "",
+        )
+        or ""
+    ).strip().upper()
+
+    if not plan_code:
+        st.error(
+            "No se pudo identificar el plan."
+        )
+        return
+
+    try:
+        plan = get_plan_checkout_data(
+            plan_code
+        )
+
+    except PaymentError as exc:
+        st.error(
+            str(exc)
+        )
+        return
+
+    local_amount = float(
+        plan["amount"]
+    )
+
+    currency_id = str(
+        plan["currency_id"]
+    )
+
+    method_label = (
+        "VISA · MASTERCARD · DÉBITO"
+        if payment_method == "Tarjeta débito / crédito"
+        else "MERCADO PAGO"
+    )
+
+    st.html(
+        f"""
+        <section class="ax-mp-panel">
+            <div class="ax-mp-head">
+                <strong>💳 CHECKOUT PRO · {html.escape(method_label)}</strong>
+                <span>{html.escape(currency_id)} {local_amount:,.0f}</span>
+            </div>
+
+            <div class="ax-mp-grid">
+                <div>
+                    <small>PLAN</small>
+                    <strong>{html.escape(str(plan["plan_label"]))}</strong>
+                </div>
+
+                <div>
+                    <small>IMPORTE LOCAL</small>
+                    <strong>{html.escape(currency_id)} {local_amount:,.0f}</strong>
+                </div>
+
+                <div>
+                    <small>ACTIVACIÓN</small>
+                    <strong>AUTOMÁTICA</strong>
+                </div>
+            </div>
+
+            <div class="ax-mp-note">
+                El pago se completa en Mercado Pago con los medios
+                disponibles para el cliente, como Visa, Mastercard,
+                débito o saldo de Mercado Pago. AXION PRIME no
+                almacena los datos de la tarjeta.
+            </div>
+
+            <div class="ax-mp-secure">
+                🔒 CHECKOUT EXTERNO Y PROTEGIDO
+            </div>
+        </section>
+        """
+    )
+
+    cache_key = _checkout_cache_key(
+        plan_code
+    )
+
+    preference = st.session_state.get(
+        cache_key,
+        {},
+    )
+
+    if not isinstance(
+        preference,
+        dict,
+    ):
+        preference = {}
+
+    if st.button(
+        "🔗 GENERAR CHECKOUT SEGURO",
+        use_container_width=True,
+        type="primary",
+        key=(
+            "subscription_create_mp_"
+            f"{plan_code}_"
+            f"{payment_method}"
+        ),
+    ):
+        try:
+            with st.spinner(
+                "Conectando con Mercado Pago..."
+            ):
+                created = create_plan_checkout(
+                    plan_code
+                )
+
+            preference = {
+                "preference_id": created.preference_id,
+                "checkout_url": created.checkout_url,
+                "external_reference": created.external_reference,
+                "mode": created.mode,
+                "created_at": dt.datetime.now(
+                    dt.timezone.utc
+                ).isoformat(),
+            }
+
+            _clear_other_checkout_preferences(
+                plan_code
+            )
+
+            st.session_state[
+                cache_key
+            ] = preference
+
+            st.success(
+                "Checkout generado correctamente."
+            )
+
+        except PaymentError as exc:
+            st.error(
+                str(exc)
+            )
+            return
+
+        except Exception as exc:
+            st.error(
+                "No se pudo crear el Checkout Pro."
+            )
+
+            with st.expander(
+                "Ver detalle técnico",
+                expanded=False,
+            ):
+                st.code(
+                    str(exc),
+                    language="text",
+                )
+
+            return
+
+    checkout_url = str(
+        preference.get(
+            "checkout_url",
+            "",
+        )
+        or ""
+    ).strip()
+
+    if checkout_url:
+        st.link_button(
+            "🚀 IR A MERCADO PAGO Y PAGAR",
+            checkout_url,
+            use_container_width=True,
+            type="primary",
+        )
+
+        if str(
+            preference.get(
+                "mode",
+                "test",
+            )
+        ).upper() == "TEST":
+            st.warning(
+                "Modo de prueba activo. No habrá cobro real."
+            )
+
+        st.caption(
+            "La cuenta PRO se activará cuando el webhook confirme "
+            "que Mercado Pago aprobó el pago."
+        )
+
 # =========================================================
 # CHECKOUT
 # =========================================================
@@ -1288,17 +1625,16 @@ def _render_checkout(
     )
 
     if payment_method == "Tarjeta débito / crédito":
-        st.info(
-            "El pago con tarjeta se habilitará cuando conectemos "
-            "el proveedor de cobro. AXION PRIME no almacenará "
-            "directamente los datos de la tarjeta."
+        _render_mercadopago_checkout(
+            checkout=checkout,
+            payment_method=payment_method,
         )
         return
 
     if payment_method == "Mercado Pago":
-        st.info(
-            "Mercado Pago se habilitará cuando conectemos "
-            "las credenciales y el checkout oficial."
+        _render_mercadopago_checkout(
+            checkout=checkout,
+            payment_method=payment_method,
         )
         return
 
@@ -1467,6 +1803,8 @@ def render_subscription() -> None:
     st.html(
         SUBSCRIPTION_CSS
     )
+
+    _render_payment_return_status()
 
     membership = _membership_information()
 
