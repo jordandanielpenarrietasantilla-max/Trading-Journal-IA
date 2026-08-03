@@ -19,9 +19,9 @@ html,
 body,
 [data-testid="stAppViewContainer"] {
     background:
-        radial-gradient(circle at 9% 8%, rgba(25,228,255,.08), transparent 22%),
-        radial-gradient(circle at 91% 10%, rgba(139,77,255,.09), transparent 24%),
-        linear-gradient(180deg,#020713 0%,#030514 56%,#020711 100%) !important;
+        radial-gradient(circle at 8% 8%, rgba(25, 228, 255, .08), transparent 22%),
+        radial-gradient(circle at 92% 10%, rgba(139, 77, 255, .09), transparent 24%),
+        linear-gradient(180deg, #020713 0%, #030514 56%, #020711 100%) !important;
 }
 
 .block-container {
@@ -31,27 +31,27 @@ body,
 }
 
 /* =========================================================
-   TARJETAS PRINCIPALES
+   CONTENEDORES PRINCIPALES
    ========================================================= */
 
 .st-key-login_left,
 .st-key-login_center,
 .st-key-login_right {
     position: relative;
-    min-height: 900px;
+    min-height: 910px;
     overflow: hidden;
     padding: 26px !important;
 
     background:
-        radial-gradient(circle at 100% 0%, rgba(139,77,255,.13), transparent 28%),
-        linear-gradient(145deg, rgba(6,13,31,.99), rgba(5,7,23,.99));
+        radial-gradient(circle at 100% 0%, rgba(139, 77, 255, .13), transparent 28%),
+        linear-gradient(145deg, rgba(6, 13, 31, .99), rgba(5, 7, 23, .99));
 
-    border: 1px solid rgba(73,108,188,.40);
+    border: 1px solid rgba(73, 108, 188, .40);
     border-radius: 24px;
 
     box-shadow:
-        0 28px 82px rgba(0,0,0,.42),
-        inset 0 1px 0 rgba(255,255,255,.03);
+        0 28px 82px rgba(0, 0, 0, .42),
+        inset 0 1px 0 rgba(255, 255, 255, .03);
 }
 
 .st-key-login_left::before,
@@ -64,8 +64,8 @@ body,
     pointer-events: none;
 
     background:
-        linear-gradient(rgba(79,108,173,.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(79,108,173,.03) 1px, transparent 1px);
+        linear-gradient(rgba(79, 108, 173, .03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79, 108, 173, .03) 1px, transparent 1px);
 
     background-size: 42px 42px;
 }
@@ -88,9 +88,8 @@ body,
 }
 
 .v2-logo {
-    width: 48px;
-    height: 48px;
-
+    width: 50px;
+    height: 50px;
     display: grid;
     place-items: center;
 
@@ -98,23 +97,23 @@ body,
     font-size: 18px;
     font-weight: 950;
 
-    background: linear-gradient(145deg,#19e4ff,#3c7dff 55%,#8b4dff);
-    border-radius: 14px;
+    background: linear-gradient(145deg, #19e4ff, #3c7dff 55%, #8b4dff);
+    border-radius: 15px;
 
-    box-shadow: 0 0 28px rgba(25,228,255,.26);
+    box-shadow:
+        0 0 28px rgba(25, 228, 255, .26),
+        inset 0 1px 0 rgba(255, 255, 255, .18);
 }
 
 .v2-brand strong {
     display: block;
-
     color: #f7f9ff;
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 950;
 }
 
 .v2-brand small {
     display: block;
-
     margin-top: 3px;
 
     color: #66738f;
@@ -129,7 +128,6 @@ body,
 
 .v2-hero-chip {
     display: inline-flex;
-
     padding: 6px 10px;
 
     color: #2bdcff;
@@ -137,16 +135,16 @@ body,
     font-weight: 950;
     letter-spacing: .8px;
 
-    border: 1px solid rgba(43,220,255,.32);
+    border: 1px solid rgba(43, 220, 255, .32);
     border-radius: 999px;
-    background: rgba(43,220,255,.06);
+    background: rgba(43, 220, 255, .06);
 }
 
 .v2-hero-copy h1 {
-    margin: 15px 0 0;
+    margin: 16px 0 0;
 
     color: #f7f9ff;
-    font-size: clamp(42px,4vw,66px);
+    font-size: clamp(42px, 4vw, 66px);
     line-height: .95;
     letter-spacing: -3px;
     font-weight: 950;
@@ -155,10 +153,16 @@ body,
 
 .v2-hero-copy h1 span {
     display: block;
-
     color: transparent;
 
-    background: linear-gradient(90deg,#19e4ff,#69a3ff,#8b4dff,#ff4bc8);
+    background: linear-gradient(
+        90deg,
+        #19e4ff,
+        #69a3ff,
+        #8b4dff,
+        #ff4bc8
+    );
+
     -webkit-background-clip: text;
     background-clip: text;
 }
@@ -171,66 +175,10 @@ body,
     line-height: 1.65;
 }
 
-.v2-holo {
-    position: relative;
-
-    height: 178px;
-    margin-top: 18px;
-    overflow: hidden;
-
-    border: 1px solid rgba(61,116,225,.28);
-    border-radius: 17px;
-
-    background:
-        radial-gradient(circle at 50% 66%,rgba(25,228,255,.24),transparent 12%),
-        radial-gradient(circle at 50% 50%,rgba(139,77,255,.17),transparent 34%),
-        linear-gradient(180deg,rgba(5,14,35,.95),rgba(3,8,20,.98));
-}
-
-.v2-holo::before {
-    content: "A";
-
-    position: absolute;
-    inset: 0;
-
-    display: grid;
-    place-items: center;
-
-    color: transparent;
-    font-size: 108px;
-    font-weight: 950;
-
-    background: linear-gradient(180deg,#2bdcff,#6c5cff,#e84dff);
-    -webkit-background-clip: text;
-    background-clip: text;
-
-    filter: drop-shadow(0 0 22px rgba(43,220,255,.38));
-}
-
-.v2-holo::after {
-    content: "";
-
-    position: absolute;
-    left: 14%;
-    right: 14%;
-    bottom: 15px;
-
-    height: 58px;
-
-    border: 2px solid rgba(43,220,255,.42);
-    border-radius: 50%;
-
-    box-shadow:
-        0 0 26px rgba(43,220,255,.28),
-        inset 0 0 26px rgba(139,77,255,.20);
-
-    transform: perspective(280px) rotateX(72deg);
-}
-
 .v2-feature-stack {
     display: grid;
     gap: 8px;
-    margin-top: 18px;
+    margin-top: 20px;
 }
 
 .v2-feature-item {
@@ -241,27 +189,30 @@ body,
 
     padding: 11px;
 
-    border: 1px solid rgba(var(--rgb),.25);
+    border: 1px solid rgba(var(--rgb), .25);
     border-radius: 13px;
 
     background:
-        radial-gradient(circle at 0 50%, rgba(var(--rgb),.12), transparent 24%),
-        rgba(4,10,25,.76);
+        radial-gradient(
+            circle at 0 50%,
+            rgba(var(--rgb), .12),
+            transparent 24%
+        ),
+        rgba(4, 10, 25, .76);
 }
 
 .v2-feature-icon {
     width: 38px;
     height: 38px;
-
     display: grid;
     place-items: center;
 
     color: rgb(var(--rgb));
     font-size: 19px;
 
-    border: 1px solid rgba(var(--rgb),.28);
+    border: 1px solid rgba(var(--rgb), .28);
     border-radius: 12px;
-    background: rgba(var(--rgb),.10);
+    background: rgba(var(--rgb), .10);
 }
 
 .v2-feature-item strong {
@@ -274,7 +225,6 @@ body,
 
 .v2-feature-item span {
     display: block;
-
     margin-top: 2px;
 
     color: #8492ae;
@@ -282,52 +232,73 @@ body,
     line-height: 1.4;
 }
 
-.v2-stat-grid {
+.v2-holo {
+    position: relative;
+
+    height: 230px;
+    margin-top: 18px;
+    overflow: hidden;
+
+    border: 1px solid rgba(61, 116, 225, .28);
+    border-radius: 17px;
+
+    background:
+        radial-gradient(circle at 50% 66%, rgba(25, 228, 255, .24), transparent 12%),
+        radial-gradient(circle at 50% 50%, rgba(139, 77, 255, .17), transparent 34%),
+        linear-gradient(180deg, rgba(5, 14, 35, .95), rgba(3, 8, 20, .98));
+}
+
+.v2-holo::before {
+    content: "A";
+    position: absolute;
+    inset: 0;
+
     display: grid;
-    grid-template-columns: repeat(4,minmax(0,1fr));
-    gap: 7px;
-    margin-top: 11px;
+    place-items: center;
+
+    color: transparent;
+    font-size: 132px;
+    font-weight: 950;
+
+    background: linear-gradient(180deg, #2bdcff, #6c5cff, #e84dff);
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    filter: drop-shadow(0 0 22px rgba(43, 220, 255, .38));
 }
 
-.v2-stat {
-    padding: 10px 6px;
-    text-align: center;
+.v2-holo::after {
+    content: "";
+    position: absolute;
+    left: 13%;
+    right: 13%;
+    bottom: 20px;
 
-    background: rgba(4,10,25,.78);
-    border: 1px solid rgba(72,101,165,.24);
-    border-radius: 11px;
-}
+    height: 68px;
 
-.v2-stat small {
-    display: block;
+    border: 2px solid rgba(43, 220, 255, .42);
+    border-radius: 50%;
 
-    color: #687590;
-    font-size: 5px;
-    font-weight: 900;
-}
+    box-shadow:
+        0 0 26px rgba(43, 220, 255, .28),
+        inset 0 0 26px rgba(139, 77, 255, .20);
 
-.v2-stat strong {
-    display: block;
-
-    margin-top: 5px;
-
-    color: #2bdcff;
-    font-size: 15px;
+    transform: perspective(280px) rotateX(72deg);
 }
 
 .v2-security-grid {
     display: grid;
-    grid-template-columns: repeat(2,minmax(0,1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    margin-top: 10px;
+    margin-top: 12px;
 }
 
 .v2-security-card {
     padding: 11px;
 
-    border: 1px solid rgba(139,77,255,.28);
+    border: 1px solid rgba(139, 77, 255, .28);
     border-radius: 11px;
-    background: rgba(4,10,25,.78);
+    background: rgba(4, 10, 25, .78);
 }
 
 .v2-security-card strong {
@@ -339,7 +310,6 @@ body,
 
 .v2-security-card span {
     display: block;
-
     margin-top: 3px;
 
     color: #8997b4;
@@ -355,30 +325,28 @@ body,
     padding: 22px 20px 17px;
     text-align: center;
 
-    border: 1px solid rgba(72,107,183,.34);
+    border: 1px solid rgba(72, 107, 183, .34);
     border-radius: 18px;
 
     background:
-        radial-gradient(circle at 100% 0%,rgba(139,77,255,.14),transparent 28%),
-        linear-gradient(145deg,rgba(8,16,35,.98),rgba(6,8,25,.98));
+        radial-gradient(circle at 100% 0%, rgba(139, 77, 255, .14), transparent 28%),
+        linear-gradient(145deg, rgba(8, 16, 35, .98), rgba(6, 8, 25, .98));
 }
 
 .v2-form-logo {
     width: 46px;
     height: 46px;
-
     display: grid;
     place-items: center;
-
     margin: auto;
 
     color: white;
     font-size: 18px;
 
-    background: linear-gradient(145deg,#19e4ff,#3c7dff,#8b4dff);
+    background: linear-gradient(145deg, #19e4ff, #3c7dff, #8b4dff);
     border-radius: 14px;
 
-    box-shadow: 0 0 24px rgba(25,228,255,.24);
+    box-shadow: 0 0 24px rgba(25, 228, 255, .24);
 }
 
 .v2-form-head h2 {
@@ -393,14 +361,13 @@ body,
 
 .v2-form-head p {
     margin: 0;
-
     color: #91a0bf;
     font-size: 9.5px;
 }
 
 [data-baseweb="tab-list"] {
     gap: 15px;
-    border-bottom: 1px solid rgba(84,107,166,.23);
+    border-bottom: 1px solid rgba(84, 107, 166, .23);
 }
 
 [data-baseweb="tab"] {
@@ -417,59 +384,20 @@ body,
     font-weight: 900;
 }
 
-.v2-divider {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    margin: 22px 0 14px;
-
-    color: #71809d;
-    font-size: 7px;
-}
-
-.v2-divider::before,
-.v2-divider::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: rgba(75,102,164,.23);
-}
-
-.v2-social-grid {
-    display: grid;
-    grid-template-columns: repeat(3,minmax(0,1fr));
-    gap: 8px;
-}
-
-.v2-social-card {
-    padding: 11px 8px;
-    text-align: center;
-
-    color: #e8edf9;
-    font-size: 8px;
-    font-weight: 800;
-
-    border: 1px solid rgba(72,101,165,.25);
-    border-radius: 10px;
-    background: rgba(4,10,25,.78);
-}
-
 .v2-center-benefits {
     display: grid;
-    grid-template-columns: repeat(3,minmax(0,1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-
-    margin-top: 20px;
+    margin-top: 22px;
 }
 
 .v2-center-benefit {
     padding: 12px 8px;
     text-align: center;
 
-    border: 1px solid rgba(72,101,165,.22);
+    border: 1px solid rgba(72, 101, 165, .22);
     border-radius: 11px;
-    background: rgba(4,10,25,.74);
+    background: rgba(4, 10, 25, .74);
 }
 
 .v2-center-benefit strong {
@@ -481,7 +409,6 @@ body,
 
 .v2-center-benefit span {
     display: block;
-
     margin-top: 4px;
 
     color: #7f8fac;
@@ -489,15 +416,40 @@ body,
     line-height: 1.35;
 }
 
+.v2-legal-panel {
+    margin-top: 18px;
+    padding: 14px;
+
+    border: 1px solid rgba(72, 101, 165, .20);
+    border-radius: 12px;
+    background: rgba(4, 10, 25, .70);
+}
+
+.v2-legal-panel strong {
+    display: block;
+
+    color: #eef4ff;
+    font-size: 8px;
+}
+
+.v2-legal-panel span {
+    display: block;
+    margin-top: 4px;
+
+    color: #7e8da8;
+    font-size: 6.4px;
+    line-height: 1.45;
+}
+
 .v2-terms {
-    margin-top: 22px;
+    margin-top: 18px;
     padding-top: 14px;
     text-align: center;
 
     color: #71809b;
     font-size: 6.7px;
 
-    border-top: 1px solid rgba(72,101,165,.17);
+    border-top: 1px solid rgba(72, 101, 165, .17);
 }
 
 .v2-terms b {
@@ -512,7 +464,6 @@ body,
     display: flex;
     align-items: center;
     gap: 10px;
-
     margin-bottom: 14px;
 
     color: #2bdcff;
@@ -526,12 +477,18 @@ body,
     flex: 1;
     height: 1px;
 
-    background: linear-gradient(90deg,transparent,#2bdcff,#8b4dff,transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        #2bdcff,
+        #8b4dff,
+        transparent
+    );
 }
 
 .v2-payment-grid {
     display: grid;
-    grid-template-columns: repeat(2,minmax(0,1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
 
@@ -546,12 +503,12 @@ body,
     padding: 11px;
     text-align: center;
 
-    border: 1px solid rgba(var(--rgb),.34);
+    border: 1px solid rgba(var(--rgb), .34);
     border-radius: 12px;
 
     background:
-        radial-gradient(circle at 100% 0%,rgba(var(--rgb),.13),transparent 34%),
-        rgba(5,11,28,.92);
+        radial-gradient(circle at 100% 0%, rgba(var(--rgb), .13), transparent 34%),
+        rgba(5, 11, 28, .92);
 }
 
 .v2-pay-card.wide {
@@ -580,9 +537,8 @@ body,
 
 .v2-crypto-grid {
     display: grid;
-    grid-template-columns: repeat(3,minmax(0,1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-
     margin-top: 8px;
 }
 
@@ -591,12 +547,12 @@ body,
     padding: 13px;
     text-align: center;
 
-    border: 1px solid rgba(139,77,255,.32);
+    border: 1px solid rgba(139, 77, 255, .32);
     border-radius: 13px;
 
     background:
-        radial-gradient(circle at 50% 0%,rgba(139,77,255,.13),transparent 44%),
-        rgba(5,11,28,.92);
+        radial-gradient(circle at 50% 0%, rgba(139, 77, 255, .13), transparent 44%),
+        rgba(5, 11, 28, .92);
 }
 
 .v2-trial strong {
@@ -609,7 +565,6 @@ body,
 
 .v2-trial span {
     display: block;
-
     margin-top: 4px;
 
     color: #9aa7c1;
@@ -618,9 +573,8 @@ body,
 
 .v2-price-grid {
     display: grid;
-    grid-template-columns: repeat(2,minmax(0,1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-
     margin-top: 10px;
 }
 
@@ -628,13 +582,13 @@ body,
     padding: 13px;
     text-align: center;
 
-    border: 1px solid rgba(25,228,255,.28);
+    border: 1px solid rgba(25, 228, 255, .28);
     border-radius: 12px;
-    background: rgba(5,11,28,.92);
+    background: rgba(5, 11, 28, .92);
 }
 
 .v2-price-card.annual {
-    border-color: rgba(214,72,255,.46);
+    border-color: rgba(214, 72, 255, .46);
 }
 
 .v2-price-card small {
@@ -645,7 +599,6 @@ body,
 
 .v2-price-card strong {
     display: block;
-
     margin-top: 6px;
 
     color: #f5f7ff;
@@ -659,9 +612,8 @@ body,
 
 .v2-trust-grid {
     display: grid;
-    grid-template-columns: repeat(3,minmax(0,1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-
     margin-top: 14px;
 }
 
@@ -669,9 +621,9 @@ body,
     padding: 11px 7px;
     text-align: center;
 
-    border: 1px solid rgba(72,101,165,.21);
+    border: 1px solid rgba(72, 101, 165, .21);
     border-radius: 11px;
-    background: rgba(4,10,25,.74);
+    background: rgba(4, 10, 25, .74);
 }
 
 .v2-trust-card strong {
@@ -683,7 +635,6 @@ body,
 
 .v2-trust-card span {
     display: block;
-
     margin-top: 3px;
 
     color: #7f8fac;
@@ -699,9 +650,9 @@ body,
     color: #7e8da8;
     font-size: 6.7px;
 
-    border: 1px solid rgba(72,101,165,.18);
+    border: 1px solid rgba(72, 101, 165, .18);
     border-radius: 10px;
-    background: rgba(4,10,25,.72);
+    background: rgba(4, 10, 25, .72);
 }
 
 @media (max-width: 1200px) {
@@ -716,10 +667,8 @@ body,
     .v2-payment-grid,
     .v2-crypto-grid,
     .v2-price-grid,
-    .v2-stat-grid,
     .v2-security-grid,
     .v2-center-benefits,
-    .v2-social-grid,
     .v2-trust-grid {
         grid-template-columns: 1fr;
     }
@@ -784,8 +733,6 @@ def _hero() -> None:
             </p>
         </div>
 
-        <div class="v2-holo"></div>
-
         <div class="v2-feature-stack">
             <div class="v2-feature-item" style="--rgb:39,216,255">
                 <div class="v2-feature-icon">🧠</div>
@@ -820,22 +767,17 @@ def _hero() -> None:
             </div>
         </div>
 
-        <div class="v2-stat-grid">
-            <div class="v2-stat"><small>TRADERS</small><strong>+12K</strong></div>
-            <div class="v2-stat"><small>OPERACIONES</small><strong>+2.3M</strong></div>
-            <div class="v2-stat"><small>SATISFACCIÓN</small><strong>98.7%</strong></div>
-            <div class="v2-stat"><small>WIN RATE</small><strong>72.8%</strong></div>
-        </div>
+        <div class="v2-holo"></div>
 
         <div class="v2-security-grid">
             <div class="v2-security-card">
-                <strong>🔒 PAGO 100% SEGURO</strong>
-                <span>Protección mediante proveedores externos.</span>
+                <strong>🔒 ACCESO PROTEGIDO</strong>
+                <span>Autenticación segura mediante Supabase.</span>
             </div>
 
             <div class="v2-security-card">
-                <strong>🎧 SOPORTE 24/7</strong>
-                <span>Atención preferencial cuando la necesites.</span>
+                <strong>☁️ DATOS EN LA NUBE</strong>
+                <span>Tu información queda vinculada a tu cuenta.</span>
             </div>
         </div>
         """
@@ -984,31 +926,30 @@ def _form() -> None:
 
     st.html(
         """
-        <div class="v2-divider">
-            o continúa con
-        </div>
-
-        <div class="v2-social-grid">
-            <div class="v2-social-card">Google</div>
-            <div class="v2-social-card">Apple</div>
-            <div class="v2-social-card">Discord</div>
-        </div>
-
         <div class="v2-center-benefits">
             <div class="v2-center-benefit">
+                <strong>🛡️ ACCESO SEGURO</strong>
+                <span>Tu sesión se autentica mediante Supabase.</span>
+            </div>
+
+            <div class="v2-center-benefit">
                 <strong>☁️ TUS DATOS</strong>
-                <span>Sincronización segura en la nube.</span>
+                <span>Perfil y journal vinculados a tu cuenta.</span>
             </div>
 
             <div class="v2-center-benefit">
-                <strong>🛡️ ACCESO PROTEGIDO</strong>
-                <span>Sesión privada y autenticación segura.</span>
+                <strong>🚀 EXPERIENCIA PRO</strong>
+                <span>Acceso directo desde tu navegador.</span>
             </div>
+        </div>
 
-            <div class="v2-center-benefit">
-                <strong>🚀 EXPERIENCIA INMEDIATA</strong>
-                <span>Accede sin instalaciones.</span>
-            </div>
+        <div class="v2-legal-panel">
+            <strong>TRANSPARENCIA Y PRIVACIDAD</strong>
+            <span>
+                AXION PRIME no necesita mostrar estadísticas inventadas.
+                La confianza se construye con funciones reales, precios claros
+                y una experiencia profesional.
+            </span>
         </div>
 
         <div class="v2-terms">
@@ -1028,27 +969,27 @@ def _payment_showcase() -> None:
 
         <div class="v2-payment-grid">
             <div class="v2-pay-card" style="--rgb:39,216,255">
-                <div class="v2-pay-logo">VISA</div>
+                <div class="v2-pay-logo">TARJETA</div>
                 <strong>DÉBITO / CRÉDITO</strong>
-                <span>Tarjetas compatibles</span>
+                <span>Procesamiento mediante proveedor externo</span>
             </div>
 
             <div class="v2-pay-card" style="--rgb:255,142,48">
-                <div class="v2-pay-logo">●●</div>
-                <strong>MASTERCARD</strong>
-                <span>Débito / Crédito</span>
+                <div class="v2-pay-logo">CARD</div>
+                <strong>PAGO CON TARJETA</strong>
+                <span>Disponibilidad según proveedor</span>
             </div>
 
             <div class="v2-pay-card wide" style="--rgb:63,188,255">
                 <div class="v2-pay-logo">MERCADO PAGO</div>
                 <strong>PAGO SEGURO</strong>
-                <span>Tarjeta y medios compatibles</span>
+                <span>Integración prevista</span>
             </div>
 
             <div class="v2-pay-card wide" style="--rgb:255,196,0">
                 <div class="v2-pay-logo">BINANCE PAY</div>
                 <strong>PAGO CON CRIPTOMONEDAS</strong>
-                <span>Integración comercial próxima</span>
+                <span>Integración comercial prevista</span>
             </div>
         </div>
 
@@ -1074,7 +1015,7 @@ def _payment_showcase() -> None:
 
         <div class="v2-trial">
             <strong>🎁 7 DÍAS GRATIS</strong>
-            <span>Disfruta todas las funciones PRO sin compromiso.</span>
+            <span>Acceso completo durante el periodo de prueba.</span>
         </div>
 
         <div class="v2-price-grid">
@@ -1093,24 +1034,24 @@ def _payment_showcase() -> None:
 
         <div class="v2-trust-grid">
             <div class="v2-trust-card">
-                <strong>✓ SIN CARGOS OCULTOS</strong>
-                <span>Precios claros.</span>
+                <strong>✓ PRECIOS CLAROS</strong>
+                <span>Sin estadísticas promocionales inventadas.</span>
             </div>
 
             <div class="v2-trust-card">
-                <strong>✓ CANCELA CUANDO QUIERAS</strong>
-                <span>Control total.</span>
+                <strong>✓ CONTROL DEL PLAN</strong>
+                <span>La gestión estará disponible al integrar pagos.</span>
             </div>
 
             <div class="v2-trust-card">
-                <strong>✓ SOPORTE 24/7</strong>
-                <span>Ayuda cuando la necesites.</span>
+                <strong>✓ VARIOS MÉTODOS</strong>
+                <span>Tarjeta, Mercado Pago, Binance Pay y cripto.</span>
             </div>
         </div>
 
         <div class="v2-payment-footer">
-            Aceptamos pagos internacionales mediante tarjeta,
-            Mercado Pago, Binance Pay y criptomonedas.
+            Los métodos mostrados son informativos hasta completar
+            las integraciones de cobro.
         </div>
         """
     )
