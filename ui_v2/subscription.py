@@ -807,41 +807,51 @@ def _render_checkout(
             "Ethereum BEP20",
             "USDT TRC20",
         ],
-        key="subscription_payment_method",
+        key=f"subscription_payment_method_{checkout.get('plan_code', 'plan')}",
     )
 
-    if payment_method in {
-        "Tarjeta débito / crédito",
-        "Mercado Pago",
-        "Binance Pay",
-    }:
-        if payment_method == "Binance Pay":
-            merchant_id = _secret(
-                "BINANCE_PAY_MERCHANT_ID",
-            )
+    if payment_method == "Tarjeta débito / crédito":
+        st.info(
+            "El pago con tarjeta se habilitará cuando conectemos "
+            "el proveedor de cobro. AXION PRIME no almacenará "
+            "directamente los datos de la tarjeta."
+        )
+        return
 
-            if merchant_id:
-                st.info(
-                    "Binance Pay está identificado en la "
-                    "configuración. Falta conectar la API comercial "
-                    "para crear la orden automática."
-                )
-            else:
-                st.warning(
-                    "Falta configurar BINANCE_PAY_MERCHANT_ID."
-                )
+    if payment_method == "Mercado Pago":
+        st.info(
+            "Mercado Pago se habilitará cuando conectemos "
+            "las credenciales y el checkout oficial."
+        )
+        return
 
-        else:
+    if payment_method == "Binance Pay":
+        merchant_id = _secret(
+            "BINANCE_PAY_MERCHANT_ID",
+        )
+
+        if merchant_id:
             st.info(
-                f"{payment_method} aparecerá aquí cuando conectemos "
-                "el proveedor de cobro correspondiente. "
-                "Por seguridad, la app no activará PRO solo por "
-                "presionar un botón."
+                "Binance Pay está identificado con tu Merchant ID. "
+                "Falta conectar la API comercial para crear y "
+                "verificar órdenes automáticamente."
+            )
+        else:
+            st.warning(
+                "Falta configurar BINANCE_PAY_MERCHANT_ID "
+                "en Streamlit Secrets."
             )
 
         return
 
     wallets = _wallets()
+
+    if payment_method not in wallets:
+        st.error(
+            "El método de pago seleccionado no está disponible."
+        )
+        return
+
     selected = wallets[
         payment_method
     ]
