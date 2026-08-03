@@ -1871,6 +1871,236 @@ label,
     }
 }
 
+
+/* ========================================================
+   CHAT IA — CONTRASTE, BURBUJAS Y CAMPO DE ESCRITURA
+   ======================================================== */
+
+[data-testid="stChatMessage"] {
+    position: relative;
+    overflow: hidden;
+    padding: 16px 18px !important;
+    margin-bottom: 13px !important;
+    color: var(--ax-white) !important;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(8, 18, 40, 0.97),
+            rgba(5, 11, 28, 0.97)
+        ) !important;
+    border:
+        1px solid
+        rgba(76, 110, 183, 0.34) !important;
+    border-radius: 18px !important;
+    box-shadow:
+        0 14px 40px
+        rgba(0, 0, 0, 0.26) !important;
+    opacity: 1 !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+}
+
+[data-testid="stChatMessage"]:has(
+    [data-testid="stChatMessageAvatarUser"]
+) {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(26, 51, 90, 0.98),
+            rgba(16, 31, 61, 0.98)
+        ) !important;
+    border-color:
+        rgba(32, 221, 245, 0.40) !important;
+}
+
+[data-testid="stChatMessage"]:has(
+    [data-testid="stChatMessageAvatarAssistant"]
+) {
+    background:
+        radial-gradient(
+            circle at 0% 0%,
+            rgba(139, 77, 255, 0.10),
+            transparent 35%
+        ),
+        linear-gradient(
+            145deg,
+            rgba(8, 15, 34, 0.98),
+            rgba(10, 7, 31, 0.98)
+        ) !important;
+    border-color:
+        rgba(139, 77, 255, 0.38) !important;
+}
+
+[data-testid="stChatMessage"],
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] span,
+[data-testid="stChatMessage"] div,
+[data-testid="stChatMessage"] li,
+[data-testid="stChatMessage"] label,
+[data-testid="stChatMessage"] small,
+[data-testid="stChatMessage"] em,
+[data-testid="stChatMessage"] strong,
+[data-testid="stChatMessage"] h1,
+[data-testid="stChatMessage"] h2,
+[data-testid="stChatMessage"] h3,
+[data-testid="stChatMessage"] h4,
+[data-testid="stChatMessage"] h5,
+[data-testid="stChatMessage"] h6 {
+    color: var(--ax-white) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-shadow: none !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+}
+
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"],
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"] * {
+    color: var(--ax-white) !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"] p {
+    margin: 0 0 10px !important;
+    color: #eef3ff !important;
+    font-size: 14px !important;
+    line-height: 1.72 !important;
+}
+
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"] p:last-child {
+    margin-bottom: 0 !important;
+}
+
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"] strong {
+    color: var(--ax-cyan) !important;
+    font-weight: 900 !important;
+}
+
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"] a {
+    color: #63e9ff !important;
+    text-decoration: underline !important;
+}
+
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"] ul,
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"] ol {
+    margin: 8px 0 12px !important;
+    padding-left: 24px !important;
+    color: #eef3ff !important;
+}
+
+[data-testid="stChatMessage"]
+[data-testid="stMarkdownContainer"] li {
+    margin-bottom: 7px !important;
+    color: #eef3ff !important;
+    line-height: 1.62 !important;
+}
+
+[data-testid="stChatMessageAvatarUser"],
+[data-testid="stChatMessageAvatarAssistant"] {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+[data-testid="stChatMessage"] code {
+    color: #93f5ff !important;
+    background: rgba(2, 8, 22, 0.96) !important;
+    border:
+        1px solid
+        rgba(32, 221, 245, 0.26) !important;
+    border-radius: 7px !important;
+    padding: 2px 6px !important;
+}
+
+[data-testid="stChatMessage"] pre {
+    overflow-x: auto;
+    padding: 14px !important;
+    color: #edf6ff !important;
+    background: #030916 !important;
+    border:
+        1px solid
+        rgba(32, 221, 245, 0.26) !important;
+    border-radius: 12px !important;
+}
+
+[data-testid="stChatMessage"] pre code {
+    padding: 0 !important;
+    color: #edf6ff !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+[data-testid="stChatInput"] {
+    overflow: hidden;
+    color: var(--ax-white) !important;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(7, 16, 37, 0.99),
+            rgba(4, 10, 25, 0.99)
+        ) !important;
+    border:
+        1px solid
+        rgba(32, 221, 245, 0.42) !important;
+    border-radius: 17px !important;
+    box-shadow:
+        0 16px 48px
+        rgba(0, 0, 0, 0.34) !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    color: var(--ax-white) !important;
+    background: transparent !important;
+    caret-color: var(--ax-cyan) !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #8795b5 !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stChatInput"] button {
+    color: white !important;
+    background:
+        linear-gradient(
+            145deg,
+            var(--ax-cyan),
+            var(--ax-blue),
+            var(--ax-purple)
+        ) !important;
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.10) !important;
+    border-radius: 12px !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stChatInput"] button:hover {
+    filter:
+        brightness(1.10)
+        saturate(1.08) !important;
+}
+
+[data-testid="stChatInput"] [data-baseweb="textarea"],
+[data-testid="stChatInput"] [data-baseweb="base-input"] {
+    color: var(--ax-white) !important;
+    background: transparent !important;
+}
+
+[data-testid="stChatMessage"] *,
+[data-testid="stChatInput"] * {
+    text-shadow: none !important;
+}
+
 </style>
 """
 
