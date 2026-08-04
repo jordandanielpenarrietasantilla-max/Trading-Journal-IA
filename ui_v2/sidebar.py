@@ -5,6 +5,7 @@ from typing import Any
 
 import streamlit as st
 
+from core.membership import get_membership_info
 from ui_v2.theme import apply_v2_theme
 
 
@@ -407,25 +408,41 @@ def render_v2_sidebar() -> None:
     target = _float(st.session_state.get("capital_meta", 15000), 15000)
     progress = max(0.0, min(100.0, capital / target * 100 if target else 0.0))
     active = str(st.session_state.get("page", "Dashboard"))
-    is_owner = _is_owner(email)
+
+    membership = get_membership_info()
+    is_owner = membership.is_owner
 
     role_label = (
         "FOUNDER"
         if is_owner
-        else "TRADER"
+        else (
+            "PRO"
+            if membership.is_pro
+            else "TRADER"
+        )
     )
 
-    plan_label = (
-        "FOUNDER · ACCESO TOTAL"
-        if is_owner
-        else "TRIAL · 7 DÍAS"
-    )
+    plan_label = membership.label
 
-    plan_detail = (
-        "LIFETIME"
-        if is_owner
-        else "AXION PRIME PRO"
-    )
+    if is_owner:
+        plan_detail = "LIFETIME"
+
+    elif membership.is_active:
+        if membership.days_remaining is not None:
+            plan_detail = (
+                f"{membership.days_remaining} DÍAS RESTANTES"
+            )
+        else:
+            plan_detail = "ACCESO ACTIVO"
+
+    elif membership.is_expired:
+        plan_detail = "RENOVACIÓN REQUERIDA"
+
+    elif membership.plan == "TRIAL":
+        plan_detail = "ACCESO DE PRUEBA"
+
+    else:
+        plan_detail = "AXION PRIME PRO"
 
     plan_class = (
         "ax-plan-strip ax-owner-strip"
