@@ -55,7 +55,10 @@ def _read_float_secret(
             value
         )
 
-    except (TypeError, ValueError):
+    except (
+        TypeError,
+        ValueError,
+    ):
         return float(
             default
         )
@@ -119,7 +122,65 @@ APP_URL = _read_secret(
 
 
 # =========================================================
-# MERCADO PAGO
+# FLOW · VISA / MASTERCARD / WEBPAY
+# =========================================================
+
+
+FLOW_API_KEY = _read_secret(
+    "FLOW_API_KEY"
+)
+
+FLOW_SECRET_KEY = _read_secret(
+    "FLOW_SECRET_KEY"
+)
+
+FLOW_MODE = _read_secret(
+    "FLOW_MODE",
+    "production",
+).lower()
+
+FLOW_API_URL = _read_secret(
+    "FLOW_API_URL",
+    (
+        "https://sandbox.flow.cl/api"
+        if FLOW_MODE == "sandbox"
+        else "https://www.flow.cl/api"
+    ),
+).rstrip("/")
+
+FLOW_CURRENCY = _read_secret(
+    "FLOW_CURRENCY",
+    "CLP",
+).upper()
+
+FLOW_MONTHLY_AMOUNT = _read_float_secret(
+    "FLOW_MONTHLY_AMOUNT",
+    3000.0,
+)
+
+FLOW_ANNUAL_AMOUNT = _read_float_secret(
+    "FLOW_ANNUAL_AMOUNT",
+    20000.0,
+)
+
+FLOW_RETURN_URL = _read_secret(
+    "FLOW_RETURN_URL",
+    APP_URL,
+).rstrip("/")
+
+FLOW_CONFIRMATION_URL = _read_secret(
+    "FLOW_CONFIRMATION_URL",
+    (
+        f"{SUPABASE_URL.rstrip('/')}"
+        "/functions/v1/flow-webhook"
+        if SUPABASE_URL
+        else ""
+    ),
+).rstrip("/")
+
+
+# =========================================================
+# MERCADO PAGO · DESACTIVADO TEMPORALMENTE
 # =========================================================
 
 
@@ -133,7 +194,7 @@ MERCADOPAGO_ACCESS_TOKEN = _read_secret(
 
 MERCADOPAGO_MODE = _read_secret(
     "MERCADOPAGO_MODE",
-    "test",
+    "disabled",
 ).lower()
 
 MERCADOPAGO_CURRENCY = _read_secret(
@@ -245,13 +306,97 @@ def _validate_url(
     return errors
 
 
-def _validate_mercadopago() -> list[str]:
+def _validate_flow() -> list[str]:
     """
-    Valida Mercado Pago únicamente cuando
-    existen credenciales configuradas.
+    Valida Flow únicamente cuando existe
+    al menos una credencial configurada.
     """
 
     errors: list[str] = []
+
+    has_any_credential = bool(
+        FLOW_API_KEY
+        or FLOW_SECRET_KEY
+    )
+
+    if not has_any_credential:
+        return errors
+
+    if not FLOW_API_KEY:
+        errors.append(
+            "FLOW_API_KEY"
+        )
+
+    if not FLOW_SECRET_KEY:
+        errors.append(
+            "FLOW_SECRET_KEY"
+        )
+
+    if FLOW_MODE not in {
+        "sandbox",
+        "production",
+    }:
+        errors.append(
+            "FLOW_MODE debe ser "
+            "'sandbox' o 'production'"
+        )
+
+    if len(
+        FLOW_CURRENCY
+    ) != 3:
+        errors.append(
+            "FLOW_CURRENCY debe usar "
+            "tres letras, por ejemplo CLP"
+        )
+
+    if FLOW_MONTHLY_AMOUNT <= 0:
+        errors.append(
+            "FLOW_MONTHLY_AMOUNT debe "
+            "ser mayor que cero"
+        )
+
+    if FLOW_ANNUAL_AMOUNT <= 0:
+        errors.append(
+            "FLOW_ANNUAL_AMOUNT debe "
+            "ser mayor que cero"
+        )
+
+    errors.extend(
+        _validate_url(
+            "FLOW_API_URL",
+            FLOW_API_URL,
+            required=True,
+        )
+    )
+
+    errors.extend(
+        _validate_url(
+            "FLOW_RETURN_URL",
+            FLOW_RETURN_URL,
+            required=True,
+        )
+    )
+
+    errors.extend(
+        _validate_url(
+            "FLOW_CONFIRMATION_URL",
+            FLOW_CONFIRMATION_URL,
+            required=True,
+        )
+    )
+
+    return errors
+
+
+def _validate_mercadopago() -> list[str]:
+    """
+    Valida Mercado Pago solamente cuando está activo.
+    """
+
+    errors: list[str] = []
+
+    if MERCADOPAGO_MODE == "disabled":
+        return errors
 
     has_any_credential = bool(
         MERCADOPAGO_PUBLIC_KEY
@@ -277,7 +422,7 @@ def _validate_mercadopago() -> list[str]:
     }:
         errors.append(
             "MERCADOPAGO_MODE debe ser "
-            "'test' o 'production'"
+            "'disabled', 'test' o 'production'"
         )
 
     if len(
@@ -314,10 +459,8 @@ def validate_config() -> None:
 
     Supabase es obligatorio para iniciar la aplicación.
 
-    Mercado Pago, OpenRouter, Binance y las billeteras
-    se validan solamente cuando están configurados,
-    evitando bloquear toda la aplicación por un método
-    de pago opcional.
+    Flow, Mercado Pago, OpenRouter, Binance y las billeteras
+    se validan solamente cuando están configurados.
     """
 
     errors: list[str] = []
@@ -348,6 +491,10 @@ def validate_config() -> None:
             APP_URL,
             required=False,
         )
+    )
+
+    errors.extend(
+        _validate_flow()
     )
 
     errors.extend(
@@ -384,6 +531,11 @@ def get_public_config() -> dict[str, Any]:
     Nunca devuelve claves, tokens ni direcciones completas.
     """
 
+    flow_configured = bool(
+        FLOW_API_KEY
+        and FLOW_SECRET_KEY
+    )
+
     binance_configured = bool(
         BINANCE_PAY_ID
         or BINANCE_PAY_EMAIL
@@ -399,7 +551,8 @@ def get_public_config() -> dict[str, Any]:
     )
 
     mercadopago_configured = bool(
-        MERCADOPAGO_PUBLIC_KEY
+        MERCADOPAGO_MODE != "disabled"
+        and MERCADOPAGO_PUBLIC_KEY
         and MERCADOPAGO_ACCESS_TOKEN
     )
 
@@ -426,6 +579,33 @@ def get_public_config() -> dict[str, Any]:
         "admin_configured":
             _configured(
                 ADMIN_EMAIL
+            ),
+
+        "flow_configured":
+            _configured(
+                flow_configured
+            ),
+
+        "flow_mode":
+            FLOW_MODE,
+
+        "flow_currency":
+            FLOW_CURRENCY,
+
+        "flow_monthly_amount":
+            FLOW_MONTHLY_AMOUNT,
+
+        "flow_annual_amount":
+            FLOW_ANNUAL_AMOUNT,
+
+        "flow_return_url_configured":
+            _configured(
+                FLOW_RETURN_URL
+            ),
+
+        "flow_confirmation_url_configured":
+            _configured(
+                FLOW_CONFIRMATION_URL
             ),
 
         "mercadopago_configured":
