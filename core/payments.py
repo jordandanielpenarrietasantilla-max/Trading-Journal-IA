@@ -667,7 +667,6 @@ def create_checkout_preference(
         )
 
     user_id = get_current_user_id()
-    user_email = get_current_user_email()
 
     external_reference = (
         _external_reference(
@@ -697,9 +696,6 @@ def create_checkout_preference(
                 "unit_price": clean_amount,
             }
         ],
-        "payer": {
-            "email": user_email,
-        },
         "external_reference": (
             external_reference
         ),
@@ -721,6 +717,7 @@ def create_checkout_preference(
             "plan_code": clean_plan_code,
             "plan_label": clean_plan_label,
             "source": "axion_prime_streamlit",
+            "mercadopago_mode": get_mercadopago_mode(),
         },
     }
 
@@ -757,27 +754,17 @@ def create_checkout_preference(
 
     mode = get_mercadopago_mode()
 
-    if mode == "test":
-        checkout_url = str(
-            data.get(
-                "sandbox_init_point",
-                "",
-            )
-            or data.get(
-                "init_point",
-                "",
-            )
-            or ""
-        ).strip()
-
-    else:
-        checkout_url = str(
-            data.get(
-                "init_point",
-                "",
-            )
-            or ""
-        ).strip()
+    checkout_url = str(
+        data.get(
+            "init_point",
+            "",
+        )
+        or data.get(
+            "sandbox_init_point",
+            "",
+        )
+        or ""
+    ).strip()
 
     if not preference_id:
         raise PaymentError(
