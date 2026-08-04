@@ -8,17 +8,17 @@ from typing import Any
 import qrcode
 import streamlit as st
 
-from core.payments import (
-    PaymentError,
-    create_plan_checkout,
-    get_plan_checkout_data,
+from core.flow_payments import (
+    FlowPaymentError,
+    create_flow_plan_checkout,
+    get_flow_plan_data,
 )
 from ui_v2.theme import apply_v2_theme
 
 
 # =========================================================
 # AXION PRIME PRO
-# SUSCRIPCIONES · TRIAL · PAGOS
+# SUSCRIPCIONES · TRIAL · FLOW · CRIPTO
 # =========================================================
 
 
@@ -734,61 +734,61 @@ SUBSCRIPTION_CSS = """
 }
 
 
-/* MERCADO PAGO */
-.ax-mp-panel {
+/* FLOW · WEBPAY · VISA · MASTERCARD */
+.ax-flow-panel {
     margin-top: 14px;
     padding: 18px;
-    border: 1px solid rgba(51,151,255,.48);
+    border: 1px solid rgba(43,220,255,.48);
     border-radius: 17px;
     background:
-        radial-gradient(circle at 100% 0%,rgba(51,151,255,.14),transparent 36%),
+        radial-gradient(circle at 100% 0%,rgba(43,220,255,.14),transparent 36%),
         linear-gradient(145deg,rgba(7,16,37,.99),rgba(5,9,24,.99));
 }
-.ax-mp-head {
+.ax-flow-head {
     display:flex;
     justify-content:space-between;
     align-items:center;
     gap:12px;
     flex-wrap:wrap;
 }
-.ax-mp-head strong { color:#42a5ff; font-size:15px; font-weight:950; }
-.ax-mp-head span { color:#f4f7ff; font-size:11px; font-weight:900; }
-.ax-mp-grid {
+.ax-flow-head strong { color:#2bdcff; font-size:15px; font-weight:950; }
+.ax-flow-head span { color:#f4f7ff; font-size:11px; font-weight:900; }
+.ax-flow-grid {
     display:grid;
     grid-template-columns:repeat(3,minmax(0,1fr));
     gap:9px;
     margin-top:13px;
 }
-.ax-mp-grid div {
+.ax-flow-grid div {
     padding:11px;
-    border:1px solid rgba(51,151,255,.22);
+    border:1px solid rgba(43,220,255,.22);
     border-radius:11px;
     background:rgba(5,11,28,.86);
 }
-.ax-mp-grid small {
+.ax-flow-grid small {
     display:block;
     color:#9eabc2;
     font-size:9px;
     font-weight:900;
 }
-.ax-mp-grid strong {
+.ax-flow-grid strong {
     display:block;
     margin-top:5px;
     color:#f4f7ff;
     font-size:12px;
     overflow-wrap:anywhere;
 }
-.ax-mp-note {
+.ax-flow-note {
     margin-top:13px;
     padding:13px;
     color:#d5def0;
     font-size:11px;
     line-height:1.6;
-    border-left:3px solid #42a5ff;
+    border-left:3px solid #2bdcff;
     border-radius:5px 11px 11px 5px;
-    background:rgba(51,151,255,.06);
+    background:rgba(43,220,255,.06);
 }
-.ax-mp-secure {
+.ax-flow-secure {
     display:inline-flex;
     margin-top:12px;
     padding:7px 10px;
@@ -800,7 +800,7 @@ SUBSCRIPTION_CSS = """
     background:rgba(49,255,156,.055);
 }
 @media (max-width:700px) {
-    .ax-mp-grid { grid-template-columns:1fr; }
+    .ax-flow-grid { grid-template-columns:1fr; }
 }
 
 </style>
@@ -1285,23 +1285,33 @@ def _render_binance_checkout(
 
 
 def _checkout_cache_key(plan_code: str) -> str:
+    """
+    Clave de sesión para conservar el checkout de Flow.
+    """
+
     return (
-        "mercadopago_preference_"
+        "flow_checkout_"
         f"{str(plan_code or '').strip().upper()}"
     )
 
 
-def _clear_other_checkout_preferences(
+def _clear_other_flow_checkouts(
     current_plan_code: str,
 ) -> None:
+    """
+    Elimina checkouts anteriores de otros planes.
+    """
+
     current_key = _checkout_cache_key(
         current_plan_code
     )
 
-    for key in list(st.session_state.keys()):
+    for key in list(
+        st.session_state.keys()
+    ):
         if (
             str(key).startswith(
-                "mercadopago_preference_"
+                "flow_checkout_"
             )
             and key != current_key
         ):
@@ -1312,15 +1322,14 @@ def _clear_other_checkout_preferences(
 
 
 def _render_payment_return_status() -> None:
-    try:
-        result = str(
-            st.query_params.get(
-                "payment_result",
-                "",
-            )
-            or ""
-        ).strip().lower()
+    """
+    Muestra el retorno visual después de volver desde Flow.
 
+    La activación real no depende de esta URL. El webhook
+    flow-webhook consultará directamente el estado en Flow.
+    """
+
+    try:
         provider = str(
             st.query_params.get(
                 "provider",
@@ -1329,36 +1338,52 @@ def _render_payment_return_status() -> None:
             or ""
         ).strip().lower()
 
+        commerce_order = str(
+            st.query_params.get(
+                "commerce_order",
+                "",
+            )
+            or ""
+        ).strip()
+
+        token = str(
+            st.query_params.get(
+                "token",
+                "",
+            )
+            or ""
+        ).strip()
+
     except Exception:
         return
 
-    if provider != "mercadopago":
+    if provider != "flow":
         return
 
-    if result == "success":
+    if token:
         st.success(
-            "Mercado Pago informó que el proceso terminó "
-            "correctamente. La membresía se activará cuando "
-            "el webhook confirme el pago."
+            "Flow recibió el proceso de pago. "
+            "Estamos verificando la operación antes de activar PRO."
         )
 
-    elif result == "pending":
-        st.warning(
-            "El pago quedó pendiente. La membresía se activará "
-            "cuando Mercado Pago lo confirme."
-        )
-
-    elif result == "failure":
-        st.error(
-            "El pago no fue aprobado o fue cancelado."
+    elif commerce_order:
+        st.info(
+            "Regresaste desde Flow. La membresía se activará "
+            "cuando el webhook confirme que el pago fue aprobado."
         )
 
 
-def _render_mercadopago_checkout(
+def _render_flow_checkout(
     *,
     checkout: dict[str, Any],
-    payment_method: str,
 ) -> None:
+    """
+    Genera y muestra el checkout externo de Flow.
+
+    Flow procesará Webpay, Visa, Mastercard y los demás
+    medios activos en la cuenta del comercio.
+    """
+
     plan_code = str(
         checkout.get(
             "plan_code",
@@ -1374,11 +1399,11 @@ def _render_mercadopago_checkout(
         return
 
     try:
-        plan = get_plan_checkout_data(
+        plan = get_flow_plan_data(
             plan_code
         )
 
-    except PaymentError as exc:
+    except FlowPaymentError as exc:
         st.error(
             str(exc)
         )
@@ -1388,33 +1413,31 @@ def _render_mercadopago_checkout(
         plan["amount"]
     )
 
-    currency_id = str(
-        plan["currency_id"]
+    currency = str(
+        plan["currency"]
     )
 
-    method_label = (
-        "VISA · MASTERCARD · DÉBITO"
-        if payment_method == "Tarjeta débito / crédito"
-        else "MERCADO PAGO"
+    plan_label = str(
+        plan["plan_label"]
     )
 
     st.html(
         f"""
-        <section class="ax-mp-panel">
-            <div class="ax-mp-head">
-                <strong>💳 CHECKOUT PRO · {html.escape(method_label)}</strong>
-                <span>{html.escape(currency_id)} {local_amount:,.0f}</span>
+        <section class="ax-flow-panel">
+            <div class="ax-flow-head">
+                <strong>💳 FLOW · WEBPAY · VISA · MASTERCARD</strong>
+                <span>{html.escape(currency)} {local_amount:,.0f}</span>
             </div>
 
-            <div class="ax-mp-grid">
+            <div class="ax-flow-grid">
                 <div>
                     <small>PLAN</small>
-                    <strong>{html.escape(str(plan["plan_label"]))}</strong>
+                    <strong>{html.escape(plan_label)}</strong>
                 </div>
 
                 <div>
                     <small>IMPORTE LOCAL</small>
-                    <strong>{html.escape(currency_id)} {local_amount:,.0f}</strong>
+                    <strong>{html.escape(currency)} {local_amount:,.0f}</strong>
                 </div>
 
                 <div>
@@ -1423,14 +1446,14 @@ def _render_mercadopago_checkout(
                 </div>
             </div>
 
-            <div class="ax-mp-note">
-                El pago se completa en Mercado Pago con los medios
-                disponibles para el cliente, como Visa, Mastercard,
-                débito o saldo de Mercado Pago. AXION PRIME no
-                almacena los datos de la tarjeta.
+            <div class="ax-flow-note">
+                El pago se completa en el checkout protegido de Flow.
+                Allí estarán disponibles Webpay, Visa, Mastercard y
+                los demás medios habilitados en tu cuenta. AXION PRIME
+                no almacena datos de tarjetas.
             </div>
 
-            <div class="ax-mp-secure">
+            <div class="ax-flow-secure">
                 🔒 CHECKOUT EXTERNO Y PROTEGIDO
             </div>
         </section>
@@ -1441,58 +1464,60 @@ def _render_mercadopago_checkout(
         plan_code
     )
 
-    preference = st.session_state.get(
+    flow_checkout = st.session_state.get(
         cache_key,
         {},
     )
 
     if not isinstance(
-        preference,
+        flow_checkout,
         dict,
     ):
-        preference = {}
+        flow_checkout = {}
 
     if st.button(
-        "🔗 GENERAR CHECKOUT SEGURO",
+        "🔗 GENERAR CHECKOUT FLOW",
         use_container_width=True,
         type="primary",
         key=(
-            "subscription_create_mp_"
-            f"{plan_code}_"
-            f"{payment_method}"
+            "subscription_create_flow_"
+            f"{plan_code}"
         ),
     ):
         try:
             with st.spinner(
-                "Conectando con Mercado Pago..."
+                "Conectando con Flow..."
             ):
-                created = create_plan_checkout(
+                created = create_flow_plan_checkout(
                     plan_code
                 )
 
-            preference = {
-                "preference_id": created.preference_id,
+            flow_checkout = {
+                "token": created.token,
+                "flow_order": created.flow_order,
+                "commerce_order": created.commerce_order,
                 "checkout_url": created.checkout_url,
-                "external_reference": created.external_reference,
-                "mode": created.mode,
+                "plan_code": created.plan_code,
+                "amount": created.amount,
+                "currency": created.currency,
                 "created_at": dt.datetime.now(
                     dt.timezone.utc
                 ).isoformat(),
             }
 
-            _clear_other_checkout_preferences(
+            _clear_other_flow_checkouts(
                 plan_code
             )
 
             st.session_state[
                 cache_key
-            ] = preference
+            ] = flow_checkout
 
             st.success(
-                "Checkout generado correctamente."
+                "Checkout de Flow generado correctamente."
             )
 
-        except PaymentError as exc:
+        except FlowPaymentError as exc:
             st.error(
                 str(exc)
             )
@@ -1500,7 +1525,7 @@ def _render_mercadopago_checkout(
 
         except Exception as exc:
             st.error(
-                "No se pudo crear el Checkout Pro."
+                "No se pudo crear el checkout de Flow."
             )
 
             with st.expander(
@@ -1515,7 +1540,7 @@ def _render_mercadopago_checkout(
             return
 
     checkout_url = str(
-        preference.get(
+        flow_checkout.get(
             "checkout_url",
             "",
         )
@@ -1524,25 +1549,15 @@ def _render_mercadopago_checkout(
 
     if checkout_url:
         st.link_button(
-            "🚀 IR A MERCADO PAGO Y PAGAR",
+            "🚀 IR A FLOW Y PAGAR",
             checkout_url,
             use_container_width=True,
             type="primary",
         )
 
-        if str(
-            preference.get(
-                "mode",
-                "test",
-            )
-        ).upper() == "TEST":
-            st.warning(
-                "Modo de prueba activo. No habrá cobro real."
-            )
-
         st.caption(
-            "La cuenta PRO se activará cuando el webhook confirme "
-            "que Mercado Pago aprobó el pago."
+            "La cuenta PRO se activará automáticamente cuando "
+            "Flow confirme el pago mediante el webhook."
         )
 
 # =========================================================
@@ -1614,8 +1629,7 @@ def _render_checkout(
     payment_method = st.selectbox(
         "Elige cómo quieres pagar",
         options=[
-            "Tarjeta débito / crédito",
-            "Mercado Pago",
+            "Visa / Mastercard / Webpay",
             "Binance Pay",
             "Bitcoin BEP20",
             "Ethereum BEP20",
@@ -1624,17 +1638,9 @@ def _render_checkout(
         key=f"subscription_payment_method_{checkout.get('plan_code', 'plan')}",
     )
 
-    if payment_method == "Tarjeta débito / crédito":
-        _render_mercadopago_checkout(
+    if payment_method == "Visa / Mastercard / Webpay":
+        _render_flow_checkout(
             checkout=checkout,
-            payment_method=payment_method,
-        )
-        return
-
-    if payment_method == "Mercado Pago":
-        _render_mercadopago_checkout(
-            checkout=checkout,
-            payment_method=payment_method,
         )
         return
 
@@ -2014,9 +2020,9 @@ def render_subscription() -> None:
             </div>
 
             <div class="ax-payment-icons">
-                <div class="ax-pay-icon" style="--rgb:43,220,255">TARJETA</div>
-                <div class="ax-pay-icon" style="--rgb:255,142,48">DÉBITO</div>
-                <div class="ax-pay-icon" style="--rgb:63,188,255">MERCADO PAGO</div>
+                <div class="ax-pay-icon" style="--rgb:43,220,255">VISA</div>
+                <div class="ax-pay-icon" style="--rgb:255,142,48">MASTERCARD</div>
+                <div class="ax-pay-icon" style="--rgb:63,188,255">WEBPAY</div>
                 <div class="ax-pay-icon" style="--rgb:255,196,0">BINANCE PAY</div>
                 <div class="ax-pay-icon" style="--rgb:247,147,26">BTC</div>
                 <div class="ax-pay-icon" style="--rgb:38,161,123">USDT</div>
@@ -2026,7 +2032,7 @@ def render_subscription() -> None:
         <div class="ax-plan-grid">
             <article class="ax-plan" style="--rgb:43,220,255">
                 <div class="ax-plan-name">PLAN MENSUAL</div>
-                <div class="ax-plan-price">US$3 <span>/ mes</span></div>
+                <div class="ax-plan-price">CLP 3.000 <span>/ mes</span></div>
                 <div class="ax-plan-note">
                     Flexibilidad mensual y acceso inmediato.
                 </div>
@@ -2040,11 +2046,11 @@ def render_subscription() -> None:
             </article>
 
             <article class="ax-plan popular" style="--rgb:255,196,0">
-                <div class="ax-plan-badge">AHORRAS US$16</div>
+                <div class="ax-plan-badge">MEJOR PRECIO ANUAL</div>
                 <div class="ax-plan-name">PLAN ANUAL</div>
-                <div class="ax-plan-price">US$20 <span>/ año</span></div>
+                <div class="ax-plan-price">CLP 20.000 <span>/ año</span></div>
                 <div class="ax-plan-note">
-                    Equivale aproximadamente a US$1.67 por mes.
+                    Equivale aproximadamente a CLP 1.667 por mes.
                 </div>
 
                 <div class="ax-plan-features">
@@ -2065,7 +2071,7 @@ def render_subscription() -> None:
 
     with monthly_column:
         if st.button(
-            "💳 PAGAR AHORA · US$3 / MES",
+            "💳 PAGAR AHORA · CLP 3.000 / MES",
             use_container_width=True,
             type="primary",
             key="subscription_monthly_checkout",
@@ -2079,7 +2085,7 @@ def render_subscription() -> None:
 
     with annual_column:
         if st.button(
-            "👑 PAGAR AHORA · US$20 / AÑO",
+            "👑 PAGAR AHORA · CLP 20.000 / AÑO",
             use_container_width=True,
             type="primary",
             key="subscription_annual_checkout",
