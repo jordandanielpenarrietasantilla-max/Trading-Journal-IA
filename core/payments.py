@@ -667,7 +667,6 @@ def create_checkout_preference(
         )
 
     user_id = get_current_user_id()
-    user_email = get_current_user_email()
 
     external_reference = (
         _external_reference(
@@ -697,9 +696,6 @@ def create_checkout_preference(
                 "unit_price": clean_amount,
             }
         ],
-        "payer": {
-            "email": user_email,
-        },
         "external_reference": (
             external_reference
         ),
