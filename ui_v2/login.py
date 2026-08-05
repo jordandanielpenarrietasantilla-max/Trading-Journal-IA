@@ -1218,14 +1218,16 @@ def _payment_showcase() -> None:
         <div class="v2-price-grid">
             <div class="v2-price-card">
                 <small>PRO MENSUAL</small>
-                <strong>US$3</strong>
-                <span>por mes</span>
+                <strong>US$6</strong>
+                <span>por mes · internacional</span>
+                <span>🇨🇱 Chile: CLP 3.000 mediante Flow</span>
             </div>
 
             <div class="v2-price-card annual">
                 <small>PRO ANUAL</small>
-                <strong>US$20</strong>
-                <span>por año · ahorra US$16</span>
+                <strong>US$40</strong>
+                <span>por año · ahorra US$32</span>
+                <span>🇨🇱 Chile: CLP 20.000 mediante Flow</span>
             </div>
         </div>
 
@@ -1247,8 +1249,8 @@ def _payment_showcase() -> None:
         </div>
 
         <div class="v2-payment-footer">
-            Los métodos mostrados son informativos hasta completar
-            las integraciones de cobro.
+            Precio internacional mediante Paddle. Precio especial
+            para Chile mediante Flow.
         </div>
         """
     )
