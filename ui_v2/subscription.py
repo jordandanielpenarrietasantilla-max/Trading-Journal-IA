@@ -13,6 +13,11 @@ from core.flow_payments import (
     create_flow_plan_checkout,
     get_flow_plan_data,
 )
+from core.paddle_payments import (
+    PaddlePaymentError,
+    get_paddle_plan_data,
+    render_paddle_checkout,
+)
 from ui_v2.theme import apply_v2_theme
 
 
@@ -1560,6 +1565,50 @@ def _render_flow_checkout(
             "Flow confirme el pago mediante el webhook."
         )
 
+def _render_paddle_checkout(
+    *,
+    checkout: dict[str, Any],
+) -> None:
+    """Muestra Paddle Checkout para clientes internacionales."""
+
+    plan_code = str(
+        checkout.get("plan_code", "") or ""
+    ).strip().upper()
+
+    try:
+        plan = get_paddle_plan_data(plan_code)
+    except PaddlePaymentError as exc:
+        st.error(str(exc))
+        return
+
+    st.html(
+        f"""
+        <section class="ax-flow-panel">
+            <div class="ax-flow-head">
+                <strong>🌎 PADDLE · PAGOS INTERNACIONALES</strong>
+                <span>{html.escape(plan['currency'])} {plan['amount']}</span>
+            </div>
+            <div class="ax-flow-grid">
+                <div><small>PLAN</small><strong>{html.escape(plan['plan_label'])}</strong></div>
+                <div><small>IMPORTE</small><strong>USD {plan['amount']}</strong></div>
+                <div><small>ACTIVACIÓN</small><strong>AUTOMÁTICA</strong></div>
+            </div>
+            <div class="ax-flow-note">
+                Recomendado para clientes fuera de Chile. Paddle acepta
+                tarjetas internacionales, administra impuestos y envía la
+                confirmación al webhook de AXION PRIME.
+            </div>
+            <div class="ax-flow-secure">🔒 CHECKOUT INTERNACIONAL PROTEGIDO</div>
+        </section>
+        """
+    )
+
+    try:
+        render_paddle_checkout(plan_code)
+    except PaddlePaymentError as exc:
+        st.error(str(exc))
+
+
 # =========================================================
 # CHECKOUT
 # =========================================================
@@ -1629,7 +1678,8 @@ def _render_checkout(
     payment_method = st.selectbox(
         "Elige cómo quieres pagar",
         options=[
-            "Visa / Mastercard / Webpay",
+            "Chile · Flow / Webpay",
+            "Internacional · Paddle / Visa / Mastercard",
             "Binance Pay",
             "Bitcoin BEP20",
             "Ethereum BEP20",
@@ -1638,8 +1688,14 @@ def _render_checkout(
         key=f"subscription_payment_method_{checkout.get('plan_code', 'plan')}",
     )
 
-    if payment_method == "Visa / Mastercard / Webpay":
+    if payment_method == "Chile · Flow / Webpay":
         _render_flow_checkout(
+            checkout=checkout,
+        )
+        return
+
+    if payment_method == "Internacional · Paddle / Visa / Mastercard":
+        _render_paddle_checkout(
             checkout=checkout,
         )
         return
@@ -2023,6 +2079,7 @@ def render_subscription() -> None:
                 <div class="ax-pay-icon" style="--rgb:43,220,255">VISA</div>
                 <div class="ax-pay-icon" style="--rgb:255,142,48">MASTERCARD</div>
                 <div class="ax-pay-icon" style="--rgb:63,188,255">WEBPAY</div>
+                <div class="ax-pay-icon" style="--rgb:122,84,255">PADDLE</div>
                 <div class="ax-pay-icon" style="--rgb:255,196,0">BINANCE PAY</div>
                 <div class="ax-pay-icon" style="--rgb:247,147,26">BTC</div>
                 <div class="ax-pay-icon" style="--rgb:38,161,123">USDT</div>
@@ -2032,7 +2089,8 @@ def render_subscription() -> None:
         <div class="ax-plan-grid">
             <article class="ax-plan" style="--rgb:43,220,255">
                 <div class="ax-plan-name">PLAN MENSUAL</div>
-                <div class="ax-plan-price">CLP 3.000 <span>/ mes</span></div>
+                <div class="ax-plan-price">CLP 3.000 <span>/ mes · Chile</span></div>
+                <div class="ax-plan-note">Internacional: USD 6 / mes mediante Paddle.</div>
                 <div class="ax-plan-note">
                     Flexibilidad mensual y acceso inmediato.
                 </div>
@@ -2048,7 +2106,8 @@ def render_subscription() -> None:
             <article class="ax-plan popular" style="--rgb:255,196,0">
                 <div class="ax-plan-badge">MEJOR PRECIO ANUAL</div>
                 <div class="ax-plan-name">PLAN ANUAL</div>
-                <div class="ax-plan-price">CLP 20.000 <span>/ año</span></div>
+                <div class="ax-plan-price">CLP 20.000 <span>/ año · Chile</span></div>
+                <div class="ax-plan-note">Internacional: USD 40 / año mediante Paddle.</div>
                 <div class="ax-plan-note">
                     Equivale aproximadamente a CLP 1.667 por mes.
                 </div>
