@@ -180,6 +180,29 @@ FLOW_CONFIRMATION_URL = _read_secret(
 
 
 # =========================================================
+# PADDLE · PAGOS INTERNACIONALES
+# =========================================================
+
+
+PADDLE_CLIENT_TOKEN = _read_secret(
+    "PADDLE_CLIENT_TOKEN"
+)
+
+PADDLE_ENVIRONMENT = _read_secret(
+    "PADDLE_ENVIRONMENT",
+    "production",
+).lower()
+
+PADDLE_MONTHLY_PRICE_ID = _read_secret(
+    "PADDLE_MONTHLY_PRICE_ID"
+)
+
+PADDLE_ANNUAL_PRICE_ID = _read_secret(
+    "PADDLE_ANNUAL_PRICE_ID"
+)
+
+
+# =========================================================
 # MERCADO PAGO · DESACTIVADO TEMPORALMENTE
 # =========================================================
 
@@ -388,6 +411,33 @@ def _validate_flow() -> list[str]:
     return errors
 
 
+def _validate_paddle() -> list[str]:
+    """Valida Paddle solamente cuando existe alguna configuración."""
+
+    errors: list[str] = []
+    has_any = bool(
+        PADDLE_CLIENT_TOKEN
+        or PADDLE_MONTHLY_PRICE_ID
+        or PADDLE_ANNUAL_PRICE_ID
+    )
+
+    if not has_any:
+        return errors
+
+    if not PADDLE_CLIENT_TOKEN:
+        errors.append("PADDLE_CLIENT_TOKEN")
+    if not PADDLE_MONTHLY_PRICE_ID:
+        errors.append("PADDLE_MONTHLY_PRICE_ID")
+    if not PADDLE_ANNUAL_PRICE_ID:
+        errors.append("PADDLE_ANNUAL_PRICE_ID")
+    if PADDLE_ENVIRONMENT not in {"production", "sandbox"}:
+        errors.append(
+            "PADDLE_ENVIRONMENT debe ser 'production' o 'sandbox'"
+        )
+
+    return errors
+
+
 def _validate_mercadopago() -> list[str]:
     """
     Valida Mercado Pago solamente cuando está activo.
@@ -498,6 +548,10 @@ def validate_config() -> None:
     )
 
     errors.extend(
+        _validate_paddle()
+    )
+
+    errors.extend(
         _validate_url(
             "MERCADOPAGO_WEBHOOK_URL",
             MERCADOPAGO_WEBHOOK_URL,
@@ -534,6 +588,12 @@ def get_public_config() -> dict[str, Any]:
     flow_configured = bool(
         FLOW_API_KEY
         and FLOW_SECRET_KEY
+    )
+
+    paddle_configured = bool(
+        PADDLE_CLIENT_TOKEN
+        and PADDLE_MONTHLY_PRICE_ID
+        and PADDLE_ANNUAL_PRICE_ID
     )
 
     binance_configured = bool(
@@ -606,6 +666,24 @@ def get_public_config() -> dict[str, Any]:
         "flow_confirmation_url_configured":
             _configured(
                 FLOW_CONFIRMATION_URL
+            ),
+
+        "paddle_configured":
+            _configured(
+                paddle_configured
+            ),
+
+        "paddle_environment":
+            PADDLE_ENVIRONMENT,
+
+        "paddle_monthly_price_configured":
+            _configured(
+                PADDLE_MONTHLY_PRICE_ID
+            ),
+
+        "paddle_annual_price_configured":
+            _configured(
+                PADDLE_ANNUAL_PRICE_ID
             ),
 
         "mercadopago_configured":
