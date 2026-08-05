@@ -1034,12 +1034,18 @@ def _make_qr(value: str) -> bytes:
 def _select_checkout(
     plan_code: str,
     plan_label: str,
-    amount: int,
+    clp_amount: int,
+    usd_amount: int,
 ) -> None:
+    """
+    Guarda por separado el precio para Chile y el precio internacional.
+    """
+
     st.session_state.subscription_checkout = {
-        "plan_code": plan_code,
-        "plan_label": plan_label,
-        "amount": amount,
+        "plan_code": str(plan_code or "").strip().upper(),
+        "plan_label": str(plan_label or "AXION PRIME PRO").strip(),
+        "clp_amount": int(clp_amount or 0),
+        "usd_amount": int(usd_amount or 0),
     }
 
 
@@ -1639,12 +1645,25 @@ def _render_checkout(
         )
     )
 
-    amount = int(
+    clp_amount = int(
         checkout.get(
-            "amount",
+            "clp_amount",
             0,
         )
         or 0
+    )
+
+    usd_amount = int(
+        checkout.get(
+            "usd_amount",
+            0,
+        )
+        or 0
+    )
+
+    formatted_clp = (
+        f"{clp_amount:,}"
+        .replace(",", ".")
     )
 
     st.html(
@@ -1652,7 +1671,7 @@ def _render_checkout(
         <section class="ax-crypto-panel">
             <div class="ax-panel-head">
                 <strong>COMPLETAR PAGO · {html.escape(plan_label)}</strong>
-                <span>IMPORTE: US${amount}</span>
+                <span>ELIGE TU PAÍS Y MÉTODO DE PAGO</span>
             </div>
 
             <div class="ax-wallet-summary">
@@ -1662,13 +1681,13 @@ def _render_checkout(
                 </div>
 
                 <div>
-                    <small>IMPORTE</small>
-                    <strong>US${amount}</strong>
+                    <small>PRECIO CHILE</small>
+                    <strong>CLP {formatted_clp}</strong>
                 </div>
 
                 <div>
-                    <small>ESTADO</small>
-                    <strong>PENDIENTE DE PAGO</strong>
+                    <small>PRECIO INTERNACIONAL</small>
+                    <strong>USD {usd_amount}</strong>
                 </div>
             </div>
         </section>
@@ -1704,7 +1723,7 @@ def _render_checkout(
         _render_binance_checkout(
             checkout=checkout,
             plan_label=plan_label,
-            amount=amount,
+            amount=usd_amount,
         )
         return
 
@@ -1739,7 +1758,7 @@ def _render_checkout(
 
             <div>
                 <small>IMPORTE DEL PLAN</small>
-                <strong>US${amount}</strong>
+                <strong>USD {usd_amount}</strong>
             </div>
         </div>
         """
@@ -1810,7 +1829,8 @@ def _render_checkout(
             placeholder="Pega aquí el TXID después del pago",
             key=(
                 "subscription_txid_"
-                f'{selected["symbol"]}'
+                f'{selected["symbol"]}_'
+                f'{checkout.get("plan_code", "plan")}'
             ),
         )
 
@@ -1819,7 +1839,8 @@ def _render_checkout(
             use_container_width=True,
             key=(
                 "subscription_verify_"
-                f'{selected["symbol"]}'
+                f'{selected["symbol"]}_'
+                f'{checkout.get("plan_code", "plan")}'
             ),
         ):
             if not transaction_hash.strip():
@@ -1833,7 +1854,7 @@ def _render_checkout(
                     "plan_code",
                 ),
                 "plan_label": plan_label,
-                "usd_amount": amount,
+                "usd_amount": usd_amount,
                 "currency": selected[
                     "symbol"
                 ],
@@ -2137,10 +2158,13 @@ def render_subscription() -> None:
             disabled=is_owner,
         ):
             _select_checkout(
-                "PRO_MONTHLY",
-                "PRO MENSUAL",
-                3,
+                plan_code="PRO_MONTHLY",
+                plan_label="PRO MENSUAL",
+                clp_amount=3000,
+                usd_amount=6,
             )
+
+            st.rerun()
 
     with annual_column:
         if st.button(
@@ -2151,10 +2175,13 @@ def render_subscription() -> None:
             disabled=is_owner,
         ):
             _select_checkout(
-                "PRO_ANNUAL",
-                "PRO ANUAL",
-                20,
+                plan_code="PRO_ANNUAL",
+                plan_label="PRO ANUAL",
+                clp_amount=20000,
+                usd_amount=40,
             )
+
+            st.rerun()
 
     _render_checkout(
         is_owner=is_owner,
