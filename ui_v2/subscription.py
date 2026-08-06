@@ -1642,6 +1642,63 @@ SUBSCRIPTION_CSS = """
     }
 }
 
+
+.ax-manual-crypto-panel {
+    margin-top: 14px;
+    padding: 18px;
+    border: 1px solid rgba(255,196,0,.28);
+    border-radius: 17px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(255,196,0,.09),transparent 34%),
+        linear-gradient(145deg,rgba(7,15,35,.99),rgba(5,9,24,.99));
+}
+
+.ax-manual-crypto-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ax-manual-crypto-head strong {
+    color: #ffc400;
+    font-size: 14px;
+    font-weight: 950;
+}
+
+.ax-manual-crypto-head span {
+    color: #ffb55a;
+    font-size: 9px;
+    font-weight: 950;
+    border: 1px solid rgba(255,181,90,.26);
+    border-radius: 999px;
+    padding: 6px 9px;
+    background: rgba(255,181,90,.06);
+}
+
+.ax-manual-crypto-note {
+    margin-top: 12px;
+    padding: 12px;
+    color: #c8d4e8;
+    font-size: 10px;
+    line-height: 1.55;
+    border-left: 3px solid #ffc400;
+    border-radius: 5px 11px 11px 5px;
+    background: rgba(255,196,0,.045);
+}
+
+.ax-manual-crypto-warning {
+    margin-top: 10px;
+    padding: 12px;
+    color: #ffd9df;
+    font-size: 10px;
+    line-height: 1.55;
+    border: 1px solid rgba(255,102,136,.28);
+    border-radius: 11px;
+    background: rgba(255,102,136,.06);
+}
+
 </style>
 """
 
@@ -1806,17 +1863,27 @@ def _membership_information() -> dict[str, Any]:
 
 def _wallets() -> dict[str, dict[str, str]]:
     return {
-        "Bitcoin BEP20": {
-            "symbol": "BTC",
+        "BTCB · BNB Smart Chain (BEP20)": {
+            "symbol": "BTCB",
+            "display_name": "Bitcoin Token (BTCB)",
             "network": "BNB Smart Chain · BEP20",
+            "native_network_warning": (
+                "No envíes BTC desde la red Bitcoin. Debes retirar "
+                "BTCB usando BNB Smart Chain (BEP20)."
+            ),
             "address": (
                 _secret("BTC_BEP20_WALLET_ADDRESS")
                 or _secret("BTC_WALLET_ADDRESS")
             ),
         },
-        "Ethereum BEP20": {
+        "ETH · BNB Smart Chain (BEP20)": {
             "symbol": "ETH",
+            "display_name": "Ethereum Token (BEP20)",
             "network": "BNB Smart Chain · BEP20",
+            "native_network_warning": (
+                "No envíes ETH por Ethereum (ERC20). Debes retirar "
+                "ETH usando BNB Smart Chain (BEP20)."
+            ),
             "address": (
                 _secret("ETH_BEP20_WALLET_ADDRESS")
                 or _secret("ETH_WALLET_ADDRESS")
@@ -3954,8 +4021,8 @@ def _render_checkout(
             "Chile · Flow / Webpay",
             "Internacional · Paddle / Visa / Mastercard",
             "Binance Pay",
-            "Bitcoin BEP20",
-            "Ethereum BEP20",
+            "BTCB · BNB Smart Chain (BEP20)",
+            "ETH · BNB Smart Chain (BEP20)",
             "USDT TRC20",
         ],
         key=f"subscription_payment_method_{checkout.get('plan_code', 'plan')}",
@@ -4024,24 +4091,63 @@ def _render_checkout(
         "address"
     ]
 
+    display_name = str(
+        selected.get(
+            "display_name",
+            selected["symbol"],
+        )
+    )
+
+    network_warning = str(
+        selected.get(
+            "native_network_warning",
+            "",
+        )
+        or ""
+    ).strip()
+
     st.html(
         f"""
-        <div class="ax-wallet-summary">
-            <div>
-                <small>MONEDA</small>
-                <strong>{html.escape(selected["symbol"])}</strong>
+        <section class="ax-manual-crypto-panel">
+            <div class="ax-manual-crypto-head">
+                <strong>
+                    {html.escape(display_name)} · PAGO MANUAL
+                </strong>
+                <span>REQUIERE VERIFICACIÓN</span>
             </div>
 
-            <div>
-                <small>RED OBLIGATORIA</small>
-                <strong>{html.escape(selected["network"])}</strong>
+            <div class="ax-wallet-summary">
+                <div>
+                    <small>ACTIVO</small>
+                    <strong>{html.escape(selected["symbol"])}</strong>
+                </div>
+
+                <div>
+                    <small>RED OBLIGATORIA</small>
+                    <strong>{html.escape(selected["network"])}</strong>
+                </div>
+
+                <div>
+                    <small>VALOR DEL PLAN</small>
+                    <strong>USD {usd_amount}</strong>
+                </div>
             </div>
 
-            <div>
-                <small>IMPORTE DEL PLAN</small>
-                <strong>USD {usd_amount}</strong>
+            <div class="ax-manual-crypto-note">
+                El importe en {html.escape(selected["symbol"])} cambia
+                según la cotización del momento. Calcula el equivalente
+                exacto a USD {usd_amount}, envía el pago y pega el TXID.
+                La activación no es instantánea: requiere verificación.
             </div>
-        </div>
+
+            {
+                f'<div class="ax-manual-crypto-warning">'
+                f'⚠️ {html.escape(network_warning)}'
+                f'</div>'
+                if network_warning
+                else ''
+            }
+        </section>
         """
     )
 
@@ -4063,23 +4169,23 @@ def _render_checkout(
         return
 
     qr_column, information_column = st.columns(
-        [
-            .33,
-            .67,
-        ],
+        [.33, .67],
         gap="medium",
     )
 
     with qr_column:
         st.image(
-            _make_qr(
-                address,
-            ),
+            _make_qr(address),
             caption=(
                 f'{selected["symbol"]} · '
                 f'{selected["network"]}'
             ),
             width=220,
+        )
+
+        st.caption(
+            "Escanea únicamente desde una wallet o exchange "
+            "que permita seleccionar exactamente esta red."
         )
 
     with information_column:
@@ -4092,17 +4198,24 @@ def _render_checkout(
             language=None,
         )
 
-        st.error(
-            f"Envía únicamente {selected['symbol']} por la red "
-            f"{selected['network']}. Usar otra red puede causar "
-            "pérdida de fondos."
+        _render_copy_button(
+            address,
+            label=(
+                f"📋 COPIAR DIRECCIÓN "
+                f"{selected['symbol']}"
+            ),
         )
 
-        st.caption(
-            "Para BTC y ETH se debe calcular la cantidad exacta "
-            "con la cotización vigente al momento del pago. "
-            "La activación automática se conectará mediante "
-            "verificación blockchain o proveedor de pagos."
+        st.error(
+            f"Envía únicamente {selected['symbol']} por "
+            f"{selected['network']}. Elegir otra red puede "
+            "provocar la pérdida permanente de los fondos."
+        )
+
+        st.info(
+            f"El plan cuesta USD {usd_amount}. Antes de pagar, "
+            f"consulta la cotización actual y calcula el importe "
+            f"equivalente en {selected['symbol']}."
         )
 
         transaction_hash = st.text_input(
@@ -4115,16 +4228,36 @@ def _render_checkout(
             ),
         )
 
+        proof_file = st.file_uploader(
+            "Captura del comprobante (opcional)",
+            type=["png", "jpg", "jpeg", "webp"],
+            key=(
+                "subscription_manual_proof_"
+                f'{selected["symbol"]}_'
+                f'{checkout.get("plan_code", "plan")}'
+            ),
+        )
+
+        if proof_file is not None:
+            st.image(
+                proof_file,
+                caption="Comprobante seleccionado",
+                width=280,
+            )
+
         if st.button(
-            "📨 ENVIAR PAGO PARA VERIFICACIÓN",
+            "📨 ENVIAR PARA VERIFICACIÓN MANUAL",
             use_container_width=True,
+            type="primary",
             key=(
                 "subscription_verify_"
                 f'{selected["symbol"]}_'
                 f'{checkout.get("plan_code", "plan")}'
             ),
         ):
-            if not transaction_hash.strip():
+            clean_txid = transaction_hash.strip()
+
+            if not clean_txid:
                 st.warning(
                     "Debes pegar el TXID antes de enviar."
                 )
@@ -4143,7 +4276,7 @@ def _render_checkout(
                     "network"
                 ],
                 "wallet_address": address,
-                "txid": transaction_hash.strip(),
+                "txid": clean_txid,
                 "status": "pending_manual_review",
                 "submitted_at": dt.datetime.now(
                     dt.timezone.utc,
@@ -4151,10 +4284,9 @@ def _render_checkout(
             }
 
             st.success(
-                "Solicitud enviada. El acceso PRO no se activará "
-                "hasta verificar la transacción."
+                "Solicitud registrada. El acceso PRO se activará "
+                "después de validar la transacción."
             )
-
 
     _render_support_panel(
         plan_label=plan_label,
