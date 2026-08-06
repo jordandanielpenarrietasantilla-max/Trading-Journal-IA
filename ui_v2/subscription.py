@@ -14,6 +14,7 @@ from core.crypto_payments import (
     CryptoPaymentError,
     apply_verified_membership_to_session,
     create_usdt_order,
+    list_crypto_payments,
     verify_usdt_order,
 )
 from core.flow_payments import (
@@ -934,6 +935,54 @@ SUBSCRIPTION_CSS = """
     }
 }
 
+
+.ax-verification-steps {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid rgba(43,220,255,.22);
+    border-radius: 12px;
+    background: rgba(5,11,28,.82);
+}
+
+.ax-history-card {
+    margin-top: 10px;
+    padding: 14px;
+    border: 1px solid rgba(72,96,158,.24);
+    border-radius: 13px;
+    background: rgba(5,11,28,.86);
+}
+
+.ax-history-grid {
+    display: grid;
+    grid-template-columns: 1.15fr .8fr .8fr .8fr;
+    gap: 8px;
+}
+
+.ax-history-grid small {
+    display: block;
+    color: #8fa0bd;
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.ax-history-grid strong {
+    display: block;
+    margin-top: 4px;
+    color: #eef4ff;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.ax-status-approved { color: #31ff9c !important; }
+.ax-status-pending { color: #ffc400 !important; }
+.ax-status-problem { color: #ff6688 !important; }
+
+@media (max-width:700px) {
+    .ax-history-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
 </style>
 """
 
@@ -1430,6 +1479,184 @@ def _automatic_tx_verification(
         )
 
 
+
+def _format_payment_datetime(value: Any) -> str:
+    parsed = _parse_iso_datetime(value)
+
+    if parsed is None:
+        return "Sin fecha"
+
+    return parsed.strftime("%d/%m/%Y · %H:%M UTC")
+
+
+def _payment_status_view(
+    status: Any,
+) -> tuple[str, str]:
+    normalized = str(
+        status
+        or "pending"
+    ).strip().lower()
+
+    mapping = {
+        "approved": ("✅ CONFIRMADO", "ax-status-approved"),
+        "pending": ("🟡 ESPERANDO", "ax-status-pending"),
+        "verifying": ("🔄 VERIFICANDO", "ax-status-pending"),
+        "manual_review": ("🛟 REVISIÓN", "ax-status-problem"),
+        "rejected": ("❌ RECHAZADO", "ax-status-problem"),
+        "expired": ("⌛ EXPIRADO", "ax-status-problem"),
+    }
+
+    return mapping.get(
+        normalized,
+        (normalized.upper(), "ax-status-pending"),
+    )
+
+
+def _render_crypto_payment_history() -> None:
+    """Historial de órdenes cripto del usuario."""
+
+    with st.expander(
+        "🧾 HISTORIAL DE PAGOS CRIPTO",
+        expanded=False,
+    ):
+        if st.button(
+            "🔄 ACTUALIZAR HISTORIAL",
+            use_container_width=True,
+            key="subscription_refresh_crypto_history",
+        ):
+            st.session_state.pop(
+                "crypto_payment_history_cache",
+                None,
+            )
+
+        history = st.session_state.get(
+            "crypto_payment_history_cache",
+        )
+
+        if not isinstance(history, list):
+            try:
+                with st.spinner("Cargando historial..."):
+                    history = list_crypto_payments(limit=20)
+
+                st.session_state[
+                    "crypto_payment_history_cache"
+                ] = history
+
+            except CryptoPaymentError as exc:
+                st.error(str(exc))
+                return
+
+            except Exception as exc:
+                st.error(
+                    "No se pudo cargar el historial de pagos."
+                )
+
+                with st.expander(
+                    "Detalle técnico",
+                    expanded=False,
+                ):
+                    st.code(str(exc), language="text")
+                return
+
+        if not history:
+            st.info(
+                "Todavía no tienes órdenes de pago cripto."
+            )
+            return
+
+        for payment in history:
+            status_text, status_class = (
+                _payment_status_view(
+                    payment.get("status")
+                )
+            )
+
+            plan_code = str(
+                payment.get("plan_code", "")
+                or ""
+            ).replace(
+                "PRO_",
+                "",
+            ).replace(
+                "_",
+                " ",
+            )
+
+            expected = payment.get(
+                "expected_amount",
+                "",
+            )
+
+            received = payment.get(
+                "received_amount",
+                "",
+            )
+
+            amount_text = (
+                f"{received} USDT"
+                if received not in {None, ""}
+                else f"{expected} USDT"
+            )
+
+            txid = str(
+                payment.get("txid", "")
+                or ""
+            ).strip()
+
+            short_txid = (
+                f"{txid[:10]}…{txid[-8:]}"
+                if len(txid) > 22
+                else (txid or "Sin TXID")
+            )
+
+            st.html(
+                f"""
+                <section class="ax-history-card">
+                    <div class="ax-history-grid">
+                        <div>
+                            <small>FECHA</small>
+                            <strong>{html.escape(_format_payment_datetime(payment.get("created_at")))}</strong>
+                        </div>
+                        <div>
+                            <small>PLAN</small>
+                            <strong>{html.escape(plan_code or "PRO")}</strong>
+                        </div>
+                        <div>
+                            <small>IMPORTE</small>
+                            <strong>{html.escape(str(amount_text))}</strong>
+                        </div>
+                        <div>
+                            <small>ESTADO</small>
+                            <strong class="{status_class}">
+                                {html.escape(status_text)}
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:10px">
+                        <small style="color:#8fa0bd;font-size:9px;font-weight:900">
+                            TXID
+                        </small>
+                        <strong style="display:block;margin-top:4px;color:#eef4ff;font-size:11px">
+                            {html.escape(short_txid)}
+                        </strong>
+                    </div>
+                </section>
+                """
+            )
+
+            message = str(
+                payment.get(
+                    "verification_message",
+                    "",
+                )
+                or ""
+            ).strip()
+
+            if message:
+                st.caption(message)
+
+
 def _support_email() -> str:
     """Correo de soporte: SUPPORT_EMAIL o ADMIN_EMAIL."""
 
@@ -1781,15 +2008,51 @@ def _render_usdt_automatic_checkout(
                 return
 
             try:
-                with st.spinner("Consultando la blockchain TRON..."):
+                with st.status(
+                    "Verificando pago en la blockchain TRON...",
+                    expanded=True,
+                ) as verification_status:
+                    st.write(
+                        "🔎 Buscando la transacción confirmada..."
+                    )
+
                     result = verify_usdt_order(
                         order_id,
                         clean_txid,
                     )
 
+                    if result.get("ok") and result.get("activated"):
+                        st.write("✅ Transacción encontrada.")
+                        st.write("✅ Importe y billetera verificados.")
+                        st.write("👑 Activando AXION PRIME PRO...")
+
+                        verification_status.update(
+                            label="Pago confirmado y PRO activado",
+                            state="complete",
+                            expanded=True,
+                        )
+
+                    elif result.get("pending"):
+                        verification_status.update(
+                            label="Transacción pendiente de confirmación",
+                            state="running",
+                            expanded=True,
+                        )
+
+                    else:
+                        verification_status.update(
+                            label="La transacción necesita atención",
+                            state="error",
+                            expanded=True,
+                        )
+
                 if result.get("ok") and result.get("activated"):
                     apply_verified_membership_to_session(result)
                     st.session_state.pop(order_key, None)
+                    st.session_state.pop(
+                        "crypto_payment_history_cache",
+                        None,
+                    )
 
                     st.success(
                         "✅ Pago confirmado. Tu membresía PRO "
@@ -3057,3 +3320,5 @@ def render_subscription() -> None:
     _render_checkout(
         is_owner=is_owner,
     )
+
+    _render_crypto_payment_history()
