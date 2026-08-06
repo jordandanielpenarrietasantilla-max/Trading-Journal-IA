@@ -1324,6 +1324,324 @@ SUBSCRIPTION_CSS = """
     }
 }
 
+
+/* =========================================================
+   CHECKOUT USDT ULTRA PREMIUM
+   ========================================================= */
+
+.ax-ultra-hero {
+    position: relative;
+    overflow: hidden;
+    margin: 0 0 15px;
+    padding: 24px 26px;
+    border: 1px solid rgba(84,103,218,.45);
+    border-radius: 19px;
+    background:
+        radial-gradient(circle at 88% 0%,rgba(225,55,255,.16),transparent 28%),
+        radial-gradient(circle at 68% 48%,rgba(43,220,255,.10),transparent 34%),
+        linear-gradient(145deg,rgba(7,15,34,.99),rgba(4,8,22,.99));
+    box-shadow:
+        0 24px 64px rgba(0,0,0,.34),
+        inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.ax-ultra-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .28;
+    background-image:
+        linear-gradient(rgba(70,98,180,.05) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(70,98,180,.05) 1px,transparent 1px);
+    background-size: 34px 34px;
+}
+
+.ax-ultra-hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+.ax-ultra-kicker {
+    color: #2bdcff;
+    font-size: 9px;
+    font-weight: 950;
+    letter-spacing: 1.8px;
+}
+
+.ax-ultra-hero h2 {
+    margin: 7px 0 0;
+    color: #f5f7ff;
+    font-size: 34px;
+    line-height: 1.03;
+    font-weight: 950;
+    letter-spacing: -1.4px;
+}
+
+.ax-ultra-hero h2 span {
+    color: transparent;
+    background: linear-gradient(90deg,#28dcff,#6f73ff,#e83cff);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.ax-ultra-hero p {
+    margin: 9px 0 0;
+    color: #aebbd2;
+    font-size: 12px;
+}
+
+.ax-ultra-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.ax-ultra-checks span {
+    display: inline-flex;
+    padding: 7px 10px;
+    color: #c9d4e8;
+    font-size: 9px;
+    font-weight: 850;
+    border: 1px solid rgba(79,103,178,.25);
+    border-radius: 999px;
+    background: rgba(7,16,36,.64);
+}
+
+.ax-order-invoice {
+    margin-bottom: 13px;
+    padding: 15px;
+    border: 1px solid rgba(49,255,156,.22);
+    border-radius: 13px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(49,255,156,.08),transparent 34%),
+        rgba(5,12,28,.90);
+}
+
+.ax-order-invoice-grid {
+    display: grid;
+    grid-template-columns: 1.3fr .8fr .7fr .75fr;
+    gap: 9px;
+}
+
+.ax-order-invoice-grid div {
+    min-width: 0;
+}
+
+.ax-order-invoice-grid small {
+    display: block;
+    color: #8fa0bd;
+    font-size: 8px;
+    font-weight: 900;
+}
+
+.ax-order-invoice-grid strong {
+    display: block;
+    margin-top: 4px;
+    color: #eff4ff;
+    font-size: 10px;
+    overflow-wrap: anywhere;
+}
+
+.ax-qr-frame {
+    padding: 14px;
+    border: 1px solid rgba(43,220,255,.30);
+    border-radius: 15px;
+    background:
+        radial-gradient(circle at 50% 0%,rgba(43,220,255,.07),transparent 40%),
+        rgba(5,11,28,.92);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.ax-qr-title {
+    margin-bottom: 10px;
+    color: #eef4ff;
+    font-size: 12px;
+    font-weight: 950;
+    text-align: center;
+}
+
+.ax-amount-mega {
+    margin: 9px 0 12px;
+    color: #aebbd2;
+    font-size: 11px;
+}
+
+.ax-amount-mega strong {
+    display: inline-block;
+    margin-top: 2px;
+    color: #31ff9c;
+    font-size: 43px;
+    line-height: 1;
+    letter-spacing: -1.8px;
+    font-weight: 950;
+    text-shadow: 0 0 24px rgba(49,255,156,.18);
+}
+
+.ax-chain-live {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin: 11px 0;
+    padding: 11px 12px;
+    border: 1px solid rgba(49,255,156,.22);
+    border-radius: 11px;
+    background: rgba(49,255,156,.05);
+}
+
+.ax-chain-live strong {
+    color: #eef4ff;
+    font-size: 10px;
+}
+
+.ax-chain-live span {
+    color: #31ff9c;
+    font-size: 9px;
+    font-weight: 950;
+}
+
+.ax-chain-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #31ff9c;
+    box-shadow: 0 0 13px rgba(49,255,156,.70);
+}
+
+.ax-countdown-track {
+    overflow: hidden;
+    width: 100%;
+    height: 7px;
+    margin-top: 11px;
+    border-radius: 999px;
+    background: rgba(81,99,157,.20);
+}
+
+.ax-countdown-track span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg,#31ff9c,#2bdcff,#7e66ff);
+    box-shadow: 0 0 18px rgba(43,220,255,.22);
+}
+
+.ax-support-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 9px;
+    margin-top: 12px;
+}
+
+.ax-support-info {
+    padding: 12px;
+    border: 1px solid rgba(70,96,164,.24);
+    border-radius: 12px;
+    background: rgba(5,11,28,.82);
+}
+
+.ax-support-info strong {
+    display: block;
+    color: #f0f4ff;
+    font-size: 11px;
+}
+
+.ax-support-info span {
+    display: block;
+    margin-top: 5px;
+    color: #8fa0bd;
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+.ax-success-screen {
+    position: relative;
+    overflow: hidden;
+    padding: 34px 28px;
+    text-align: center;
+    border: 1px solid rgba(49,255,156,.35);
+    border-radius: 20px;
+    background:
+        radial-gradient(circle at 50% 0%,rgba(49,255,156,.13),transparent 36%),
+        radial-gradient(circle at 84% 25%,rgba(43,220,255,.10),transparent 32%),
+        linear-gradient(145deg,rgba(6,15,31,.99),rgba(4,9,23,.99));
+    box-shadow: 0 26px 70px rgba(0,0,0,.35);
+}
+
+.ax-success-crown {
+    font-size: 52px;
+    filter: drop-shadow(0 0 18px rgba(255,196,0,.24));
+}
+
+.ax-success-screen h2 {
+    margin: 10px 0 0;
+    color: #f5f7ff;
+    font-size: 34px;
+    line-height: 1.05;
+    font-weight: 950;
+}
+
+.ax-success-screen h2 span {
+    color: transparent;
+    background: linear-gradient(90deg,#31ff9c,#2bdcff,#8c58ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.ax-success-screen p {
+    margin: 10px auto 0;
+    max-width: 620px;
+    color: #b8c5da;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.ax-success-features {
+    display: grid;
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: 9px;
+    margin-top: 20px;
+}
+
+.ax-success-features div {
+    padding: 11px;
+    color: #dce7f7;
+    font-size: 10px;
+    font-weight: 850;
+    border: 1px solid rgba(72,96,158,.24);
+    border-radius: 11px;
+    background: rgba(5,11,28,.76);
+}
+
+@media (max-width: 900px) {
+    .ax-order-invoice-grid,
+    .ax-success-features {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .ax-support-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 620px) {
+    .ax-ultra-hero h2 {
+        font-size: 27px;
+    }
+
+    .ax-order-invoice-grid,
+    .ax-success-features {
+        grid-template-columns: 1fr;
+    }
+
+    .ax-amount-mega strong {
+        font-size: 36px;
+    }
+}
+
 </style>
 """
 
@@ -1780,10 +2098,29 @@ def _automatic_tx_verification(
                 None,
             )
 
-            st.success(
-                "✅ Pago confirmado automáticamente. "
-                "Tu membresía PRO está activa."
+            membership_data = result.get(
+                "membership",
+                {},
             )
+
+            if not isinstance(
+                membership_data,
+                dict,
+            ):
+                membership_data = {}
+
+            st.session_state[
+                "crypto_payment_success"
+            ] = {
+                "plan": membership_data.get(
+                    "plan",
+                    "PRO",
+                ),
+                "expires_at": membership_data.get(
+                    "expires_at",
+                    "",
+                ),
+            }
 
             st.balloons()
             st.rerun()
@@ -2065,13 +2402,29 @@ def _render_support_panel(
 
     st.html(
         """
-        <section class="ax-support-panel">
-            <strong>🛟 ¿NECESITAS AYUDA CON EL PAGO?</strong>
+        <section class="ax-support-premium">
+            <h3>🛟 ¿Necesitas ayuda?</h3>
             <p>
-                Si la verificación tarda, aparece un error o utilizaste
-                una red equivocada, envía a soporte el TXID, el correo
-                de tu cuenta y una captura del comprobante.
+                Nuestro equipo responde normalmente en menos de 24 horas.
+                Incluye el TXID, tu correo y una captura del pago.
             </p>
+
+            <div class="ax-support-card-grid">
+                <div class="ax-support-info">
+                    <strong>📧 Correo</strong>
+                    <span>Soporte detallado para casos de pago.</span>
+                </div>
+
+                <div class="ax-support-info">
+                    <strong>💬 WhatsApp</strong>
+                    <span>Respuesta rápida para incidencias urgentes.</span>
+                </div>
+
+                <div class="ax-support-info">
+                    <strong>✈ Telegram</strong>
+                    <span>Soporte para pagos internacionales.</span>
+                </div>
+            </div>
         </section>
         """
     )
@@ -2146,6 +2499,123 @@ def _usdt_order_key(plan_code: str) -> str:
         f"{str(plan_code or '').strip().upper()}"
     )
 
+
+
+
+def _countdown_progress_percent(
+    created_at: Any,
+    *,
+    duration_minutes: int = 30,
+) -> int:
+    """Porcentaje restante de la orden."""
+
+    created = _parse_iso_datetime(created_at)
+
+    if created is None:
+        return 100
+
+    total_seconds = max(
+        1,
+        duration_minutes * 60,
+    )
+
+    expires_at = created + dt.timedelta(
+        minutes=duration_minutes,
+    )
+
+    remaining = max(
+        0,
+        int(
+            (
+                expires_at
+                - dt.datetime.now(dt.timezone.utc)
+            ).total_seconds()
+        ),
+    )
+
+    return max(
+        0,
+        min(
+            100,
+            int(
+                remaining
+                / total_seconds
+                * 100
+            ),
+        ),
+    )
+
+
+def _render_crypto_success_screen() -> bool:
+    """
+    Muestra una pantalla final premium tras activar PRO.
+
+    Devuelve True si la pantalla fue renderizada.
+    """
+
+    success = st.session_state.get(
+        "crypto_payment_success",
+    )
+
+    if not isinstance(success, dict):
+        return False
+
+    plan = str(
+        success.get("plan", "PRO")
+        or "PRO"
+    ).replace("_", " ")
+
+    expires_at = str(
+        success.get("expires_at", "")
+        or ""
+    ).strip()
+
+    st.html(
+        f"""
+        <section class="ax-success-screen">
+            <div class="ax-success-crown">👑</div>
+
+            <h2>
+                PAGO CONFIRMADO<br>
+                <span>BIENVENIDO A AXION PRIME PRO</span>
+            </h2>
+
+            <p>
+                Tu membresía {html.escape(plan)} ya está activa.
+                Desde este momento tienes acceso a todas las
+                herramientas premium de la plataforma.
+            </p>
+
+            <div class="ax-success-features">
+                <div>🤖 Chat IA avanzado</div>
+                <div>🧠 Psicotrading</div>
+                <div>🔎 Auditoría IA</div>
+                <div>📈 Herramientas PRO</div>
+            </div>
+
+            {
+                f'<p>Vigencia hasta: {html.escape(expires_at)}</p>'
+                if expires_at
+                else ''
+            }
+        </section>
+        """
+    )
+
+    if st.button(
+        "🚀 IR AL DASHBOARD PRO",
+        use_container_width=True,
+        type="primary",
+        key="crypto_success_go_dashboard",
+    ):
+        st.session_state.pop(
+            "crypto_payment_success",
+            None,
+        )
+        st.session_state.page = "Dashboard"
+        st.rerun()
+
+    return True
 
 
 def _order_progress_html(
@@ -2248,15 +2718,34 @@ def _render_usdt_automatic_checkout(
     if not isinstance(order, dict):
         order = {}
 
+    if _render_crypto_success_screen():
+        return
+
     st.html(
         """
-        <section class="ax-pro-hero">
-            <h2>
-                Activar <span>AXION PRIME PRO</span>
-            </h2>
-            <p>
-                Elige tu método de pago y activa todas las herramientas PRO.
-            </p>
+        <section class="ax-ultra-hero">
+            <div class="ax-ultra-hero-content">
+                <div class="ax-ultra-kicker">
+                    AXION PRIME · CHECKOUT BLOCKCHAIN
+                </div>
+
+                <h2>
+                    Activa tu membresía en
+                    <span>menos de 60 segundos</span>
+                </h2>
+
+                <p>
+                    Pago protegido, confirmación directa desde TRON y
+                    activación automática sin intervención manual.
+                </p>
+
+                <div class="ax-ultra-checks">
+                    <span>✓ Activación automática</span>
+                    <span>✓ Verificación blockchain</span>
+                    <span>✓ Sin revisión manual</span>
+                    <span>✓ Acceso PRO inmediato</span>
+                </div>
+            </div>
         </section>
 
         <section class="ax-benefits-row">
@@ -2418,6 +2907,11 @@ def _render_usdt_automatic_checkout(
         )
     )
 
+    countdown_percent = _countdown_progress_percent(
+        order.get("created_at"),
+        duration_minutes=30,
+    )
+
     main_column, status_column = st.columns(
         [.72, .28],
         gap="medium",
@@ -2428,10 +2922,27 @@ def _render_usdt_automatic_checkout(
     with main_column:
         st.html(
             f"""
-            <section class="ax-order-shell">
-                <div class="ax-order-titlebar">
-                    <strong>2. Genera tu orden de pago</strong>
-                    <span>ORDEN #{html.escape(order_id)}</span>
+            <section class="ax-order-invoice">
+                <div class="ax-order-invoice-grid">
+                    <div>
+                        <small>ORDER ID</small>
+                        <strong>{html.escape(order_id)}</strong>
+                    </div>
+
+                    <div>
+                        <small>IMPORTE</small>
+                        <strong>{expected_amount:.4f} USDT</strong>
+                    </div>
+
+                    <div>
+                        <small>RED</small>
+                        <strong>TRON · TRC20</strong>
+                    </div>
+
+                    <div>
+                        <small>ESTADO</small>
+                        <strong>ESPERANDO PAGO</strong>
+                    </div>
                 </div>
             </section>
             """
@@ -2443,7 +2954,14 @@ def _render_usdt_automatic_checkout(
         )
 
         with qr_column:
-            st.html('<section class="ax-qr-card">')
+            st.html(
+                """
+                <section class="ax-qr-frame">
+                    <div class="ax-qr-title">
+                        📱 Escanea este código
+                    </div>
+                """
+            )
 
             st.image(
                 _make_qr(order_address),
@@ -2474,10 +2992,18 @@ def _render_usdt_automatic_checkout(
                 f"""
                 <div class="ax-status-chip">◉ ESPERANDO PAGO</div>
 
-                <div class="ax-payment-amount">
+                <div class="ax-amount-mega">
                     Envía exactamente<br>
-                    <strong>{expected_amount:g} USDT</strong>
+                    <strong>{expected_amount:.4f} USDT</strong>
                     <span class="ax-network-pill">TRC20</span>
+                </div>
+
+                <div class="ax-chain-live">
+                    <strong>🔗 Blockchain TRON</strong>
+                    <span>
+                        <i class="ax-chain-dot"></i>
+                        ONLINE · ESPERANDO TRANSACCIÓN
+                    </span>
                 </div>
                 """
             )
@@ -2604,10 +3130,30 @@ def _render_usdt_automatic_checkout(
                             None,
                         )
 
-                        st.success(
-                            "👑 Pago confirmado. Bienvenido a "
-                            "AXION PRIME PRO."
+                        membership_data = result.get(
+                            "membership",
+                            {},
                         )
+
+                        if not isinstance(
+                            membership_data,
+                            dict,
+                        ):
+                            membership_data = {}
+
+                        st.session_state[
+                            "crypto_payment_success"
+                        ] = {
+                            "plan": membership_data.get(
+                                "plan",
+                                plan_code,
+                            ),
+                            "expires_at": membership_data.get(
+                                "expires_at",
+                                "",
+                            ),
+                        }
+
                         st.balloons()
                         st.rerun()
 
@@ -2686,6 +3232,10 @@ def _render_usdt_automatic_checkout(
                     <strong class="{countdown_class}">
                         {html.escape(countdown_text)}
                     </strong>
+
+                    <div class="ax-countdown-track">
+                        <span style="width:{countdown_percent}%"></span>
+                    </div>
                 </div>
 
                 {_order_progress_html(
