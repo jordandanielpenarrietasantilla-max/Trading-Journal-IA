@@ -218,3 +218,80 @@ def apply_verified_membership_to_session(
         "user_metadata": updated_metadata,
     }
     st.session_state.user_metadata = updated_metadata
+
+
+def list_crypto_payments(
+    *,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """Obtiene el historial cripto del usuario autenticado."""
+
+    access_token = ensure_access_token()
+
+    safe_limit = max(
+        1,
+        min(
+            int(limit or 20),
+            100,
+        ),
+    )
+
+    url = (
+        f"{_base_url()}"
+        "/rest/v1/crypto_payments"
+    )
+
+    params = {
+        "select": (
+            "id,plan_code,payment_method,network,currency,"
+            "expected_amount,received_amount,txid,status,"
+            "verification_message,created_at,verified_at,"
+            "plan_expires_at"
+        ),
+        "order": "created_at.desc",
+        "limit": str(safe_limit),
+    }
+
+    try:
+        response = requests.get(
+            url,
+            headers={
+                "apikey": _api_key(),
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json",
+            },
+            params=params,
+            timeout=REQUEST_TIMEOUT,
+        )
+    except requests.Timeout as exc:
+        raise CryptoPaymentError(
+            "El historial de pagos tardó demasiado en responder."
+        ) from exc
+    except requests.RequestException as exc:
+        raise CryptoPaymentError(
+            f"No se pudo cargar el historial de pagos: {exc}"
+        ) from exc
+
+    if response.status_code >= 400:
+        raise CryptoPaymentError(
+            _extract_error(
+                _safe_json(response),
+                response,
+            )
+        )
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise CryptoPaymentError(
+            "Supabase devolvió un historial inválido."
+        ) from exc
+
+    if not isinstance(payload, list):
+        return []
+
+    return [
+        item
+        for item in payload
+        if isinstance(item, dict)
+    ]
