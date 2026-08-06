@@ -983,6 +983,347 @@ SUBSCRIPTION_CSS = """
     }
 }
 
+
+/* =========================================================
+   CHECKOUT USDT PREMIUM
+   ========================================================= */
+
+.ax-pro-hero {
+    margin: 0 0 14px;
+    padding: 22px 24px;
+    border: 1px solid rgba(80,99,210,.42);
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at 92% 0%,rgba(219,55,255,.13),transparent 30%),
+        radial-gradient(circle at 68% 42%,rgba(43,220,255,.08),transparent 34%),
+        linear-gradient(145deg,rgba(7,15,34,.99),rgba(4,8,22,.99));
+    box-shadow: 0 22px 55px rgba(0,0,0,.28);
+}
+
+.ax-pro-hero h2 {
+    margin: 0;
+    color: #f5f7ff;
+    font-size: 30px;
+    line-height: 1.05;
+    font-weight: 950;
+    letter-spacing: -1px;
+}
+
+.ax-pro-hero h2 span {
+    color: transparent;
+    background: linear-gradient(90deg,#26dfff,#6d75ff,#e23cff);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.ax-pro-hero p {
+    margin: 8px 0 0;
+    color: #aebbd2;
+    font-size: 12px;
+}
+
+.ax-benefits-row {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.ax-benefit {
+    display: flex;
+    gap: 11px;
+    align-items: center;
+    padding: 13px;
+    border: 1px solid rgba(67,97,166,.28);
+    border-radius: 13px;
+    background: rgba(5,11,28,.84);
+}
+
+.ax-benefit-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    color: rgb(var(--rgb));
+    font-size: 21px;
+    background: rgba(var(--rgb),.10);
+    border: 1px solid rgba(var(--rgb),.22);
+}
+
+.ax-benefit strong {
+    display: block;
+    color: #f1f5ff;
+    font-size: 12px;
+}
+
+.ax-benefit span {
+    display: block;
+    margin-top: 3px;
+    color: #9eacc4;
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+.ax-order-shell {
+    padding: 16px;
+    border: 1px solid rgba(43,220,255,.35);
+    border-radius: 17px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(43,220,255,.08),transparent 34%),
+        linear-gradient(145deg,rgba(6,14,32,.99),rgba(4,9,24,.99));
+}
+
+.ax-order-titlebar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.ax-order-titlebar strong {
+    color: #2bdcff;
+    font-size: 14px;
+    font-weight: 950;
+}
+
+.ax-order-titlebar span {
+    color: #31ff9c;
+    font-size: 10px;
+    font-weight: 950;
+}
+
+.ax-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    color: #ffc400;
+    font-size: 10px;
+    font-weight: 950;
+    border: 1px solid rgba(255,196,0,.28);
+    border-radius: 999px;
+    background: rgba(255,196,0,.075);
+}
+
+.ax-payment-amount {
+    margin-top: 8px;
+    color: #f4f7ff;
+    font-size: 14px;
+}
+
+.ax-payment-amount strong {
+    color: #31ff9c;
+    font-size: 34px;
+    letter-spacing: -1px;
+}
+
+.ax-network-pill {
+    display: inline-flex;
+    margin-left: 8px;
+    padding: 5px 8px;
+    color: #cbd5eb;
+    font-size: 10px;
+    font-weight: 900;
+    border: 1px solid rgba(91,112,181,.30);
+    border-radius: 8px;
+    background: rgba(90,110,180,.10);
+}
+
+.ax-progress-card {
+    padding: 16px;
+    border: 1px solid rgba(72,96,158,.28);
+    border-radius: 16px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(151,65,255,.09),transparent 34%),
+        rgba(5,11,28,.90);
+}
+
+.ax-countdown-box {
+    margin-bottom: 15px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid rgba(78,102,171,.34);
+    border-radius: 13px;
+    background: rgba(3,8,22,.82);
+}
+
+.ax-countdown-box small {
+    display: block;
+    color: #aab6cb;
+    font-size: 10px;
+}
+
+.ax-countdown-box strong {
+    display: block;
+    margin-top: 6px;
+    color: #f4f7ff;
+    font-size: 34px;
+    letter-spacing: 2px;
+}
+
+.ax-step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 10px;
+    align-items: start;
+    padding: 10px 0;
+}
+
+.ax-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 13px;
+    top: 37px;
+    width: 2px;
+    height: 28px;
+    background: rgba(94,112,173,.28);
+}
+
+.ax-step-number {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    color: #aab7cf;
+    font-size: 11px;
+    font-weight: 950;
+    border-radius: 50%;
+    background: rgba(85,100,157,.20);
+    border: 1px solid rgba(85,100,157,.32);
+}
+
+.ax-step.complete .ax-step-number {
+    color: #06120b;
+    background: #31ff9c;
+    border-color: #31ff9c;
+}
+
+.ax-step.current .ax-step-number {
+    color: #0a0a08;
+    background: #ffc400;
+    border-color: #ffc400;
+}
+
+.ax-step strong {
+    display: block;
+    color: #edf3ff;
+    font-size: 11px;
+}
+
+.ax-step span {
+    display: block;
+    margin-top: 3px;
+    color: #8fa0bd;
+    font-size: 9px;
+}
+
+.ax-step-badge {
+    color: #ffc400;
+    font-size: 9px;
+    font-weight: 950;
+}
+
+.ax-security-note {
+    margin-top: 14px;
+    padding: 12px;
+    color: #c9c0ff;
+    font-size: 10px;
+    line-height: 1.5;
+    border: 1px solid rgba(141,81,255,.24);
+    border-radius: 11px;
+    background: rgba(141,81,255,.065);
+}
+
+.ax-qr-card {
+    padding: 12px;
+    text-align: center;
+    border: 1px solid rgba(68,98,165,.25);
+    border-radius: 14px;
+    background: rgba(5,11,28,.88);
+}
+
+.ax-qr-tip {
+    margin-top: 8px;
+    color: #9faec6;
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.ax-tip-card {
+    margin-top: 10px;
+    padding: 11px;
+    text-align: left;
+    border: 1px solid rgba(255,196,0,.20);
+    border-radius: 10px;
+    background: rgba(255,196,0,.045);
+}
+
+.ax-tip-card strong {
+    color: #ffc400;
+    font-size: 10px;
+}
+
+.ax-tip-card div {
+    margin-top: 5px;
+    color: #b8c4d8;
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.ax-support-premium {
+    padding: 17px;
+    border: 1px solid rgba(72,96,158,.28);
+    border-radius: 16px;
+    background: rgba(5,11,28,.88);
+}
+
+.ax-support-premium h3 {
+    margin: 0;
+    color: #f2f6ff;
+    font-size: 18px;
+}
+
+.ax-support-premium p {
+    margin: 6px 0 0;
+    color: #9eabc2;
+    font-size: 10px;
+}
+
+.ax-history-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.ax-history-title strong {
+    color: #f2f6ff;
+    font-size: 15px;
+}
+
+.ax-history-title span {
+    color: #8fa0bd;
+    font-size: 9px;
+}
+
+@media (max-width: 1050px) {
+    .ax-benefits-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .ax-pro-hero h2 {
+        font-size: 25px;
+    }
+}
+
 </style>
 """
 
@@ -1806,6 +2147,83 @@ def _usdt_order_key(plan_code: str) -> str:
     )
 
 
+
+def _order_progress_html(
+    *,
+    has_order: bool,
+    has_txid: bool,
+    activated: bool = False,
+) -> str:
+    """Construye la línea de progreso visual del pago."""
+
+    states = [
+        (
+            "complete" if has_order else "current",
+            "Orden creada",
+            "Tu orden fue generada",
+            "Completado" if has_order else "Actual",
+        ),
+        (
+            "complete" if has_txid else ("current" if has_order else ""),
+            "Esperando pago",
+            "Envía el importe exacto",
+            "Completado" if has_txid else ("Actual" if has_order else ""),
+        ),
+        (
+            "complete" if activated else ("current" if has_txid else ""),
+            "Verificando blockchain",
+            "Buscando tu transacción",
+            "Completado" if activated else ("Actual" if has_txid else ""),
+        ),
+        (
+            "complete" if activated else "",
+            "Activando PRO",
+            "Activando tu membresía",
+            "Completado" if activated else "",
+        ),
+    ]
+
+    rows = []
+
+    for index, (
+        state_class,
+        title,
+        subtitle,
+        badge,
+    ) in enumerate(
+        states,
+        start=1,
+    ):
+        rows.append(
+            f"""
+            <div class="ax-step {state_class}">
+                <div class="ax-step-number">{index}</div>
+                <div>
+                    <strong>{html.escape(title)}</strong>
+                    <span>{html.escape(subtitle)}</span>
+                </div>
+                <div class="ax-step-badge">
+                    {html.escape(badge)}
+                </div>
+            </div>
+            """
+        )
+
+    return "".join(rows)
+
+
+def _tronscan_url(txid: str) -> str:
+    clean_txid = str(txid or "").strip()
+
+    if not clean_txid:
+        return ""
+
+    return (
+        "https://tronscan.org/#/transaction/"
+        f"{clean_txid}"
+    )
+
+
 def _render_usdt_automatic_checkout(
     *,
     checkout: dict[str, Any],
@@ -1813,7 +2231,7 @@ def _render_usdt_automatic_checkout(
     usd_amount: int,
     address: str,
 ) -> None:
-    """Orden USDT TRC20 + TXID + activación automática."""
+    """Checkout USDT TRC20 premium con activación automática."""
 
     plan_code = str(
         checkout.get("plan_code", "")
@@ -1831,51 +2249,153 @@ def _render_usdt_automatic_checkout(
         order = {}
 
     st.html(
-        f"""
-        <section class="ax-usdt-order">
-            <div class="ax-usdt-head">
-                <strong>₮ USDT TRC20 · ACTIVACIÓN AUTOMÁTICA</strong>
-                <span>IMPORTE EXACTO: {usd_amount} USDT</span>
+        """
+        <section class="ax-pro-hero">
+            <h2>
+                Activar <span>AXION PRIME PRO</span>
+            </h2>
+            <p>
+                Elige tu método de pago y activa todas las herramientas PRO.
+            </p>
+        </section>
+
+        <section class="ax-benefits-row">
+            <div class="ax-benefit">
+                <div class="ax-benefit-icon" style="--rgb:255,196,0">⚡</div>
+                <div>
+                    <strong>Activación automática</strong>
+                    <span>Al confirmar el pago, tu plan se activa de inmediato.</span>
+                </div>
+            </div>
+
+            <div class="ax-benefit">
+                <div class="ax-benefit-icon" style="--rgb:49,255,156">🛡</div>
+                <div>
+                    <strong>Pago seguro</strong>
+                    <span>Verificación directa mediante TRON (TRC20).</span>
+                </div>
+            </div>
+
+            <div class="ax-benefit">
+                <div class="ax-benefit-icon" style="--rgb:49,255,156">✓</div>
+                <div>
+                    <strong>Sin revisión manual</strong>
+                    <span>La blockchain confirma la operación automáticamente.</span>
+                </div>
             </div>
         </section>
         """
     )
 
     if not order:
-        st.info(
-            "Primero genera una orden. Quedará vinculada a tu "
-            "cuenta y al plan seleccionado."
+        main_column, status_column = st.columns(
+            [.72, .28],
+            gap="medium",
         )
 
-        if st.button(
-            f"⚡ GENERAR ORDEN DE {usd_amount} USDT",
-            use_container_width=True,
-            type="primary",
-            key=f"subscription_create_usdt_order_{plan_code}",
-        ):
-            try:
-                with st.spinner("Creando orden USDT..."):
-                    created_order = create_usdt_order(plan_code)
+        with main_column:
+            st.html(
+                f"""
+                <section class="ax-order-shell">
+                    <div class="ax-order-titlebar">
+                        <strong>₮ USDT TRC20 · ACTIVACIÓN AUTOMÁTICA</strong>
+                        <span>IMPORTE EXACTO: {usd_amount} USDT</span>
+                    </div>
 
-                st.session_state[order_key] = created_order
-                st.success("Orden USDT creada correctamente.")
-                st.rerun()
+                    <div class="ax-security-note">
+                        Primero genera una orden segura. Quedará vinculada
+                        a tu cuenta, al plan seleccionado y al importe exacto.
+                    </div>
+                </section>
+                """
+            )
 
-            except CryptoPaymentError as exc:
-                st.error(str(exc))
+            if st.button(
+                f"⚡ GENERAR ORDEN DE {usd_amount} USDT",
+                use_container_width=True,
+                type="primary",
+                key=f"subscription_create_usdt_order_{plan_code}",
+            ):
+                try:
+                    with st.status(
+                        "Creando orden segura...",
+                        expanded=True,
+                    ) as create_status:
+                        st.write("🔐 Vinculando la orden a tu cuenta...")
+                        created_order = create_usdt_order(plan_code)
+                        st.write("✅ Orden vinculada correctamente.")
 
-            except Exception as exc:
-                st.error("No se pudo crear la orden USDT.")
-                with st.expander("Ver detalle técnico", expanded=False):
-                    st.code(str(exc), language="text")
+                        create_status.update(
+                            label="Orden creada correctamente",
+                            state="complete",
+                            expanded=True,
+                        )
 
-        _render_support_panel(
-            plan_label=plan_label,
-            payment_method="USDT TRC20",
+                    st.session_state[order_key] = created_order
+                    st.session_state.pop(
+                        "crypto_payment_history_cache",
+                        None,
+                    )
+                    st.rerun()
+
+                except CryptoPaymentError as exc:
+                    st.error(str(exc))
+
+                except Exception as exc:
+                    st.error("No se pudo crear la orden USDT.")
+                    with st.expander(
+                        "Ver detalle técnico",
+                        expanded=False,
+                    ):
+                        st.code(str(exc), language="text")
+
+        with status_column:
+            st.html(
+                f"""
+                <section class="ax-progress-card">
+                    <div class="ax-history-title">
+                        <strong>Estado de tu orden</strong>
+                    </div>
+
+                    <div class="ax-countdown-box">
+                        <small>Genera una orden para comenzar</small>
+                        <strong>-- : --</strong>
+                    </div>
+
+                    {_order_progress_html(
+                        has_order=False,
+                        has_txid=False,
+                    )}
+
+                    <div class="ax-security-note">
+                        🔒 El plan solo se activa después de confirmar
+                        el pago real en la blockchain.
+                    </div>
+                </section>
+                """
+            )
+
+        support_column, history_column = st.columns(
+            2,
+            gap="medium",
         )
+
+        with support_column:
+            _render_support_panel(
+                plan_label=plan_label,
+                payment_method="USDT TRC20",
+            )
+
+        with history_column:
+            _render_crypto_payment_history()
+
         return
 
-    order_id = str(order.get("id", "") or "").strip()
+    order_id = str(
+        order.get("id", "")
+        or ""
+    ).strip()
+
     order_address = str(
         order.get("destination_address", "")
         or address
@@ -1898,28 +2418,290 @@ def _render_usdt_automatic_checkout(
         )
     )
 
-    st.html(
-        f"""
-        <div class="ax-order-progress">
-            <div>
-                <small>ORDER ID</small>
-                <strong>{html.escape(order_id or "PENDIENTE")}</strong>
-            </div>
-
-            <div>
-                <small>ESTADO</small>
-                <strong>{html.escape(order_status)}</strong>
-            </div>
-
-            <div>
-                <small>TIEMPO RESTANTE</small>
-                <strong class="{countdown_class}">
-                    {html.escape(countdown_text)}
-                </strong>
-            </div>
-        </div>
-        """
+    main_column, status_column = st.columns(
+        [.72, .28],
+        gap="medium",
     )
+
+    transaction_hash = ""
+
+    with main_column:
+        st.html(
+            f"""
+            <section class="ax-order-shell">
+                <div class="ax-order-titlebar">
+                    <strong>2. Genera tu orden de pago</strong>
+                    <span>ORDEN #{html.escape(order_id)}</span>
+                </div>
+            </section>
+            """
+        )
+
+        qr_column, details_column = st.columns(
+            [.34, .66],
+            gap="medium",
+        )
+
+        with qr_column:
+            st.html('<section class="ax-qr-card">')
+
+            st.image(
+                _make_qr(order_address),
+                caption="USDT · TRON · TRC20",
+                width=220,
+            )
+
+            st.html(
+                f"""
+                <div class="ax-qr-tip">
+                    Escanea con una wallet compatible con TRON.
+                </div>
+
+                <div class="ax-tip-card">
+                    <strong>💡 Consejos importantes</strong>
+                    <div>
+                        ✓ Envía exactamente {expected_amount:g} USDT<br>
+                        ✓ Usa únicamente TRC20<br>
+                        ✓ No utilices ERC20, BEP20 u otras redes
+                    </div>
+                </div>
+                </section>
+                """
+            )
+
+        with details_column:
+            st.html(
+                f"""
+                <div class="ax-status-chip">◉ ESPERANDO PAGO</div>
+
+                <div class="ax-payment-amount">
+                    Envía exactamente<br>
+                    <strong>{expected_amount:g} USDT</strong>
+                    <span class="ax-network-pill">TRC20</span>
+                </div>
+                """
+            )
+
+            st.markdown("#### Dirección de pago (TRC20)")
+            st.code(order_address, language=None)
+
+            _render_copy_button(
+                order_address,
+                label="📋 COPIAR DIRECCIÓN TRC20",
+            )
+
+            transaction_hash = st.text_input(
+                "Hash de la transacción (TXID)",
+                placeholder="Pega aquí el TXID de tu pago",
+                key=f"subscription_usdt_txid_{plan_code}",
+            )
+
+            with st.expander(
+                "🔎 ¿Dónde encuentro el TXID?",
+                expanded=False,
+            ):
+                st.write(
+                    "En Binance o tu wallet abre el retiro enviado, "
+                    "entra en los detalles y copia el identificador "
+                    "de transacción o TXID."
+                )
+
+            proof_file = st.file_uploader(
+                "Captura del comprobante (opcional)",
+                type=["png", "jpg", "jpeg", "webp"],
+                key=f"subscription_usdt_proof_{plan_code}",
+                help=(
+                    "La captura sirve como respaldo. La activación "
+                    "depende de la verificación real del TXID."
+                ),
+            )
+
+            if proof_file is not None:
+                st.image(
+                    proof_file,
+                    caption="Comprobante seleccionado",
+                    width=280,
+                )
+
+            verify_column, cancel_column = st.columns(
+                [1.55, .85],
+                gap="small",
+            )
+
+            with verify_column:
+                verify_clicked = st.button(
+                    "⚡ VERIFICAR PAGO Y ACTIVAR PRO",
+                    use_container_width=True,
+                    type="primary",
+                    key=f"subscription_verify_usdt_{plan_code}",
+                )
+
+            with cancel_column:
+                cancel_clicked = st.button(
+                    "🗑️ CANCELAR ORDEN",
+                    use_container_width=True,
+                    key=f"subscription_cancel_usdt_{plan_code}",
+                )
+
+            if cancel_clicked:
+                st.session_state.pop(order_key, None)
+                st.rerun()
+
+            clean_txid = str(
+                transaction_hash
+                or ""
+            ).strip()
+
+            if verify_clicked:
+                if not clean_txid:
+                    st.warning(
+                        "Debes pegar el TXID antes de verificar."
+                    )
+                    return
+
+                try:
+                    with st.status(
+                        "Verificando pago en la blockchain TRON...",
+                        expanded=True,
+                    ) as verification_status:
+                        st.write("🔎 Buscando la transacción confirmada...")
+                        result = verify_usdt_order(
+                            order_id,
+                            clean_txid,
+                        )
+
+                        if result.get("ok") and result.get("activated"):
+                            st.write("✅ Transacción encontrada.")
+                            st.write("✅ Importe y billetera verificados.")
+                            st.write("👑 Activando AXION PRIME PRO...")
+
+                            verification_status.update(
+                                label="Pago confirmado y PRO activado",
+                                state="complete",
+                                expanded=True,
+                            )
+
+                        elif result.get("pending"):
+                            verification_status.update(
+                                label="Transacción pendiente de confirmación",
+                                state="running",
+                                expanded=True,
+                            )
+
+                        else:
+                            verification_status.update(
+                                label="La transacción necesita atención",
+                                state="error",
+                                expanded=True,
+                            )
+
+                    if result.get("ok") and result.get("activated"):
+                        apply_verified_membership_to_session(result)
+
+                        st.session_state.pop(order_key, None)
+                        st.session_state.pop(
+                            "crypto_payment_history_cache",
+                            None,
+                        )
+
+                        st.success(
+                            "👑 Pago confirmado. Bienvenido a "
+                            "AXION PRIME PRO."
+                        )
+                        st.balloons()
+                        st.rerun()
+
+                    elif result.get("pending"):
+                        st.info(
+                            str(
+                                result.get("error")
+                                or "La transacción aún está pendiente."
+                            )
+                        )
+
+                    elif result.get("manual_review"):
+                        st.warning(
+                            str(
+                                result.get("error")
+                                or "El pago requiere revisión."
+                            )
+                        )
+
+                    else:
+                        st.warning(
+                            str(
+                                result.get("error")
+                                or result.get("message")
+                                or "No fue posible confirmar el pago."
+                            )
+                        )
+
+                except CryptoPaymentError as exc:
+                    st.error(str(exc))
+
+                except Exception as exc:
+                    st.error("No se pudo verificar el pago USDT.")
+                    with st.expander(
+                        "Ver detalle técnico",
+                        expanded=False,
+                    ):
+                        st.code(str(exc), language="text")
+
+            if clean_txid:
+                tronscan_url = _tronscan_url(clean_txid)
+
+                if tronscan_url:
+                    st.link_button(
+                        "🔍 VER TRANSACCIÓN EN TRONSCAN",
+                        tronscan_url,
+                        use_container_width=True,
+                    )
+
+                st.html(
+                    """
+                    <div class="ax-auto-check">
+                        ● Verificación automática activa: la app revisará
+                        TRON cada 12 segundos mientras esta pantalla siga abierta.
+                    </div>
+                    """
+                )
+
+                _automatic_tx_verification(
+                    order_id=order_id,
+                    txid=clean_txid,
+                    order_key=order_key,
+                )
+
+    with status_column:
+        st.html(
+            f"""
+            <section class="ax-progress-card">
+                <div class="ax-history-title">
+                    <strong>Estado de tu orden</strong>
+                    <span>{html.escape(order_status)}</span>
+                </div>
+
+                <div class="ax-countdown-box">
+                    <small>Esta orden expira en</small>
+                    <strong class="{countdown_class}">
+                        {html.escape(countdown_text)}
+                    </strong>
+                </div>
+
+                {_order_progress_html(
+                    has_order=True,
+                    has_txid=bool(
+                        str(transaction_hash or "").strip()
+                    ),
+                )}
+
+                <div class="ax-security-note">
+                    🔒 Una vez confirmado el pago, tu plan se
+                    activará automáticamente.
+                </div>
+            </section>
+            """
+        )
 
     if order_expired:
         st.error(
@@ -1932,204 +2714,26 @@ def _render_usdt_automatic_checkout(
             type="primary",
             key=f"subscription_regenerate_usdt_{plan_code}",
         ):
-            st.session_state.pop(
-                order_key,
-                None,
-            )
+            st.session_state.pop(order_key, None)
             st.rerun()
 
+        return
+
+    support_column, history_column = st.columns(
+        2,
+        gap="medium",
+    )
+
+    with support_column:
         _render_support_panel(
             plan_label=plan_label,
             payment_method="USDT TRC20",
             order_id=order_id,
-        )
-        return
-
-    qr_column, information_column = st.columns(
-        [.33, .67],
-        gap="medium",
-    )
-
-    with qr_column:
-        st.image(
-            _make_qr(order_address),
-            caption="USDT · TRON · TRC20",
-            width=220,
+            txid=str(transaction_hash or "").strip(),
         )
 
-    with information_column:
-        st.markdown("### Dirección de pago USDT")
-        st.code(order_address, language=None)
-
-        _render_copy_button(
-            order_address,
-            label="📋 COPIAR DIRECCIÓN TRC20",
-        )
-
-        st.error(
-            f"Envía exactamente {expected_amount:g} USDT por "
-            "TRON · TRC20. Usar otra red puede causar pérdida "
-            "de fondos."
-        )
-
-        transaction_hash = st.text_input(
-            "Hash de la transacción (TXID)",
-            placeholder="Pega aquí el TXID de 64 caracteres",
-            key=f"subscription_usdt_txid_{plan_code}",
-        )
-
-        proof_file = st.file_uploader(
-            "Captura del comprobante (opcional)",
-            type=["png", "jpg", "jpeg", "webp"],
-            key=f"subscription_usdt_proof_{plan_code}",
-            help=(
-                "La captura es solo respaldo. La activación depende "
-                "de la verificación real del TXID."
-            ),
-        )
-
-        if proof_file is not None:
-            st.image(
-                proof_file,
-                caption="Comprobante seleccionado",
-                width=280,
-            )
-
-        if st.button(
-            "✅ VERIFICAR PAGO Y ACTIVAR PRO",
-            use_container_width=True,
-            type="primary",
-            key=f"subscription_verify_usdt_{plan_code}",
-        ):
-            clean_txid = str(transaction_hash or "").strip()
-
-            if not clean_txid:
-                st.warning("Debes pegar el TXID antes de verificar.")
-                return
-
-            try:
-                with st.status(
-                    "Verificando pago en la blockchain TRON...",
-                    expanded=True,
-                ) as verification_status:
-                    st.write(
-                        "🔎 Buscando la transacción confirmada..."
-                    )
-
-                    result = verify_usdt_order(
-                        order_id,
-                        clean_txid,
-                    )
-
-                    if result.get("ok") and result.get("activated"):
-                        st.write("✅ Transacción encontrada.")
-                        st.write("✅ Importe y billetera verificados.")
-                        st.write("👑 Activando AXION PRIME PRO...")
-
-                        verification_status.update(
-                            label="Pago confirmado y PRO activado",
-                            state="complete",
-                            expanded=True,
-                        )
-
-                    elif result.get("pending"):
-                        verification_status.update(
-                            label="Transacción pendiente de confirmación",
-                            state="running",
-                            expanded=True,
-                        )
-
-                    else:
-                        verification_status.update(
-                            label="La transacción necesita atención",
-                            state="error",
-                            expanded=True,
-                        )
-
-                if result.get("ok") and result.get("activated"):
-                    apply_verified_membership_to_session(result)
-                    st.session_state.pop(order_key, None)
-                    st.session_state.pop(
-                        "crypto_payment_history_cache",
-                        None,
-                    )
-
-                    st.success(
-                        "✅ Pago confirmado. Tu membresía PRO "
-                        "fue activada automáticamente."
-                    )
-                    st.balloons()
-                    st.rerun()
-
-                elif result.get("pending"):
-                    st.info(
-                        str(
-                            result.get("error")
-                            or "La transacción aún está pendiente."
-                        )
-                    )
-
-                elif result.get("manual_review"):
-                    st.warning(
-                        str(
-                            result.get("error")
-                            or "El pago requiere revisión."
-                        )
-                    )
-
-                else:
-                    st.warning(
-                        str(
-                            result.get("error")
-                            or result.get("message")
-                            or "No fue posible confirmar el pago."
-                        )
-                    )
-
-            except CryptoPaymentError as exc:
-                st.error(str(exc))
-
-            except Exception as exc:
-                st.error("No se pudo verificar el pago USDT.")
-                with st.expander("Ver detalle técnico", expanded=False):
-                    st.code(str(exc), language="text")
-
-        clean_txid_for_auto = str(
-            transaction_hash
-            or ""
-        ).strip()
-
-        if clean_txid_for_auto:
-            st.html(
-                """
-                <div class="ax-auto-check">
-                    🔄 Verificación automática activa: consultaremos TRON
-                    cada 12 segundos mientras esta página permanezca abierta.
-                </div>
-                """
-            )
-
-            _automatic_tx_verification(
-                order_id=order_id,
-                txid=clean_txid_for_auto,
-                order_key=order_key,
-            )
-
-        if st.button(
-            "🗑️ CANCELAR ESTA ORDEN",
-            use_container_width=True,
-            key=f"subscription_cancel_usdt_{plan_code}",
-        ):
-            st.session_state.pop(order_key, None)
-            st.rerun()
-
-    _render_support_panel(
-        plan_label=plan_label,
-        payment_method="USDT TRC20",
-        order_id=order_id,
-        txid=str(transaction_hash or "").strip(),
-    )
-
+    with history_column:
+        _render_crypto_payment_history()
 
 def _select_checkout(
     plan_code: str,
@@ -3320,5 +3924,3 @@ def render_subscription() -> None:
     _render_checkout(
         is_owner=is_owner,
     )
-
-    _render_crypto_payment_history()
