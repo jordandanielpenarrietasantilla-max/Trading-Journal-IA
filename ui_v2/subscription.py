@@ -8,6 +8,7 @@ from urllib.parse import quote
 
 import qrcode
 import streamlit as st
+import streamlit.components.v1 as components
 
 from core.crypto_payments import (
     CryptoPaymentError,
@@ -874,6 +875,65 @@ SUBSCRIPTION_CSS = """
     line-height:1.55;
 }
 
+
+.ax-order-progress {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 9px;
+    margin: 12px 0;
+}
+
+.ax-order-progress div {
+    padding: 12px;
+    border: 1px solid rgba(72,96,158,.24);
+    border-radius: 11px;
+    background: rgba(5,11,28,.88);
+}
+
+.ax-order-progress small {
+    display: block;
+    color: #8ea0bd;
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.ax-order-progress strong {
+    display: block;
+    margin-top: 5px;
+    color: #eef4ff;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.ax-countdown-ok {
+    color: #31ff9c !important;
+}
+
+.ax-countdown-warn {
+    color: #ffc400 !important;
+}
+
+.ax-countdown-expired {
+    color: #ff6688 !important;
+}
+
+.ax-auto-check {
+    margin-top: 10px;
+    padding: 10px 12px;
+    color: #bcd7ff;
+    font-size: 11px;
+    line-height: 1.5;
+    border-left: 3px solid #2bdcff;
+    border-radius: 5px 11px 11px 5px;
+    background: rgba(43,220,255,.055);
+}
+
+@media (max-width:700px) {
+    .ax-order-progress {
+        grid-template-columns: 1fr;
+    }
+}
+
 </style>
 """
 
@@ -1098,6 +1158,278 @@ def _make_qr(value: str) -> bytes:
 
 
 
+
+def _parse_iso_datetime(
+    value: Any,
+) -> dt.datetime | None:
+    """Convierte una fecha ISO a UTC."""
+
+    if not value:
+        return None
+
+    try:
+        parsed = dt.datetime.fromisoformat(
+            str(value).replace("Z", "+00:00")
+        )
+    except (TypeError, ValueError):
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(
+            tzinfo=dt.timezone.utc,
+        )
+
+    return parsed.astimezone(
+        dt.timezone.utc,
+    )
+
+
+def _order_countdown(
+    created_at: Any,
+    *,
+    duration_minutes: int = 30,
+) -> tuple[str, bool, str]:
+    """
+    Devuelve texto, expiración y clase visual del contador.
+    """
+
+    created = _parse_iso_datetime(
+        created_at
+    )
+
+    if created is None:
+        return "30:00", False, "ax-countdown-ok"
+
+    expires_at = created + dt.timedelta(
+        minutes=duration_minutes,
+    )
+
+    remaining = int(
+        (
+            expires_at
+            - dt.datetime.now(
+                dt.timezone.utc
+            )
+        ).total_seconds()
+    )
+
+    if remaining <= 0:
+        return "EXPIRADA", True, "ax-countdown-expired"
+
+    minutes, seconds = divmod(
+        remaining,
+        60,
+    )
+
+    css_class = (
+        "ax-countdown-warn"
+        if remaining <= 5 * 60
+        else "ax-countdown-ok"
+    )
+
+    return (
+        f"{minutes:02d}:{seconds:02d}",
+        False,
+        css_class,
+    )
+
+
+def _render_copy_button(
+    value: str,
+    *,
+    label: str = "📋 COPIAR DIRECCIÓN",
+) -> None:
+    """Botón de copiar que funciona dentro del navegador."""
+
+    safe_value = html.escape(
+        value,
+        quote=True,
+    )
+
+    safe_label = html.escape(
+        label,
+    )
+
+    components.html(
+        f"""
+        <button id="copy-value" style="
+            width:100%;
+            min-height:44px;
+            border:1px solid rgba(43,220,255,.35);
+            border-radius:11px;
+            color:#f4f7ff;
+            background:rgba(43,220,255,.07);
+            font-weight:850;
+            cursor:pointer;
+        ">{safe_label}</button>
+
+        <script>
+        const button = document.getElementById("copy-value");
+
+        button.addEventListener("click", async () => {{
+            try {{
+                await navigator.clipboard.writeText("{safe_value}");
+                button.textContent = "✅ COPIADO";
+            }} catch (error) {{
+                button.textContent = "COPIA MANUALMENTE";
+            }}
+
+            setTimeout(() => {{
+                button.textContent = "{safe_label}";
+            }}, 1800);
+        }});
+        </script>
+        """,
+        height=52,
+        scrolling=False,
+    )
+
+
+def _support_whatsapp_url(
+    *,
+    plan_label: str,
+    order_id: str,
+    txid: str,
+) -> str:
+    """URL opcional de WhatsApp configurada en Secrets."""
+
+    phone = (
+        _secret("SUPPORT_WHATSAPP")
+        or _secret("SUPPORT_WHATSAPP_NUMBER")
+    ).strip()
+
+    if not phone:
+        return ""
+
+    clean_phone = "".join(
+        character
+        for character in phone
+        if character.isdigit()
+    )
+
+    if not clean_phone:
+        return ""
+
+    message = "\n".join(
+        [
+            "Hola, necesito ayuda con un pago de AXION PRIME.",
+            f"Plan: {plan_label}",
+            f"Order ID: {order_id or 'No generado'}",
+            f"TXID: {txid or 'No indicado'}",
+        ]
+    )
+
+    return (
+        f"https://wa.me/{clean_phone}"
+        f"?text={quote(message)}"
+    )
+
+
+def _support_telegram_url() -> str:
+    """URL opcional de Telegram configurada en Secrets."""
+
+    value = (
+        _secret("SUPPORT_TELEGRAM_URL")
+        or _secret("SUPPORT_TELEGRAM")
+    ).strip()
+
+    if not value:
+        return ""
+
+    if value.startswith("http://") or value.startswith("https://"):
+        return value
+
+    username = value.lstrip("@").strip()
+
+    return (
+        f"https://t.me/{username}"
+        if username
+        else ""
+    )
+
+
+def _automatic_tx_verification(
+    *,
+    order_id: str,
+    txid: str,
+    order_key: str,
+) -> None:
+    """
+    Reintenta la verificación automáticamente cada 12 segundos.
+
+    Solo se activa después de que el usuario pega un TXID.
+    """
+
+    if not order_id or not txid:
+        return
+
+    def _run_check() -> None:
+        try:
+            result = verify_usdt_order(
+                order_id,
+                txid,
+            )
+        except CryptoPaymentError as exc:
+            st.caption(
+                f"Verificación automática: {exc}"
+            )
+            return
+        except Exception as exc:
+            st.caption(
+                f"Verificación automática temporalmente no disponible: {exc}"
+            )
+            return
+
+        if result.get("ok") and result.get("activated"):
+            apply_verified_membership_to_session(
+                result
+            )
+
+            st.session_state.pop(
+                order_key,
+                None,
+            )
+
+            st.success(
+                "✅ Pago confirmado automáticamente. "
+                "Tu membresía PRO está activa."
+            )
+
+            st.balloons()
+            st.rerun()
+
+        if result.get("pending"):
+            st.caption(
+                "🔄 Seguimos esperando confirmación en TRON. "
+                "La página revisará nuevamente."
+            )
+        elif result.get("manual_review"):
+            st.warning(
+                str(
+                    result.get("error")
+                    or "El pago requiere revisión de soporte."
+                )
+            )
+
+    fragment_factory = getattr(
+        st,
+        "fragment",
+        None,
+    )
+
+    if callable(fragment_factory):
+        fragment_factory(
+            run_every="12s"
+        )(
+            _run_check
+        )()
+    else:
+        st.caption(
+            "Tu versión de Streamlit no admite revisión automática "
+            "periódica. Usa el botón Verificar pago."
+        )
+
+
 def _support_email() -> str:
     """Correo de soporte: SUPPORT_EMAIL o ADMIN_EMAIL."""
 
@@ -1183,16 +1515,60 @@ def _render_support_panel(
         txid=txid,
     )
 
-    if support_url:
-        st.link_button(
-            "📧 CONTACTAR A SOPORTE",
-            support_url,
-            use_container_width=True,
+    support_email = _support_email()
+
+    if support_email:
+        st.caption(
+            f"Correo de soporte: {support_email}"
         )
-    else:
+
+    button_columns = st.columns(
+        3,
+        gap="small",
+    )
+
+    with button_columns[0]:
+        if support_url:
+            st.link_button(
+                "📧 CORREO",
+                support_url,
+                use_container_width=True,
+            )
+
+    whatsapp_url = _support_whatsapp_url(
+        plan_label=plan_label,
+        order_id=order_id,
+        txid=txid,
+    )
+
+    with button_columns[1]:
+        if whatsapp_url:
+            st.link_button(
+                "💬 WHATSAPP",
+                whatsapp_url,
+                use_container_width=True,
+            )
+
+    telegram_url = _support_telegram_url()
+
+    with button_columns[2]:
+        if telegram_url:
+            st.link_button(
+                "✈️ TELEGRAM",
+                telegram_url,
+                use_container_width=True,
+            )
+
+    if not any(
+        [
+            support_url,
+            whatsapp_url,
+            telegram_url,
+        ]
+    ):
         st.warning(
-            "Configura SUPPORT_EMAIL o ADMIN_EMAIL en "
-            "Streamlit Secrets para habilitar soporte."
+            "Configura SUPPORT_EMAIL, SUPPORT_WHATSAPP o "
+            "SUPPORT_TELEGRAM_URL en Streamlit Secrets."
         )
 
 
@@ -1288,24 +1664,59 @@ def _render_usdt_automatic_checkout(
         or "pending"
     ).strip().upper()
 
+    countdown_text, order_expired, countdown_class = (
+        _order_countdown(
+            order.get("created_at"),
+            duration_minutes=30,
+        )
+    )
+
     st.html(
         f"""
-        <div class="ax-wallet-summary">
+        <div class="ax-order-progress">
             <div>
-                <small>ORDEN</small>
+                <small>ORDER ID</small>
                 <strong>{html.escape(order_id or "PENDIENTE")}</strong>
             </div>
-            <div>
-                <small>IMPORTE EXACTO</small>
-                <strong>{expected_amount:g} USDT</strong>
-            </div>
+
             <div>
                 <small>ESTADO</small>
                 <strong>{html.escape(order_status)}</strong>
             </div>
+
+            <div>
+                <small>TIEMPO RESTANTE</small>
+                <strong class="{countdown_class}">
+                    {html.escape(countdown_text)}
+                </strong>
+            </div>
         </div>
         """
     )
+
+    if order_expired:
+        st.error(
+            "Esta orden expiró. No envíes fondos usando esta orden."
+        )
+
+        if st.button(
+            "🔄 GENERAR NUEVA ORDEN",
+            use_container_width=True,
+            type="primary",
+            key=f"subscription_regenerate_usdt_{plan_code}",
+        ):
+            st.session_state.pop(
+                order_key,
+                None,
+            )
+            st.rerun()
+
+        _render_support_panel(
+            plan_label=plan_label,
+            payment_method="USDT TRC20",
+            order_id=order_id,
+        )
+        return
 
     qr_column, information_column = st.columns(
         [.33, .67],
@@ -1322,6 +1733,11 @@ def _render_usdt_automatic_checkout(
     with information_column:
         st.markdown("### Dirección de pago USDT")
         st.code(order_address, language=None)
+
+        _render_copy_button(
+            order_address,
+            label="📋 COPIAR DIRECCIÓN TRC20",
+        )
 
         st.error(
             f"Envía exactamente {expected_amount:g} USDT por "
@@ -1414,6 +1830,27 @@ def _render_usdt_automatic_checkout(
                 st.error("No se pudo verificar el pago USDT.")
                 with st.expander("Ver detalle técnico", expanded=False):
                     st.code(str(exc), language="text")
+
+        clean_txid_for_auto = str(
+            transaction_hash
+            or ""
+        ).strip()
+
+        if clean_txid_for_auto:
+            st.html(
+                """
+                <div class="ax-auto-check">
+                    🔄 Verificación automática activa: consultaremos TRON
+                    cada 12 segundos mientras esta página permanezca abierta.
+                </div>
+                """
+            )
+
+            _automatic_tx_verification(
+                order_id=order_id,
+                txid=clean_txid_for_auto,
+                order_key=order_key,
+            )
 
         if st.button(
             "🗑️ CANCELAR ESTA ORDEN",
