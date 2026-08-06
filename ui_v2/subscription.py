@@ -4,10 +4,17 @@ import datetime as dt
 import html
 import io
 from typing import Any
+from urllib.parse import quote
 
 import qrcode
 import streamlit as st
 
+from core.crypto_payments import (
+    CryptoPaymentError,
+    apply_verified_membership_to_session,
+    create_usdt_order,
+    verify_usdt_order,
+)
 from core.flow_payments import (
     FlowPaymentError,
     create_flow_plan_checkout,
@@ -808,6 +815,65 @@ SUBSCRIPTION_CSS = """
     .ax-flow-grid { grid-template-columns:1fr; }
 }
 
+
+/* =========================================================
+   USDT AUTOMÁTICO Y SOPORTE
+   ========================================================= */
+
+.ax-usdt-order {
+    margin-top: 14px;
+    padding: 18px;
+    border: 1px solid rgba(43,220,255,.42);
+    border-radius: 17px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(43,220,255,.13),transparent 36%),
+        linear-gradient(145deg,rgba(7,16,37,.99),rgba(5,9,24,.99));
+}
+
+.ax-usdt-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+}
+
+.ax-usdt-head strong {
+    color:#2bdcff;
+    font-size:15px;
+    font-weight:950;
+}
+
+.ax-usdt-head span {
+    color:#31ff9c;
+    font-size:10px;
+    font-weight:950;
+}
+
+.ax-support-panel {
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid rgba(126,102,255,.38);
+    border-radius: 15px;
+    background:
+        radial-gradient(circle at 100% 0%,rgba(157,61,255,.12),transparent 35%),
+        linear-gradient(145deg,rgba(7,15,35,.99),rgba(5,9,24,.99));
+}
+
+.ax-support-panel strong {
+    display:block;
+    color:#f4f7ff;
+    font-size:14px;
+    font-weight:950;
+}
+
+.ax-support-panel p {
+    margin:7px 0 0;
+    color:#b9c5da;
+    font-size:11px;
+    line-height:1.55;
+}
+
 </style>
 """
 
@@ -1029,6 +1095,340 @@ def _make_qr(value: str) -> bytes:
     )
 
     return buffer.getvalue()
+
+
+
+def _support_email() -> str:
+    """Correo de soporte: SUPPORT_EMAIL o ADMIN_EMAIL."""
+
+    return (
+        _secret("SUPPORT_EMAIL")
+        or _secret("ADMIN_EMAIL")
+    ).strip()
+
+
+def _support_mailto_url(
+    *,
+    plan_label: str,
+    payment_method: str,
+    order_id: str = "",
+    txid: str = "",
+) -> str:
+    """Genera un correo prellenado para soporte."""
+
+    email = _support_email()
+
+    if not email:
+        return ""
+
+    user = _safe_dict(
+        st.session_state.get("user", {})
+    )
+
+    account_email = str(
+        user.get("email", "")
+        or ""
+    ).strip()
+
+    subject = "Soporte de pago · AXION PRIME"
+
+    body = "\n".join(
+        [
+            "Hola, necesito ayuda con un pago de AXION PRIME.",
+            "",
+            f"Plan: {plan_label}",
+            f"Método: {payment_method}",
+            f"Correo de mi cuenta: {account_email or 'No indicado'}",
+            f"Order ID: {order_id or 'No generado'}",
+            f"TXID: {txid or 'No indicado'}",
+            "",
+            "Descripción del problema:",
+            "",
+        ]
+    )
+
+    return (
+        f"mailto:{email}"
+        f"?subject={quote(subject)}"
+        f"&body={quote(body)}"
+    )
+
+
+def _render_support_panel(
+    *,
+    plan_label: str,
+    payment_method: str,
+    order_id: str = "",
+    txid: str = "",
+) -> None:
+    """Panel de soporte visible para problemas de pago."""
+
+    st.html(
+        """
+        <section class="ax-support-panel">
+            <strong>🛟 ¿NECESITAS AYUDA CON EL PAGO?</strong>
+            <p>
+                Si la verificación tarda, aparece un error o utilizaste
+                una red equivocada, envía a soporte el TXID, el correo
+                de tu cuenta y una captura del comprobante.
+            </p>
+        </section>
+        """
+    )
+
+    support_url = _support_mailto_url(
+        plan_label=plan_label,
+        payment_method=payment_method,
+        order_id=order_id,
+        txid=txid,
+    )
+
+    if support_url:
+        st.link_button(
+            "📧 CONTACTAR A SOPORTE",
+            support_url,
+            use_container_width=True,
+        )
+    else:
+        st.warning(
+            "Configura SUPPORT_EMAIL o ADMIN_EMAIL en "
+            "Streamlit Secrets para habilitar soporte."
+        )
+
+
+def _usdt_order_key(plan_code: str) -> str:
+    return (
+        "usdt_crypto_order_"
+        f"{str(plan_code or '').strip().upper()}"
+    )
+
+
+def _render_usdt_automatic_checkout(
+    *,
+    checkout: dict[str, Any],
+    plan_label: str,
+    usd_amount: int,
+    address: str,
+) -> None:
+    """Orden USDT TRC20 + TXID + activación automática."""
+
+    plan_code = str(
+        checkout.get("plan_code", "")
+        or ""
+    ).strip().upper()
+
+    if not plan_code:
+        st.error("No se pudo identificar el plan.")
+        return
+
+    order_key = _usdt_order_key(plan_code)
+    order = st.session_state.get(order_key, {})
+
+    if not isinstance(order, dict):
+        order = {}
+
+    st.html(
+        f"""
+        <section class="ax-usdt-order">
+            <div class="ax-usdt-head">
+                <strong>₮ USDT TRC20 · ACTIVACIÓN AUTOMÁTICA</strong>
+                <span>IMPORTE EXACTO: {usd_amount} USDT</span>
+            </div>
+        </section>
+        """
+    )
+
+    if not order:
+        st.info(
+            "Primero genera una orden. Quedará vinculada a tu "
+            "cuenta y al plan seleccionado."
+        )
+
+        if st.button(
+            f"⚡ GENERAR ORDEN DE {usd_amount} USDT",
+            use_container_width=True,
+            type="primary",
+            key=f"subscription_create_usdt_order_{plan_code}",
+        ):
+            try:
+                with st.spinner("Creando orden USDT..."):
+                    created_order = create_usdt_order(plan_code)
+
+                st.session_state[order_key] = created_order
+                st.success("Orden USDT creada correctamente.")
+                st.rerun()
+
+            except CryptoPaymentError as exc:
+                st.error(str(exc))
+
+            except Exception as exc:
+                st.error("No se pudo crear la orden USDT.")
+                with st.expander("Ver detalle técnico", expanded=False):
+                    st.code(str(exc), language="text")
+
+        _render_support_panel(
+            plan_label=plan_label,
+            payment_method="USDT TRC20",
+        )
+        return
+
+    order_id = str(order.get("id", "") or "").strip()
+    order_address = str(
+        order.get("destination_address", "")
+        or address
+    ).strip()
+
+    expected_amount = float(
+        order.get("expected_amount", usd_amount)
+        or usd_amount
+    )
+
+    order_status = str(
+        order.get("status", "pending")
+        or "pending"
+    ).strip().upper()
+
+    st.html(
+        f"""
+        <div class="ax-wallet-summary">
+            <div>
+                <small>ORDEN</small>
+                <strong>{html.escape(order_id or "PENDIENTE")}</strong>
+            </div>
+            <div>
+                <small>IMPORTE EXACTO</small>
+                <strong>{expected_amount:g} USDT</strong>
+            </div>
+            <div>
+                <small>ESTADO</small>
+                <strong>{html.escape(order_status)}</strong>
+            </div>
+        </div>
+        """
+    )
+
+    qr_column, information_column = st.columns(
+        [.33, .67],
+        gap="medium",
+    )
+
+    with qr_column:
+        st.image(
+            _make_qr(order_address),
+            caption="USDT · TRON · TRC20",
+            width=220,
+        )
+
+    with information_column:
+        st.markdown("### Dirección de pago USDT")
+        st.code(order_address, language=None)
+
+        st.error(
+            f"Envía exactamente {expected_amount:g} USDT por "
+            "TRON · TRC20. Usar otra red puede causar pérdida "
+            "de fondos."
+        )
+
+        transaction_hash = st.text_input(
+            "Hash de la transacción (TXID)",
+            placeholder="Pega aquí el TXID de 64 caracteres",
+            key=f"subscription_usdt_txid_{plan_code}",
+        )
+
+        proof_file = st.file_uploader(
+            "Captura del comprobante (opcional)",
+            type=["png", "jpg", "jpeg", "webp"],
+            key=f"subscription_usdt_proof_{plan_code}",
+            help=(
+                "La captura es solo respaldo. La activación depende "
+                "de la verificación real del TXID."
+            ),
+        )
+
+        if proof_file is not None:
+            st.image(
+                proof_file,
+                caption="Comprobante seleccionado",
+                width=280,
+            )
+
+        if st.button(
+            "✅ VERIFICAR PAGO Y ACTIVAR PRO",
+            use_container_width=True,
+            type="primary",
+            key=f"subscription_verify_usdt_{plan_code}",
+        ):
+            clean_txid = str(transaction_hash or "").strip()
+
+            if not clean_txid:
+                st.warning("Debes pegar el TXID antes de verificar.")
+                return
+
+            try:
+                with st.spinner("Consultando la blockchain TRON..."):
+                    result = verify_usdt_order(
+                        order_id,
+                        clean_txid,
+                    )
+
+                if result.get("ok") and result.get("activated"):
+                    apply_verified_membership_to_session(result)
+                    st.session_state.pop(order_key, None)
+
+                    st.success(
+                        "✅ Pago confirmado. Tu membresía PRO "
+                        "fue activada automáticamente."
+                    )
+                    st.balloons()
+                    st.rerun()
+
+                elif result.get("pending"):
+                    st.info(
+                        str(
+                            result.get("error")
+                            or "La transacción aún está pendiente."
+                        )
+                    )
+
+                elif result.get("manual_review"):
+                    st.warning(
+                        str(
+                            result.get("error")
+                            or "El pago requiere revisión."
+                        )
+                    )
+
+                else:
+                    st.warning(
+                        str(
+                            result.get("error")
+                            or result.get("message")
+                            or "No fue posible confirmar el pago."
+                        )
+                    )
+
+            except CryptoPaymentError as exc:
+                st.error(str(exc))
+
+            except Exception as exc:
+                st.error("No se pudo verificar el pago USDT.")
+                with st.expander("Ver detalle técnico", expanded=False):
+                    st.code(str(exc), language="text")
+
+        if st.button(
+            "🗑️ CANCELAR ESTA ORDEN",
+            use_container_width=True,
+            key=f"subscription_cancel_usdt_{plan_code}",
+        ):
+            st.session_state.pop(order_key, None)
+            st.rerun()
+
+    _render_support_panel(
+        plan_label=plan_label,
+        payment_method="USDT TRC20",
+        order_id=order_id,
+        txid=str(transaction_hash or "").strip(),
+    )
 
 
 def _select_checkout(
@@ -1725,9 +2125,36 @@ def _render_checkout(
             plan_label=plan_label,
             amount=usd_amount,
         )
+
+        _render_support_panel(
+            plan_label=plan_label,
+            payment_method="Binance Pay",
+        )
         return
 
     wallets = _wallets()
+
+    if payment_method == "USDT TRC20":
+        usdt_wallet = wallets.get("USDT TRC20", {})
+        usdt_address = str(
+            usdt_wallet.get("address", "")
+            or ""
+        ).strip()
+
+        if not usdt_address:
+            st.warning(
+                "USDT_TRC20_WALLET_ADDRESS no está configurada "
+                "en Streamlit Secrets."
+            )
+            return
+
+        _render_usdt_automatic_checkout(
+            checkout=checkout,
+            plan_label=plan_label,
+            usd_amount=usd_amount,
+            address=usdt_address,
+        )
+        return
 
     if payment_method not in wallets:
         st.error(
@@ -1873,6 +2300,13 @@ def _render_checkout(
                 "Solicitud enviada. El acceso PRO no se activará "
                 "hasta verificar la transacción."
             )
+
+
+    _render_support_panel(
+        plan_label=plan_label,
+        payment_method=payment_method,
+        txid=str(transaction_hash or "").strip(),
+    )
 
 
 # =========================================================
