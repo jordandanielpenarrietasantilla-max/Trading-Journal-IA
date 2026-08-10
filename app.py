@@ -1099,7 +1099,9 @@ elif page == "Psicotrading":
 
 elif page == "Análisis IA":
 
-    render_ai_analysis()
+    render_ai_analysis(
+        df
+    )
 
 
 elif page == "Proyecciones":
