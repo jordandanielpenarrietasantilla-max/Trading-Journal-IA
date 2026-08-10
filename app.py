@@ -476,17 +476,24 @@ def _load_trades() -> list[dict[str, Any]]:
         return []
 
     except Exception as exc:
-        st.error(
-            "No se pudieron cargar los trades desde Supabase."
-        )
+        message = str(exc or "").lower()
 
-        with st.expander(
-            "Ver detalle técnico",
-            expanded=False,
+        if (
+            "jwt expired" in message
+            or "sesión expiró" in message
+            or "session expired" in message
         ):
-            st.code(
-                str(exc)
+            st.session_state.flash_error = (
+                "Tu sesión expiró. Inicia sesión nuevamente para continuar."
             )
+            st.session_state.authenticated = False
+            st.session_state.access_token = ""
+            st.rerun()
+
+        st.error(
+            "No pudimos cargar tus operaciones en este momento. "
+            "Inténtalo nuevamente."
+        )
 
         return []
 
@@ -999,6 +1006,18 @@ if not st.session_state.get(
 
 
 _refresh_authenticated_user()
+
+# Si el refresh token también expiró o fue revocado,
+# core.api limpia la sesión. En ese caso volvemos al login
+# inmediatamente y evitamos mostrar errores técnicos 401.
+if not st.session_state.get(
+    "authenticated",
+    False,
+):
+    st.session_state.flash_error = (
+        "Tu sesión expiró. Inicia sesión nuevamente para continuar."
+    )
+    st.rerun()
 
 
 # =========================================================
