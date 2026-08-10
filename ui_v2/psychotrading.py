@@ -7,6 +7,12 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from core.api import (
+    ApiError,
+    create_psychology_reflection,
+    delete_psychology_reflection,
+    list_psychology_reflections,
+)
 from core.metrics import pnl_by_emotion
 
 
@@ -275,6 +281,173 @@ def _trend_chart(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
+
+def _format_reflection_date(item: dict[str, Any]) -> str:
+    session_date = str(
+        item.get("session_date")
+        or ""
+    ).strip()
+
+    if session_date:
+        return session_date
+
+    created_at = str(
+        item.get("created_at")
+        or ""
+    ).strip()
+
+    if created_at:
+        return created_at[:10]
+
+    return "Sin fecha"
+
+
+def _render_reflection_module(
+    key_suffix: str,
+) -> None:
+    st.markdown(
+        '<div class="ax-section">'
+        '<div class="ax-section-title">Reflexión de la sesión</div>'
+        '<div class="ax-section-sub">Se guarda de forma privada en tu cuenta para que puedas revisar tu evolución con el tiempo.</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    widget_key = (
+        f"psychology_reflection_v2_{key_suffix}"
+    )
+
+    clear_key = f"clear_{widget_key}"
+
+    if st.session_state.pop(
+        clear_key,
+        False,
+    ):
+        st.session_state[
+            widget_key
+        ] = ""
+
+    reflection = st.text_area(
+        "Reflexión de la sesión",
+        height=155,
+        placeholder=(
+            "¿Cómo te sentiste hoy? ¿Seguiste tu plan? "
+            "¿Operaste por impulso, miedo o FOMO?"
+        ),
+        key=widget_key,
+        label_visibility="collapsed",
+    )
+
+    if st.button(
+        "💾 Guardar reflexión",
+        use_container_width=True,
+        key=f"save_psy_reflection_v2_{key_suffix}",
+    ):
+        clean_reflection = str(
+            reflection or ""
+        ).strip()
+
+        if not clean_reflection:
+            st.warning(
+                "Escribe una reflexión antes de guardarla."
+            )
+
+        else:
+            try:
+                create_psychology_reflection(
+                    clean_reflection
+                )
+
+                # Limpiamos el widget de forma segura en el
+                # próximo rerun.
+                st.session_state[
+                    f"clear_{widget_key}"
+                ] = True
+
+                st.success(
+                    "Reflexión guardada en tu cuenta."
+                )
+
+                st.rerun()
+
+            except ApiError as exc:
+                st.error(
+                    f"No se pudo guardar la reflexión: {exc}"
+                )
+
+            except Exception:
+                st.error(
+                    "No se pudo guardar la reflexión en este momento."
+                )
+
+    try:
+        history = list_psychology_reflections(
+            limit=12
+        )
+
+    except Exception:
+        history = []
+
+    if not history:
+        st.caption(
+            "Aún no tienes reflexiones guardadas."
+        )
+        return
+
+    with st.expander(
+        f"📚 Historial de reflexiones ({len(history)})",
+        expanded=False,
+    ):
+        for index, item in enumerate(history):
+            note_id = str(
+                item.get("id")
+                or ""
+            ).strip()
+
+            note = str(
+                item.get("reflection")
+                or ""
+            ).strip()
+
+            date_label = _format_reflection_date(
+                item
+            )
+
+            st.markdown(
+                f"**{html.escape(date_label)}**"
+            )
+
+            st.write(note)
+
+            if note_id:
+                if st.button(
+                    "Eliminar",
+                    key=(
+                        f"delete_psy_reflection_"
+                        f"{key_suffix}_{note_id}"
+                    ),
+                ):
+                    try:
+                        delete_psychology_reflection(
+                            note_id
+                        )
+
+                        st.success(
+                            "Reflexión eliminada."
+                        )
+
+                        st.rerun()
+
+                    except Exception:
+                        st.error(
+                            "No se pudo eliminar la reflexión."
+                        )
+
+            if index < len(history) - 1:
+                st.divider()
+
+
+
 def render_psychotrading(df: pd.DataFrame) -> None:
     _inject_styles()
 
@@ -295,15 +468,9 @@ def render_psychotrading(df: pd.DataFrame) -> None:
 
     if df.empty or "emocion" not in df.columns or df["emocion"].dropna().empty:
         st.info("Registra operaciones con estado emocional para desbloquear el panel de Psicotrading.")
-        reflection = st.text_area(
-            "Reflexión de la sesión",
-            height=150,
-            placeholder="¿Cómo te sentiste hoy? ¿Seguiste tu plan? ¿Operaste por impulso, miedo o FOMO?",
-            key="psychology_reflection_v2",
+        _render_reflection_module(
+            "empty"
         )
-        if st.button("💾 Guardar reflexión", use_container_width=True, key="save_psy_reflection_v2_empty"):
-            st.session_state.last_reflection = reflection
-            st.success("Reflexión guardada durante esta sesión.")
         return
 
     left, right = st.columns([0.38, 0.62], gap="large")
@@ -394,20 +561,12 @@ def render_psychotrading(df: pd.DataFrame) -> None:
         )
         st.plotly_chart(bar_fig, use_container_width=True, config={"displayModeBar": False})
 
-    st.markdown(
-        '<div class="ax-section"><div class="ax-section-title">Reflexión de la sesión</div><div class="ax-section-sub">Registra lo que ocurrió fuera del gráfico: impulso, paciencia, miedo, confianza y disciplina.</div></div>',
-        unsafe_allow_html=True,
-    )
-    reflection = st.text_area(
-        "Reflexión de la sesión",
-        height=155,
-        placeholder="¿Cómo te sentiste hoy? ¿Seguiste tu plan? ¿Operaste por impulso, miedo o FOMO?",
-        key="psychology_reflection_v2",
-        label_visibility="collapsed",
+    _render_reflection_module(
+        "main"
     )
 
-    if st.button("💾 Guardar reflexión", use_container_width=True, key="save_psy_reflection_v2"):
-        st.session_state.last_reflection = reflection
-        st.success("Reflexión guardada durante esta sesión.")
-
-    st.caption("Los índices psicológicos son una lectura interna de consistencia basada en los estados emocionales registrados; no constituyen una evaluación clínica.")
+    st.caption(
+        "Los índices psicológicos son una lectura interna de consistencia "
+        "basada en los estados emocionales registrados; no constituyen "
+        "una evaluación clínica."
+    )
