@@ -27,7 +27,6 @@ from ui.tools import (
     render_chat,
     render_lotage,
     render_projections,
-    render_psychology,
 )
 
 from ui_v2.dashboard import render_v2_dashboard
@@ -37,6 +36,7 @@ from ui_v2.market_tools import (
     render_sessions,
 )
 from ui_v2.profile import render_v2_profile
+from ui_v2.psychotrading import render_psychotrading
 from ui_v2.sidebar import render_v2_sidebar
 from ui_v2.subscription import render_subscription
 
@@ -1073,7 +1073,7 @@ elif page == "Chat IA":
 
 elif page == "Psicotrading":
 
-    render_psychology(
+    render_psychotrading(
         df
     )
 
