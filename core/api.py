@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
+import base64
+import json
+import time
+
 import requests
 import streamlit as st
 
@@ -338,7 +342,93 @@ def _refresh_access_token() -> str:
     )
 
 
+def _jwt_expiry(
+    token: str,
+) -> int | None:
+    """
+    Lee únicamente el campo exp del JWT para saber cuándo
+    solicitar un refresh.
+
+    No se usa para validar seguridad ni firma del token:
+    Supabase sigue siendo quien valida el JWT en cada request.
+    """
+
+    clean = _clean_token(token)
+
+    if not clean:
+        return None
+
+    parts = clean.split(".")
+
+    if len(parts) != 3:
+        return None
+
+    try:
+        payload_part = parts[1]
+        padding = "=" * (-len(payload_part) % 4)
+
+        decoded = base64.urlsafe_b64decode(
+            payload_part + padding
+        )
+
+        payload = json.loads(
+            decoded.decode("utf-8")
+        )
+
+        exp = payload.get("exp")
+
+        if exp is None:
+            return None
+
+        return int(exp)
+
+    except (
+        ValueError,
+        TypeError,
+        json.JSONDecodeError,
+    ):
+        return None
+
+    except Exception:
+        return None
+
+
+def _access_token_needs_refresh(
+    token: str,
+    leeway_seconds: int = 90,
+) -> bool:
+    """
+    Renueva un poco antes del vencimiento para evitar que
+    el token expire entre la creación de headers y Supabase.
+    """
+
+    clean = _clean_token(token)
+
+    if not clean:
+        return True
+
+    expiry = _jwt_expiry(clean)
+
+    # Si por alguna razón no podemos leer exp, mantenemos
+    # compatibilidad y dejamos que Supabase valide el token.
+    if expiry is None:
+        return False
+
+    return expiry <= int(time.time()) + leeway_seconds
+
+
 def ensure_access_token() -> str:
+    """
+    Devuelve un access token vigente.
+
+    Antes, AXION PRIME devolvía cualquier token no vacío,
+    incluso cuando su JWT ya había expirado. Eso provocaba:
+        HTTP 401: JWT expired
+
+    Ahora comprobamos exp y usamos el refresh_token antes
+    de enviar la petición a Supabase.
+    """
+
     access_token = _clean_token(
         st.session_state.get(
             "access_token",
@@ -346,7 +436,12 @@ def ensure_access_token() -> str:
         )
     )
 
-    if access_token:
+    if (
+        access_token
+        and not _access_token_needs_refresh(
+            access_token
+        )
+    ):
         return access_token
 
     try:
@@ -361,7 +456,7 @@ def ensure_access_token() -> str:
     clear_api_session()
 
     raise ApiError(
-        "La sesión expiró. Vuelve a iniciar sesión."
+        "Tu sesión expiró. Inicia sesión nuevamente para continuar."
     )
 
 
