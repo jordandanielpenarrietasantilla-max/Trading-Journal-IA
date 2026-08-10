@@ -23,12 +23,12 @@ from core.state import init_state
 from ui.track_record import render_track_record
 from ui.trades import render_register_trade
 from ui.tools import (
-    render_analysis,
     render_chat,
     render_lotage,
     render_projections,
 )
 
+from ui_v2.ai_analysis import render_ai_analysis
 from ui_v2.dashboard import render_v2_dashboard
 from ui_v2.login import render_v2_auth
 from ui_v2.market_tools import (
@@ -1080,7 +1080,7 @@ elif page == "Psicotrading":
 
 elif page == "Análisis IA":
 
-    render_analysis()
+    render_ai_analysis()
 
 
 elif page == "Proyecciones":
