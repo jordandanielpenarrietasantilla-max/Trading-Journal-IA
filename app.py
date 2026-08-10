@@ -25,7 +25,6 @@ from ui.trades import render_register_trade
 from ui.tools import (
     render_chat,
     render_lotage,
-    render_projections,
 )
 
 from ui_v2.ai_analysis import render_ai_analysis
@@ -36,6 +35,7 @@ from ui_v2.market_tools import (
     render_sessions,
 )
 from ui_v2.profile import render_v2_profile
+from ui_v2.projections import render_v2_projections
 from ui_v2.psychotrading import render_psychotrading
 from ui_v2.sidebar import render_v2_sidebar
 from ui_v2.subscription import render_subscription
@@ -1106,7 +1106,7 @@ elif page == "Análisis IA":
 
 elif page == "Proyecciones":
 
-    render_projections()
+    render_v2_projections()
 
 
 elif page == "Lotaje":
