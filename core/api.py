@@ -639,6 +639,153 @@ def reset_password(
     )
 
 
+
+# =========================================================
+# PSICOTRADING · REFLEXIONES
+# =========================================================
+
+
+def create_psychology_reflection(
+    reflection: str,
+    session_date: str = "",
+) -> dict[str, Any]:
+    """
+    Guarda una reflexión de Psicotrading en Supabase.
+
+    user_id se completa en PostgreSQL con auth.uid(), por lo
+    que cada nota queda vinculada al usuario autenticado.
+    """
+
+    clean_reflection = str(
+        reflection or ""
+    ).strip()
+
+    if not clean_reflection:
+        raise ApiError(
+            "Escribe una reflexión antes de guardarla."
+        )
+
+    body: dict[str, Any] = {
+        "reflection": clean_reflection,
+    }
+
+    clean_date = str(
+        session_date or ""
+    ).strip()
+
+    if clean_date:
+        body["session_date"] = clean_date
+
+    response = _request(
+        "POST",
+        "/rest/v1/psychology_reflections",
+        headers=_rest_headers(
+            "return=representation"
+        ),
+        json=body,
+    )
+
+    payload = _validate_response(
+        response,
+        "No se pudo guardar la reflexión",
+    )
+
+    if isinstance(payload, list) and payload:
+        item = payload[0]
+
+        if isinstance(item, dict):
+            return item
+
+    if isinstance(payload, dict):
+        return payload
+
+    return {}
+
+
+def list_psychology_reflections(
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """
+    Devuelve únicamente las reflexiones visibles para el
+    usuario actual. RLS en Supabase garantiza el aislamiento.
+    """
+
+    safe_limit = max(
+        1,
+        min(
+            int(limit or 20),
+            100,
+        ),
+    )
+
+    response = _request(
+        "GET",
+        "/rest/v1/psychology_reflections",
+        headers=_rest_headers(),
+        params={
+            "select": (
+                "id,reflection,session_date,"
+                "created_at,updated_at"
+            ),
+            "order": "created_at.desc",
+            "limit": str(safe_limit),
+        },
+    )
+
+    payload = _validate_response(
+        response,
+        "No se pudieron cargar las reflexiones",
+    )
+
+    if payload is None:
+        return []
+
+    if not isinstance(
+        payload,
+        list,
+    ):
+        raise ApiError(
+            "Supabase devolvió un formato inválido "
+            "al cargar las reflexiones."
+        )
+
+    return [
+        item
+        for item in payload
+        if isinstance(
+            item,
+            dict,
+        )
+    ]
+
+
+def delete_psychology_reflection(
+    reflection_id: str,
+) -> None:
+    clean_id = str(
+        reflection_id or ""
+    ).strip()
+
+    if not clean_id:
+        raise ApiError(
+            "La reflexión seleccionada no es válida."
+        )
+
+    response = _request(
+        "DELETE",
+        "/rest/v1/psychology_reflections",
+        headers=_rest_headers(),
+        params={
+            "id": f"eq.{clean_id}",
+        },
+    )
+
+    _validate_response(
+        response,
+        "No se pudo eliminar la reflexión",
+    )
+
+
 # =========================================================
 # OPERACIONES
 # =========================================================
