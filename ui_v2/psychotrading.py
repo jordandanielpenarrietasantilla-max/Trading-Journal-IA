@@ -337,13 +337,15 @@ def render_psychotrading(df: pd.DataFrame) -> None:
 
     pillar_html = '<div class="ax-mini-grid">'
     for label, value in pillar_values:
-        pillar_html += f"""
-        <div class="ax-pillar">
-            <div class="ax-pillar-name">{html.escape(label)}</div>
-            <div class="ax-pillar-value">{value}<span>/100</span></div>
-            <div class="ax-bar"><div style="width:{max(0,min(value,100))}%"></div></div>
-        </div>
-        """
+        safe_label = html.escape(label)
+        safe_value = max(0, min(value, 100))
+        pillar_html += (
+            f'<div class="ax-pillar">'
+            f'<div class="ax-pillar-name">{safe_label}</div>'
+            f'<div class="ax-pillar-value">{value}<span>/100</span></div>'
+            f'<div class="ax-bar"><div style="width:{safe_value}%"></div></div>'
+            f'</div>'
+        )
     pillar_html += "</div>"
     st.markdown(pillar_html, unsafe_allow_html=True)
 
@@ -361,14 +363,14 @@ def render_psychotrading(df: pd.DataFrame) -> None:
         worst_row = emotion_df.sort_values("pnl_total", ascending=True).iloc[0]
         total_trades = int(emotion_df["trades"].sum())
 
-        stats_html = f"""
-        <div class="ax-stat-grid">
-            <div class="ax-stat"><small>TRADES ANALIZADOS</small><strong>{total_trades}</strong><em>Con estado emocional</em></div>
-            <div class="ax-stat"><small>ESTADOS DETECTADOS</small><strong>{len(emotion_df)}</strong><em>Patrones registrados</em></div>
-            <div class="ax-stat"><small>MEJOR ESTADO</small><strong>{html.escape(str(best_row['emocion_limpia']))}</strong><em>{_money(best_row['pnl_total'])}</em></div>
-            <div class="ax-stat"><small>ESTADO A REVISAR</small><strong>{html.escape(str(worst_row['emocion_limpia']))}</strong><em>{_money(worst_row['pnl_total'])}</em></div>
-        </div>
-        """
+        stats_html = (
+            '<div class="ax-stat-grid">'
+            f'<div class="ax-stat"><small>TRADES ANALIZADOS</small><strong>{total_trades}</strong><em>Con estado emocional</em></div>'
+            f'<div class="ax-stat"><small>ESTADOS DETECTADOS</small><strong>{len(emotion_df)}</strong><em>Patrones registrados</em></div>'
+            f'<div class="ax-stat"><small>MEJOR ESTADO</small><strong>{html.escape(str(best_row["emocion_limpia"]))}</strong><em>{_money(best_row["pnl_total"])}</em></div>'
+            f'<div class="ax-stat"><small>ESTADO A REVISAR</small><strong>{html.escape(str(worst_row["emocion_limpia"]))}</strong><em>{_money(worst_row["pnl_total"])}</em></div>'
+            '</div>'
+        )
         st.markdown(stats_html, unsafe_allow_html=True)
 
         bar_fig = go.Figure()
