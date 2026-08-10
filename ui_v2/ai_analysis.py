@@ -3,8 +3,10 @@ from __future__ import annotations
 import html
 from typing import Any
 
+import requests
 import streamlit as st
 
+from core.config import OPENROUTER_API_KEY, OPENROUTER_MODEL
 from core.vision import VisionError, scan_trade
 
 
@@ -225,6 +227,91 @@ ANALYSIS_CSS = """
     font-weight:900;
     overflow-wrap:anywhere;
 }
+
+.ax-outlook{
+    margin-top:16px;
+    padding:18px;
+    border:1px solid rgba(94,111,255,.32);
+    border-radius:18px;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(121,75,255,.12), transparent 34%),
+      linear-gradient(145deg,rgba(7,14,33,.98),rgba(5,8,24,.98));
+}
+.ax-outlook-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+}
+.ax-outlook-title{
+    color:#f5f7ff;
+    font-size:14px;
+    font-weight:950;
+}
+.ax-outlook-badge{
+    color:#9f91ff;
+    font-size:9px;
+    font-weight:950;
+    letter-spacing:1px;
+}
+.ax-prob-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+}
+.ax-prob{
+    padding:16px;
+    border:1px solid rgba(75,98,160,.26);
+    border-radius:16px;
+    background:rgba(6,12,29,.78);
+}
+.ax-prob small{
+    display:block;
+    color:#7f8ca8;
+    font-size:9px;
+    font-weight:950;
+    letter-spacing:.8px;
+}
+.ax-prob strong{
+    display:block;
+    margin-top:7px;
+    color:#f5f7ff;
+    font-size:30px;
+    font-weight:950;
+}
+.ax-prob.good strong{color:#35e9a2;}
+.ax-prob.bad strong{color:#ff647c;}
+.ax-factors{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+    margin-top:12px;
+}
+.ax-factor-box{
+    padding:15px;
+    border:1px solid rgba(75,98,160,.24);
+    border-radius:15px;
+    background:rgba(6,12,29,.70);
+}
+.ax-factor-box h5{
+    margin:0 0 8px;
+    color:#f4f7ff;
+    font-size:11px;
+}
+.ax-factor-box p{
+    margin:4px 0;
+    color:#a4b1ca;
+    font-size:11px;
+    line-height:1.5;
+}
+.ax-disclaimer{
+    margin-top:12px;
+    color:#70809f;
+    font-size:9px;
+    line-height:1.5;
+}
+
 @media (max-width:900px){
     .ax-ai-grid{grid-template-columns:1fr;}
     .ax-ai-minirow{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -412,7 +499,410 @@ def _render_results(result: dict[str, Any]) -> None:
         st.json(result)
 
 
-def render_ai_analysis() -> None:
+
+def _history_context(df: Any) -> str:
+    """
+    Construye un resumen muy breve del historial real del trader.
+    Se usa solo como contexto adicional si el DataFrame existe.
+    """
+
+    try:
+        if df is None or len(df) < 5:
+            return "No hay historial suficiente para usar estadísticas personales."
+
+        total = len(df)
+
+        win_col = None
+        for candidate in (
+            "resultado",
+            "result",
+            "outcome",
+        ):
+            if candidate in df.columns:
+                win_col = candidate
+                break
+
+        pnl_col = None
+        for candidate in (
+            "pnl",
+            "PnL",
+            "profit_loss",
+            "resultado_usd",
+        ):
+            if candidate in df.columns:
+                pnl_col = candidate
+                break
+
+        win_rate = None
+
+        if win_col:
+            series = (
+                df[win_col]
+                .astype(str)
+                .str.lower()
+            )
+            winners = series.str.contains(
+                "win|ganador|winner|profit"
+            ).sum()
+            win_rate = (
+                winners / total * 100
+                if total
+                else None
+            )
+
+        if win_rate is None and pnl_col:
+            pnl = df[pnl_col]
+            try:
+                winners = (pnl.astype(float) > 0).sum()
+                win_rate = winners / total * 100
+            except Exception:
+                win_rate = None
+
+        if win_rate is None:
+            return (
+                f"Historial disponible: {total} trades. "
+                "No se pudo calcular un win rate fiable."
+            )
+
+        return (
+            f"Historial disponible: {total} trades. "
+            f"Win rate histórico aproximado: {win_rate:.1f}%."
+        )
+
+    except Exception:
+        return "No se pudo resumir el historial del usuario."
+
+
+def _build_outlook_prompt(
+    result: dict[str, Any],
+    history_summary: str,
+) -> str:
+    """
+    Pide un análisis probabilístico prudente.
+
+    Importante: la IA debe tratar la probabilidad como estimación,
+    no como estadística garantizada derivada de una sola captura.
+    """
+
+    return f"""
+Eres AXION TRADE OUTLOOK, un analista de riesgo para traders.
+
+Analiza SOLO la información visible ya extraída de una captura de trading.
+No inventes indicadores, noticias, order flow, volumen, contexto macro,
+niveles técnicos o confirmaciones que no estén presentes en los datos.
+
+DATOS DETECTADOS:
+Activo: {result.get("asset")}
+Dirección: {result.get("direction")}
+Entrada: {result.get("entry")}
+Stop Loss: {result.get("sl")}
+Take Profit: {result.get("tp")}
+Timeframe: {result.get("timeframe")}
+Confianza de visión: {result.get("confidence")}
+
+HISTORIAL DEL TRADER:
+{history_summary}
+
+Tu tarea:
+1. Da una probabilidad ESTIMADA favorable y desfavorable que sumen 100.
+2. Si la captura/datos son insuficientes, acerca las probabilidades a 50/50.
+3. Nunca presentes la probabilidad como certeza matemática.
+4. Explica brevemente qué factores visibles apoyan o debilitan el trade.
+5. Da una conclusión prudente.
+6. No des órdenes directas de comprar/vender.
+7. No prometas ganancias.
+
+Responde EXCLUSIVAMENTE en JSON válido con esta estructura exacta:
+{{
+  "prob_favorable": 55,
+  "prob_desfavorable": 45,
+  "confianza_analisis": 62,
+  "setup_score": 68,
+  "lectura": "texto breve",
+  "a_favor": ["factor 1", "factor 2"],
+  "en_contra": ["factor 1", "factor 2"],
+  "conclusion": "texto breve"
+}}
+""".strip()
+
+
+def _request_trade_outlook(
+    result: dict[str, Any],
+    df: Any = None,
+) -> dict[str, Any]:
+    api_key = str(
+        OPENROUTER_API_KEY
+        or ""
+    ).strip()
+
+    if not api_key:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY no está configurada."
+        )
+
+    model = str(
+        OPENROUTER_MODEL
+        or "google/gemini-2.5-flash"
+    ).strip()
+
+    prompt = _build_outlook_prompt(
+        result,
+        _history_context(df),
+    )
+
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            "temperature": 0.2,
+            "max_tokens": 650,
+        },
+        timeout=45,
+    )
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"OpenRouter HTTP {response.status_code}"
+        )
+
+    payload = response.json()
+    content = (
+        payload.get("choices", [{}])[0]
+        .get("message", {})
+        .get("content", "")
+    )
+
+    raw = str(
+        content or ""
+    ).strip()
+
+    if raw.startswith("```"):
+        raw = raw.strip("`")
+        if raw.lower().startswith("json"):
+            raw = raw[4:].strip()
+
+    import json
+
+    data = json.loads(raw)
+
+    favorable = int(
+        round(
+            float(
+                data.get("prob_favorable", 50)
+            )
+        )
+    )
+    favorable = max(
+        1,
+        min(
+            favorable,
+            99,
+        ),
+    )
+
+    unfavorable = 100 - favorable
+
+    confidence = int(
+        round(
+            float(
+                data.get(
+                    "confianza_analisis",
+                    50,
+                )
+            )
+        )
+    )
+    confidence = max(
+        0,
+        min(
+            confidence,
+            100,
+        ),
+    )
+
+    score = int(
+        round(
+            float(
+                data.get(
+                    "setup_score",
+                    50,
+                )
+            )
+        )
+    )
+    score = max(
+        0,
+        min(
+            score,
+            100,
+        ),
+    )
+
+    return {
+        "prob_favorable": favorable,
+        "prob_desfavorable": unfavorable,
+        "confianza_analisis": confidence,
+        "setup_score": score,
+        "lectura": str(
+            data.get("lectura")
+            or ""
+        ).strip(),
+        "a_favor": [
+            str(item).strip()
+            for item in (
+                data.get("a_favor")
+                or []
+            )
+            if str(item).strip()
+        ][:4],
+        "en_contra": [
+            str(item).strip()
+            for item in (
+                data.get("en_contra")
+                or []
+            )
+            if str(item).strip()
+        ][:4],
+        "conclusion": str(
+            data.get("conclusion")
+            or ""
+        ).strip(),
+    }
+
+
+def _render_trade_outlook(
+    outlook: dict[str, Any],
+) -> None:
+    favorable = int(
+        outlook.get(
+            "prob_favorable",
+            50,
+        )
+    )
+    unfavorable = int(
+        outlook.get(
+            "prob_desfavorable",
+            50,
+        )
+    )
+    confidence = int(
+        outlook.get(
+            "confianza_analisis",
+            50,
+        )
+    )
+    score = int(
+        outlook.get(
+            "setup_score",
+            50,
+        )
+    )
+
+    if score >= 75:
+        setup_label = "Setup favorable"
+    elif score >= 55:
+        setup_label = "Setup mixto"
+    else:
+        setup_label = "Setup débil"
+
+    st.html(
+        '<section class="ax-outlook">'
+        '<div class="ax-outlook-head">'
+        '<div class="ax-outlook-title">AXION TRADE OUTLOOK</div>'
+        '<div class="ax-outlook-badge">ESTIMACIÓN ANALÍTICA</div>'
+        '</div>'
+        '<div class="ax-prob-grid">'
+        f'<div class="ax-prob good"><small>PROBABILIDAD FAVORABLE ESTIMADA</small><strong>{favorable}%</strong></div>'
+        f'<div class="ax-prob bad"><small>PROBABILIDAD DESFAVORABLE ESTIMADA</small><strong>{unfavorable}%</strong></div>'
+        '</div>'
+        '<div class="ax-ai-minirow">'
+        f'<div class="ax-ai-mini"><small>CONFIANZA DEL ANÁLISIS</small><strong>{confidence}/100</strong></div>'
+        f'<div class="ax-ai-mini"><small>AXION SETUP SCORE</small><strong>{score}/100</strong></div>'
+        f'<div class="ax-ai-mini"><small>LECTURA</small><strong>{html.escape(setup_label)}</strong></div>'
+        '<div class="ax-ai-mini"><small>MODELO</small><strong>IA + Datos visibles</strong></div>'
+        '</div>'
+    )
+
+    lectura = str(
+        outlook.get("lectura")
+        or ""
+    ).strip()
+
+    if lectura:
+        st.html(
+            '<div class="ax-ai-summary">'
+            '<h4>LECTURA DE AXION</h4>'
+            f'<p>{html.escape(lectura)}</p>'
+            '</div>'
+        )
+
+    favor = outlook.get(
+        "a_favor",
+        [],
+    )
+    contra = outlook.get(
+        "en_contra",
+        [],
+    )
+
+    favor_html = "".join(
+        f'<p>✓ {html.escape(str(item))}</p>'
+        for item in favor
+    ) or "<p>Sin factores claros detectados.</p>"
+
+    contra_html = "".join(
+        f'<p>⚠ {html.escape(str(item))}</p>'
+        for item in contra
+    ) or "<p>Sin factores claros detectados.</p>"
+
+    st.html(
+        '<div class="ax-factors">'
+        '<div class="ax-factor-box">'
+        '<h5>✅ A FAVOR</h5>'
+        f'{favor_html}'
+        '</div>'
+        '<div class="ax-factor-box">'
+        '<h5>⚠️ EN CONTRA</h5>'
+        f'{contra_html}'
+        '</div>'
+        '</div>'
+    )
+
+    conclusion = str(
+        outlook.get("conclusion")
+        or ""
+    ).strip()
+
+    if conclusion:
+        st.html(
+            '<div class="ax-ai-summary">'
+            '<h4>CONCLUSIÓN AXION</h4>'
+            f'<p>{html.escape(conclusion)}</p>'
+            '</div>'
+        )
+
+    st.html(
+        '<div class="ax-disclaimer">'
+        'Las probabilidades mostradas son estimaciones analíticas basadas en '
+        'los datos visibles y, cuando existe suficiente historial, en métricas '
+        'del usuario. No garantizan el resultado de una operación.'
+        '</div>'
+        '</section>'
+    )
+
+
+
+def render_ai_analysis(df: Any = None) -> None:
     """
     Interfaz premium para el escáner visual de AXION PRIME.
 
@@ -468,6 +958,23 @@ def render_ai_analysis() -> None:
 
         st.session_state["v2_last_vision_result"] = result
         _render_results(result)
+
+        try:
+            with st.spinner("AXION está evaluando el contexto del setup..."):
+                outlook = _request_trade_outlook(
+                    result,
+                    df=df,
+                )
+
+            st.session_state["v2_last_trade_outlook"] = outlook
+            _render_trade_outlook(outlook)
+
+        except Exception:
+            st.info(
+                "La lectura visual se completó correctamente, "
+                "pero AXION Trade Outlook no pudo generar la "
+                "estimación probabilística en este momento."
+            )
 
     except VisionError as exc:
         st.error(
