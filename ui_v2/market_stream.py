@@ -182,8 +182,8 @@ def render_market_stream() -> None:
         f"""
         <section class="axion-market-stream">
             <div class="axion-market-head">
-                <strong>MARKET STREAM · XAU/USD</strong>
-                <span>● LIVE</span>
+                <strong>MARKET STREAM · XAU/USD · PREVIEW</strong>
+                <span style="color:#ffd166">● DEMO VISUAL</span>
             </div>
 
             <div class="axion-market-chart">
