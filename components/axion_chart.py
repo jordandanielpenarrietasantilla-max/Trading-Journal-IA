@@ -560,6 +560,7 @@ export default async function(component) {
     let draggingWholePosition = false;
     let dragStartPrice = null;
     let dragStartPosition = null;
+    let dragStartPoint = null;
 
     const chartHost = parentElement.querySelector('#chart-host');
     const canvas = parentElement.querySelector('#drawing-layer');
@@ -847,15 +848,14 @@ export default async function(component) {
     function drawPosition() {
       if (!position) return;
       const r = canvasRect();
+      const g = positionGeometry();
+      if (!g) return;
 
-      const anchorX = Math.max(160, r.width * 0.62);
-      const boxWidth = Math.max(130, Math.min(240, r.width * 0.22));
-      const left = anchorX;
-      const right = Math.min(r.width - 92, left + boxWidth);
-
-      const ye = yFromPrice(position.entry);
-      const ys = yFromPrice(position.stop);
-      const yt = yFromPrice(position.target);
+      const left = g.left;
+      const right = g.right;
+      const ye = g.ye;
+      const ys = g.ys;
+      const yt = g.yt;
 
       const topRisk = Math.min(ye, ys);
       const riskH = Math.max(1, Math.abs(ye - ys));
@@ -992,28 +992,44 @@ export default async function(component) {
     function positionGeometry() {
       if (!position) return null;
       const r=canvasRect();
-      const anchorX=Math.max(160,r.width*0.62);
-      const boxWidth=Math.max(130,Math.min(240,r.width*0.22));
-      const left=anchorX;
-      const right=Math.min(r.width-92,left+boxWidth);
+
+      const defaultWidth=Math.max(130,Math.min(240,r.width*0.22));
+      const width=Number(position.widthPx || defaultWidth);
+
+      let left=Number.isFinite(position.leftPx)
+        ? Number(position.leftPx)
+        : Math.max(120,r.width*0.62);
+
+      left=Math.max(8,Math.min(left,r.width-width-94));
+      const right=left+width;
+
       const ye=yFromPrice(position.entry);
       const ys=yFromPrice(position.stop);
       const yt=yFromPrice(position.target);
+
       return {
-        left,right,ye,ys,yt,
+        left,right,width,ye,ys,yt,
         top:Math.min(ys,yt),
         bottom:Math.max(ys,yt)
       };
     }
 
-    function nearestPositionHandle(y) {
+    function nearestPositionHandle(p) {
       if (!position) return null;
+      const g=positionGeometry();
+      if (!g) return null;
+
+      // Only grab a level when the pointer is close to the right edge.
+      const closeToRightEdge=Math.abs(p.x-g.right) <= 18;
+      if (!closeToRightEdge) return null;
+
       const candidates = [
-        ['entry',Math.abs(y-yFromPrice(position.entry))],
-        ['stop',Math.abs(y-yFromPrice(position.stop))],
-        ['target',Math.abs(y-yFromPrice(position.target))]
+        ['entry',Math.abs(p.y-g.ye)],
+        ['stop',Math.abs(p.y-g.ys)],
+        ['target',Math.abs(p.y-g.yt)]
       ].sort((a,b)=>a[1]-b[1]);
-      return candidates[0][1] <= 11 ? candidates[0][0] : null;
+
+      return candidates[0][1] <= 12 ? candidates[0][0] : null;
     }
 
     function pointInsidePositionBlock(p) {
@@ -1027,7 +1043,7 @@ export default async function(component) {
       const p=pointerPoint(e);
 
       if ((activeTool==='long'||activeTool==='short') && position) {
-        const handle=nearestPositionHandle(p.y);
+        const handle=nearestPositionHandle(p);
 
         // 1) Individual level dragging: Entry / SL / TP.
         if (handle) {
@@ -1041,10 +1057,13 @@ export default async function(component) {
         if (pointInsidePositionBlock(p)) {
           draggingWholePosition=true;
           dragStartPrice=priceFromY(p.y);
+          dragStartPoint={x:p.x,y:p.y};
           dragStartPosition={
             entry:position.entry,
             stop:position.stop,
-            target:position.target
+            target:position.target,
+            leftPx:Number(position.leftPx || positionGeometry().left),
+            widthPx:Number(position.widthPx || positionGeometry().width)
           };
           canvas.setPointerCapture?.(e.pointerId);
           canvas.style.cursor='grabbing';
@@ -1057,9 +1076,14 @@ export default async function(component) {
         const entry=priceFromY(p.y);
         const rr=Number(parentElement.querySelector('#rr-select').value||2);
         const risk=Math.max(Math.abs(entry)*0.005,1e-8);
+        const r=canvasRect();
+        const widthPx=Math.max(130,Math.min(240,r.width*0.22));
+        const leftPx=Math.max(8,Math.min(p.x-widthPx*0.18,r.width-widthPx-94));
+
         position=activeTool==='long'
-          ? {direction:'LONG',entry,stop:entry-risk,target:entry+risk*rr}
-          : {direction:'SHORT',entry,stop:entry+risk,target:entry-risk*rr};
+          ? {direction:'LONG',entry,stop:entry-risk,target:entry+risk*rr,leftPx,widthPx}
+          : {direction:'SHORT',entry,stop:entry+risk,target:entry-risk*rr,leftPx,widthPx};
+
         updatePositionPanel();drawAll();return;
       }
 
@@ -1085,13 +1109,19 @@ export default async function(component) {
         updatePositionPanel();drawAll();return;
       }
 
-      if (draggingWholePosition && position && dragStartPosition) {
+      if (draggingWholePosition && position && dragStartPosition && dragStartPoint) {
         const currentPriceAtPointer=priceFromY(p.y);
-        const delta=currentPriceAtPointer-dragStartPrice;
+        const deltaPrice=currentPriceAtPointer-dragStartPrice;
+        const deltaX=p.x-dragStartPoint.x;
+        const r=canvasRect();
 
-        position.entry=dragStartPosition.entry+delta;
-        position.stop=dragStartPosition.stop+delta;
-        position.target=dragStartPosition.target+delta;
+        position.entry=dragStartPosition.entry+deltaPrice;
+        position.stop=dragStartPosition.stop+deltaPrice;
+        position.target=dragStartPosition.target+deltaPrice;
+
+        const maxLeft=Math.max(8,r.width-dragStartPosition.widthPx-94);
+        position.leftPx=Math.max(8,Math.min(dragStartPosition.leftPx+deltaX,maxLeft));
+        position.widthPx=dragStartPosition.widthPx;
 
         updatePositionPanel();
         drawAll();
@@ -1100,7 +1130,7 @@ export default async function(component) {
 
       // Cursor feedback while hovering an existing position.
       if ((activeTool==='long'||activeTool==='short') && position) {
-        const handle=nearestPositionHandle(p.y);
+        const handle=nearestPositionHandle(p);
         if (handle) canvas.style.cursor='ns-resize';
         else if (pointInsidePositionBlock(p)) canvas.style.cursor='grab';
         else canvas.style.cursor='crosshair';
@@ -1122,6 +1152,7 @@ export default async function(component) {
         draggingWholePosition=false;
         dragStartPrice=null;
         dragStartPosition=null;
+        dragStartPoint=null;
         canvas.style.cursor='grab';
         drawAll();
         return;
@@ -1140,6 +1171,7 @@ export default async function(component) {
       draggingWholePosition=false;
       dragStartPrice=null;
       dragStartPosition=null;
+      dragStartPoint=null;
       drawingStart=null;
       drawingDraft=null;
       canvas.style.cursor=activeTool==='cursor'?'default':'crosshair';
@@ -1297,7 +1329,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v5",
+    "axion_prime_chart_workspace_v6",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1311,7 +1343,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V5: Position Tool libre y colores personalizables."""
+    """Monta AXION REPLAY V6: Position Tool 2D libre y colores personalizables."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
