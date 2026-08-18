@@ -291,36 +291,50 @@ button{user-select:none}
 .axion-topbar{
   min-width:0;
   display:grid;
-  grid-template-columns:250px minmax(410px,1fr) auto;
+  grid-template-columns:minmax(170px,220px) minmax(0,1fr) auto;
   align-items:center;
-  gap:16px;
-  padding:0 16px;
+  gap:10px;
+  padding:0 10px 0 14px;
   background:linear-gradient(180deg,#06101f,#040a14);
   border-bottom:1px solid rgba(80,118,186,.22);
+  overflow:hidden;
 }
 .brand{font-size:20px;font-weight:850;letter-spacing:.7px;color:#f4f7fd}
 .brand span{color:#45d9ee}
 .brand-sub{font-size:10px;color:#6e7f9d;margin-top:2px}
-.market-block{display:flex;align-items:center;gap:18px;min-width:0}
+.market-block{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden}
 .symbol-button{
   border:1px solid rgba(70,118,197,.28);
   background:#071225;color:#f6f8fc;border-radius:9px;padding:8px 11px;
   font-weight:750;cursor:pointer;white-space:nowrap
 }
 .status-dot{display:inline-block;width:7px;height:7px;background:#00eba0;border-radius:50%;margin-right:7px}
-.tf-strip{display:flex;gap:3px;align-items:center;overflow:auto}
+.tf-strip{
+  display:flex;gap:2px;align-items:center;min-width:0;overflow-x:auto;overflow-y:hidden;
+  scrollbar-width:none
+}
+.tf-strip::-webkit-scrollbar{display:none}
 .tf-strip button{
   min-width:38px;border:1px solid transparent;background:transparent;color:#7f91b0;
   padding:7px 8px;border-radius:7px;cursor:pointer;font-size:12px
 }
 .tf-strip button:hover{background:#0a1730;color:#dce8ff}
 .tf-strip button.active{background:#0b2341;border-color:#195b82;color:#55d9ed}
-.top-actions{display:flex;align-items:center;gap:9px}
+.top-actions{
+  display:flex;align-items:center;justify-content:flex-end;gap:6px;
+  flex:0 0 auto;min-width:max-content;position:relative;z-index:8
+}
 .icon-button,.fullscreen-button{
   width:37px;height:37px;border-radius:9px;border:1px solid rgba(80,118,186,.28);
   background:#071224;color:#becce4;cursor:pointer;font-size:16px
 }
-.fullscreen-button{border-color:rgba(119,84,255,.48);color:#e3dfff}
+.fullscreen-button{
+  border-color:rgba(119,84,255,.72);
+  color:#f1edff;
+  background:linear-gradient(180deg,#171238,#0c1025);
+  box-shadow:0 0 0 1px rgba(124,92,255,.08) inset;
+  flex:0 0 37px;
+}
 .mini-switch{display:flex;align-items:center;gap:6px;color:#7d8ca7;font-size:10px}
 .mini-switch input{display:none}
 .mini-switch span{
@@ -459,10 +473,29 @@ button{user-select:none}
 .symbol-modal-card input{
   width:100%;padding:10px;margin-top:12px;border-radius:8px;border:1px solid #293b5b;background:#050c18;color:#e5eefc
 }
-@media(max-width:1050px){
-  .axion-topbar{grid-template-columns:190px 1fr auto}
+@media(max-width:1350px){
+  .axion-topbar{grid-template-columns:minmax(155px,190px) minmax(0,1fr) auto;gap:7px}
+  .brand{font-size:17px}
+  .brand-sub{font-size:8px}
+  .market-block{gap:6px}
   .mini-switch em{display:none}
+  .mini-switch{gap:2px}
+  .mini-switch:nth-of-type(1),
+  .mini-switch:nth-of-type(2){display:none}
+  .tf-strip button{min-width:33px;padding:6px 5px}
+}
+@media(max-width:1050px){
+  .axion-topbar{grid-template-columns:145px minmax(0,1fr) auto;padding-left:9px}
+  .brand-sub{display:none}
+  .symbol-button{padding:7px 8px}
+  .mini-switch{display:none}
   .terminal-body{grid-template-columns:58px minmax(0,1fr) 220px}
+}
+@media(max-width:850px){
+  .axion-topbar{grid-template-columns:130px minmax(0,1fr) auto}
+  .brand{font-size:15px}
+  .info-sidebar{display:none}
+  .terminal-body{grid-template-columns:54px minmax(0,1fr)}
 }
 """
 
@@ -682,19 +715,34 @@ export default async function(component) {
     const fullscreenBtn = parentElement.querySelector('#fullscreen-btn');
     fullscreenBtn.onclick = async () => {
       try {
-        if (!document.fullscreenElement) {
-          await root.requestFullscreen();
+        const activeFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+
+        if (!activeFullscreen) {
+          if (root.requestFullscreen) {
+            await root.requestFullscreen();
+          } else if (root.webkitRequestFullscreen) {
+            root.webkitRequestFullscreen();
+          } else {
+            throw new Error('Fullscreen API no disponible en este navegador.');
+          }
         } else {
-          await document.exitFullscreen();
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
         }
       } catch (err) {
-        console.error('Fullscreen error', err);
+        console.error('AXION Fullscreen error', err);
+        fullscreenBtn.title = 'El navegador bloqueó pantalla completa';
       }
     };
 
     const onFullscreen = () => {
-      fullscreenBtn.textContent = document.fullscreenElement ? '⤢' : '⛶';
-      setTimeout(() => resizeAll(), 60);
+      const activeFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+      fullscreenBtn.textContent = activeFullscreen ? '⤢' : '⛶';
+      fullscreenBtn.title = activeFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa';
+      setTimeout(() => resizeAll(), 80);
     };
     document.addEventListener('fullscreenchange', onFullscreen);
     cleanupFns.push(() => document.removeEventListener('fullscreenchange', onFullscreen));
@@ -1329,7 +1377,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v6",
+    "axion_prime_chart_workspace_v7",
     html=HTML,
     css=CSS,
     js=JS,
