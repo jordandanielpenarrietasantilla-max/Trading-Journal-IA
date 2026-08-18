@@ -720,6 +720,11 @@ def render_backtesting_lab() -> None:
     _init_bt_state()
 
     st.html("""
+    <div style="display:inline-block;margin-bottom:8px;padding:5px 9px;border-radius:999px;
+                border:1px solid rgba(25,228,255,.35);background:rgba(25,228,255,.08);
+                color:#19e4ff;font-size:9px;font-weight:900;letter-spacing:.8px;">
+      AXION WORKSPACE V3 · DRAWING TOOLS ACTIVE
+    </div>
     <section class="ax-rp-shell">
       <div class="ax-rp-head">
         <div>
