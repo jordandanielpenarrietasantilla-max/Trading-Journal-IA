@@ -242,7 +242,7 @@ def _render_chart(
         border:1px solid rgba(79,119,196,.30);border-radius:16px;overflow:hidden;
         background:#020711;
       }}
-      .axws-tools{{
+      .axws-tools{{position:relative;z-index:6;
         background:#050b17;border-right:1px solid rgba(79,119,196,.24);
         display:flex;flex-direction:column;gap:4px;padding:8px 5px;
       }}
@@ -274,7 +274,7 @@ def _render_chart(
       }}
       .axws-chart-wrap{{position:relative;overflow:hidden}}
       #axws-chart{{position:absolute;inset:0}}
-      #axws-overlay{{position:absolute;inset:0;pointer-events:none}}
+      #axws-overlay{{position:absolute;inset:0;pointer-events:none;z-index:3;touch-action:none}}
       .axws-footer{{
         display:flex;align-items:center;justify-content:center;gap:8px;
         border-top:1px solid rgba(79,119,196,.18);background:#050b17;padding:0 10px
@@ -348,7 +348,7 @@ def _render_chart(
             <span class="axws-pill">🔥 Heatmap OFF</span>
             <span class="axws-pill">🌍 Sesiones OFF</span>
             <span class="axws-pill">📊 Volumen ON</span>
-            <span class="axws-pill">V4 · WORKSPACE</span>
+            <span class="axws-pill">V5 · DRAW ACTIVE</span>
           </div>
         </div>
 
@@ -584,6 +584,7 @@ def _render_chart(
         document.getElementById('axws-pospanel').classList.toggle('show',t==='long'||t==='short');
         document.getElementById('axws-fibpanel').classList.toggle('show',t==='fib');
         canvas.style.pointerEvents=t==='cursor'?'none':'auto';
+        canvas.style.cursor=t==='cursor'?'default':'crosshair';
       }}
 
       document.querySelectorAll('.axws-tool').forEach(btn=>btn.addEventListener('click',()=>{{
@@ -600,7 +601,9 @@ def _render_chart(
         document.getElementById('pos-long').classList.remove('sel');
       }});
 
-      canvas.addEventListener('mousedown',(e)=>{{
+      canvas.addEventListener('pointerdown',(e)=>{{
+        e.preventDefault();
+        if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
         const p=pointFromEvent(e);
         if(tool==='long'||tool==='short'){{
           const entry=priceFromY(p.y);
@@ -620,11 +623,11 @@ def _render_chart(
         p1=p;temp=p;
       }});
 
-      canvas.addEventListener('mousemove',(e)=>{{
+      canvas.addEventListener('pointermove',(e)=>{{
         if(!p1) return; temp=pointFromEvent(e); drawAll();
       }});
 
-      canvas.addEventListener('mouseup',(e)=>{{
+      canvas.addEventListener('pointerup',(e)=>{{
         if(!p1) return;
         const p2=pointFromEvent(e);
         if(['trend','rectangle','fib','measure'].includes(tool)){{
@@ -722,11 +725,29 @@ def render_backtesting_lab() -> None:
     st.markdown(BACKTEST_CSS, unsafe_allow_html=True)
     _init_bt_state()
 
+    if st.session_state.bt_big_chart:
+        st.markdown(
+            """
+            <style>
+            section[data-testid="stSidebar"] {display:none !important;}
+            header[data-testid="stHeader"] {display:none !important;}
+            [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
+            .block-container {
+                max-width:100% !important;
+                padding-left:.5rem !important;
+                padding-right:.5rem !important;
+                padding-top:.3rem !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.html("""
     <div style="display:inline-block;margin-bottom:8px;padding:5px 9px;border-radius:999px;
                 border:1px solid rgba(25,228,255,.35);background:rgba(25,228,255,.08);
                 color:#19e4ff;font-size:9px;font-weight:900;letter-spacing:.8px;">
-      AXION WORKSPACE V4 · AUTO TIMEFRAME · BIG CHART
+      AXION WORKSPACE V5 · BIG CHART · DRAWING ACTIVE
     </div>
     <section class="ax-rp-shell">
       <div class="ax-rp-head">
@@ -848,7 +869,7 @@ def render_backtesting_lab() -> None:
     with c4:
         st.write("")
         st.session_state.bt_big_chart = st.toggle(
-            "🖥️ Gráfico grande",
+            "⛶ Modo gráfico grande",
             value=bool(st.session_state.bt_big_chart),
             key="bt_big_chart_toggle",
         )
@@ -911,7 +932,7 @@ def render_backtesting_lab() -> None:
             '<div class="ax-rp-source">🖥️ MODO GRÁFICO GRANDE ACTIVO · Herramientas de dibujo visibles · Usa el interruptor superior para volver a la vista normal.</div>'
         )
 
-    workspace_height = 900 if st.session_state.bt_big_chart else 720
+    workspace_height = 1050 if st.session_state.bt_big_chart else 760
     _render_chart(
         visible,
         market.display_symbol,
@@ -919,6 +940,7 @@ def render_backtesting_lab() -> None:
         st.session_state.bt_trade,
         workspace_height=workspace_height,
     )
+    st.caption("✏️ Para dibujar: selecciona una herramienta a la izquierda del gráfico y luego haz clic/arrastra dentro del chart. Para volver a mover/zoom del gráfico, selecciona Cursor.")
 
     # Replay controls del motor Python.
     st.html('<div class="ax-rp-panel-title">CONTROLES DE REPLAY</div>')
