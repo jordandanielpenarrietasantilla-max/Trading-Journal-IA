@@ -129,7 +129,26 @@ HTML = r"""
               <option value="3">1 : 3</option>
             </select>
           </label>
-          <div class="panel-note">Haz clic sobre el precio para colocar la entrada. Después arrastra los niveles como en un Position Tool.</div>
+
+          <div class="position-color-row">
+            <label>
+              <span>Entrada</span>
+              <input type="color" id="position-color-entry" value="#2f8cff">
+            </label>
+            <label>
+              <span>Stop</span>
+              <input type="color" id="position-color-stop" value="#ff4969">
+            </label>
+            <label>
+              <span>Target</span>
+              <input type="color" id="position-color-target" value="#12db99">
+            </label>
+          </div>
+
+          <div class="panel-note">
+            Haz clic para crear la posición. Arrastra Entry, SL o TP por separado.
+            Arrastra el centro del bloque para mover la posición completa.
+          </div>
         </div>
 
         <div class="replay-dock">
@@ -408,6 +427,28 @@ button{user-select:none}
 .position-tabs button{padding:8px;border-radius:7px;border:1px solid #28405e;background:#071225;color:#8695ae;cursor:pointer}
 .position-tabs .long.selected{border-color:#117e66;color:#14d99a;background:#06251f}
 .position-tabs .short.selected{border-color:#873047;color:#ff526e;background:#2a0b15}
+.position-color-row{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+  margin-top:9px;
+}
+.position-color-row label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  color:#7f91ad;
+  font-size:7px;
+}
+.position-color-row input[type=color]{
+  width:100%;
+  height:28px;
+  border:1px solid #30445f;
+  border-radius:6px;
+  padding:2px;
+  background:#050c18;
+  cursor:pointer;
+}
 .symbol-modal{
   position:absolute;inset:0;background:rgba(0,0,0,.72);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding-top:90px
 }
@@ -516,6 +557,9 @@ export default async function(component) {
     let drawings = [];
     let position = null;
     let draggingPositionHandle = null;
+    let draggingWholePosition = false;
+    let dragStartPrice = null;
+    let dragStartPosition = null;
 
     const chartHost = parentElement.querySelector('#chart-host');
     const canvas = parentElement.querySelector('#drawing-layer');
@@ -945,6 +989,23 @@ export default async function(component) {
     longBtn.onclick=()=>{setTool('long');longBtn.classList.add('selected');shortBtn.classList.remove('selected')};
     shortBtn.onclick=()=>{setTool('short');shortBtn.classList.add('selected');longBtn.classList.remove('selected')};
 
+    function positionGeometry() {
+      if (!position) return null;
+      const r=canvasRect();
+      const anchorX=Math.max(160,r.width*0.62);
+      const boxWidth=Math.max(130,Math.min(240,r.width*0.22));
+      const left=anchorX;
+      const right=Math.min(r.width-92,left+boxWidth);
+      const ye=yFromPrice(position.entry);
+      const ys=yFromPrice(position.stop);
+      const yt=yFromPrice(position.target);
+      return {
+        left,right,ye,ys,yt,
+        top:Math.min(ys,yt),
+        bottom:Math.max(ys,yt)
+      };
+    }
+
     function nearestPositionHandle(y) {
       if (!position) return null;
       const candidates = [
@@ -952,7 +1013,13 @@ export default async function(component) {
         ['stop',Math.abs(y-yFromPrice(position.stop))],
         ['target',Math.abs(y-yFromPrice(position.target))]
       ].sort((a,b)=>a[1]-b[1]);
-      return candidates[0][1] <= 10 ? candidates[0][0] : null;
+      return candidates[0][1] <= 11 ? candidates[0][0] : null;
+    }
+
+    function pointInsidePositionBlock(p) {
+      const g=positionGeometry();
+      if (!g) return false;
+      return p.x >= g.left && p.x <= g.right && p.y >= g.top && p.y <= g.bottom;
     }
 
     canvas.onpointerdown = e => {
@@ -961,13 +1028,31 @@ export default async function(component) {
 
       if ((activeTool==='long'||activeTool==='short') && position) {
         const handle=nearestPositionHandle(p.y);
+
+        // 1) Individual level dragging: Entry / SL / TP.
         if (handle) {
           draggingPositionHandle=handle;
           canvas.setPointerCapture?.(e.pointerId);
+          canvas.style.cursor='ns-resize';
+          return;
+        }
+
+        // 2) Drag whole position block freely.
+        if (pointInsidePositionBlock(p)) {
+          draggingWholePosition=true;
+          dragStartPrice=priceFromY(p.y);
+          dragStartPosition={
+            entry:position.entry,
+            stop:position.stop,
+            target:position.target
+          };
+          canvas.setPointerCapture?.(e.pointerId);
+          canvas.style.cursor='grabbing';
           return;
         }
       }
 
+      // 3) Create a new position if click is outside current block.
       if (activeTool==='long'||activeTool==='short') {
         const entry=priceFromY(p.y);
         const rr=Number(parentElement.querySelector('#rr-select').value||2);
@@ -1000,20 +1085,65 @@ export default async function(component) {
         updatePositionPanel();drawAll();return;
       }
 
+      if (draggingWholePosition && position && dragStartPosition) {
+        const currentPriceAtPointer=priceFromY(p.y);
+        const delta=currentPriceAtPointer-dragStartPrice;
+
+        position.entry=dragStartPosition.entry+delta;
+        position.stop=dragStartPosition.stop+delta;
+        position.target=dragStartPosition.target+delta;
+
+        updatePositionPanel();
+        drawAll();
+        return;
+      }
+
+      // Cursor feedback while hovering an existing position.
+      if ((activeTool==='long'||activeTool==='short') && position) {
+        const handle=nearestPositionHandle(p.y);
+        if (handle) canvas.style.cursor='ns-resize';
+        else if (pointInsidePositionBlock(p)) canvas.style.cursor='grab';
+        else canvas.style.cursor='crosshair';
+      }
+
       if (!drawingStart) return;
       drawingDraft=p;drawAll();
     };
 
     canvas.onpointerup = e => {
       if (draggingPositionHandle) {
-        draggingPositionHandle=null;drawAll();return;
+        draggingPositionHandle=null;
+        canvas.style.cursor='crosshair';
+        drawAll();
+        return;
       }
+
+      if (draggingWholePosition) {
+        draggingWholePosition=false;
+        dragStartPrice=null;
+        dragStartPosition=null;
+        canvas.style.cursor='grab';
+        drawAll();
+        return;
+      }
+
       if (!drawingStart) return;
       const end=pointerPoint(e);
       const d={type:activeTool,a:drawingStart,b:end};
       if (activeTool==='fib') d.levels=fibLevels();
       drawings.push(d);
       drawingStart=null;drawingDraft=null;drawAll();
+    };
+
+    canvas.onpointercancel = () => {
+      draggingPositionHandle=null;
+      draggingWholePosition=false;
+      dragStartPrice=null;
+      dragStartPosition=null;
+      drawingStart=null;
+      drawingDraft=null;
+      canvas.style.cursor=activeTool==='cursor'?'default':'crosshair';
+      drawAll();
     };
 
     parentElement.querySelector('#execute-position').onclick = () => {
@@ -1039,6 +1169,13 @@ export default async function(component) {
         const el=parentElement.querySelector(selector);
         if (el) el.value=themeColors[key] || defaultColors[key];
       });
+
+      const pEntry=parentElement.querySelector('#position-color-entry');
+      const pStop=parentElement.querySelector('#position-color-stop');
+      const pTarget=parentElement.querySelector('#position-color-target');
+      if (pEntry) pEntry.value=themeColors.entry;
+      if (pStop) pStop.value=themeColors.stop;
+      if (pTarget) pTarget.value=themeColors.target;
     }
 
     function applyTheme() {
@@ -1068,6 +1205,29 @@ export default async function(component) {
       el.oninput=() => {
         themeColors[key]=el.value;
         applyTheme();
+      };
+    });
+
+    [
+      ['#position-color-entry','entry'],
+      ['#position-color-stop','stop'],
+      ['#position-color-target','target']
+    ].forEach(([selector,key]) => {
+      const el=parentElement.querySelector(selector);
+      if (!el) return;
+      el.oninput=() => {
+        themeColors[key]=el.value;
+
+        // Keep right-side Personalización inputs in sync too.
+        const mirrorSelector = key==='entry'
+          ? '#color-entry'
+          : key==='stop'
+            ? '#color-stop'
+            : '#color-target';
+        const mirror=parentElement.querySelector(mirrorSelector);
+        if (mirror) mirror.value=el.value;
+
+        drawAll();
       };
     });
 
@@ -1137,7 +1297,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v4",
+    "axion_prime_chart_workspace_v5",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1151,7 +1311,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V3: Position Tool y personalización visual."""
+    """Monta AXION REPLAY V5: Position Tool libre y colores personalizables."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
