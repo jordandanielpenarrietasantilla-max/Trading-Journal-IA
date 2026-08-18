@@ -28,6 +28,7 @@ from ui.tools import (
 )
 
 from ui_v2.ai_analysis import render_ai_analysis
+from ui_v2.backtesting import render_backtesting_lab
 from ui_v2.dashboard import render_v2_dashboard
 from ui_v2.login import render_v2_auth
 from ui_v2.market_tools import (
@@ -1089,6 +1090,9 @@ elif page == "Chat IA":
         df
     )
 
+
+elif page == "Backtesting Lab":
+    render_backtesting_lab()
 
 elif page == "Psicotrading":
 
