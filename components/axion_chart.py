@@ -85,10 +85,13 @@ HTML = r"""
 
     <main class="chart-column">
       <div class="chart-meta">
-        <div>
-          <strong id="chart-symbol">BTC/USDT</strong>
-          <span id="chart-interval">· 1H</span>
-          <span class="verified">● VERIFIED OHLCV</span>
+        <div class="asset-title-wrap">
+          <div class="asset-title">
+            <strong id="chart-symbol">BTC/USDT</strong>
+            <span id="chart-interval">· 1H</span>
+            <span class="verified">● VERIFIED OHLCV</span>
+          </div>
+          <div class="asset-subtitle" id="asset-subtitle">Bitcoin / TetherUS · AXION PRIME</div>
         </div>
         <div class="ohlc" id="ohlc-label">—</div>
       </div>
@@ -190,6 +193,23 @@ HTML = r"""
         <label class="field-label">Workspace
           <input id="workspace-name" value="Workspace Trader">
         </label>
+
+        <div class="settings-section-title">APARIENCIA DEL GRÁFICO</div>
+        <div class="color-grid">
+          <label>Vela alcista <input type="color" id="color-up" value="#15d9c3"></label>
+          <label>Vela bajista <input type="color" id="color-down" value="#ff4969"></label>
+          <label>Fondo <input type="color" id="color-bg" value="#020711"></label>
+          <label>Rejilla <input type="color" id="color-grid" value="#24334e"></label>
+        </div>
+
+        <div class="settings-section-title">POSICIONES</div>
+        <div class="color-grid">
+          <label>Entrada <input type="color" id="color-entry" value="#2f8cff"></label>
+          <label>Stop Loss <input type="color" id="color-stop" value="#ff4969"></label>
+          <label>Take Profit <input type="color" id="color-target" value="#12db99"></label>
+          <label>Fibonacci <input type="color" id="color-fib" value="#43d6e8"></label>
+        </div>
+
         <label class="field-label">Plantilla Fibonacci
           <select id="fib-template">
             <option>AXION PRIME</option>
@@ -204,11 +224,8 @@ HTML = r"""
             <option>2.0%</option>
           </select>
         </label>
-        <div class="palette-row">
-          <span class="palette cyan"></span>
-          <span class="palette purple"></span>
-          <span class="palette gold"></span>
-        </div>
+
+        <button id="reset-colors" class="secondary-action" type="button">Restablecer colores</button>
         <button id="save-workspace" class="secondary-action" type="button">Guardar workspace</button>
       </section>
     </aside>
@@ -320,8 +337,13 @@ button{user-select:none}
   display:flex;align-items:center;justify-content:space-between;padding:0 11px;
   border-bottom:1px solid rgba(80,118,186,.14);background:#030914;font-size:11px
 }
-.chart-meta strong{color:#eef4ff}.chart-meta span{color:#7f91ad;margin-left:5px}
-.chart-meta .verified{color:#1fd7a1;font-size:8px}.ohlc{color:#7f91ad;font-size:9px}
+.asset-title-wrap{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.asset-title{display:flex;align-items:center;gap:3px;min-width:0}
+.chart-meta strong{color:#eef4ff;font-size:12px}
+.chart-meta span{color:#7f91ad;margin-left:5px}
+.chart-meta .verified{color:#1fd7a1;font-size:8px}
+.asset-subtitle{font-size:8px;color:#617390;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ohlc{color:#7f91ad;font-size:9px}
 .chart-stage{min-height:0;position:relative;background:#020711}
 #chart-host{position:absolute;inset:0 0 54px 0}
 #drawing-layer{position:absolute;inset:0 0 54px 0;width:100%;height:calc(100% - 54px);pointer-events:none;touch-action:none;z-index:4}
@@ -368,8 +390,10 @@ button{user-select:none}
   width:100%;margin-top:4px;border:1px solid rgba(80,118,186,.25);border-radius:7px;
   background:#050c18;color:#d7e3f6;padding:7px;font-size:9px
 }
-.palette-row{display:flex;gap:8px;margin-top:12px}.palette{width:36px;height:19px;border-radius:5px;border:1px solid #36475f}
-.palette.cyan{background:#0e6671}.palette.purple{background:#482e68}.palette.gold{background:#68501e}
+.settings-section-title{font-size:7px;font-weight:800;letter-spacing:.7px;color:#5f7396;margin-top:12px;margin-bottom:5px}
+.color-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.color-grid label{font-size:7px;color:#7b8eac;display:flex;align-items:center;justify-content:space-between;gap:5px}
+.color-grid input[type=color]{width:34px;height:23px;padding:0;border:1px solid #31445f;border-radius:5px;background:#050c18;cursor:pointer}
 .floating-tool-panel{
   display:none;position:absolute;left:12px;top:12px;width:220px;background:rgba(5,12,25,.97);
   border:1px solid rgba(59,206,225,.28);border-radius:10px;padding:10px;z-index:15
@@ -461,6 +485,30 @@ export default async function(component) {
 
     const candles = Array.isArray(data.candles) ? data.candles : [];
     const volumes = Array.isArray(data.volumes) ? data.volumes : [];
+
+    const marketNames = {
+      BTCUSDT: 'Bitcoin / TetherUS',
+      ETHUSDT: 'Ethereum / TetherUS',
+      SOLUSDT: 'Solana / TetherUS',
+      BNBUSDT: 'BNB / TetherUS',
+      XRPUSDT: 'XRP / TetherUS'
+    };
+
+    const defaultColors = {
+      up:'#15d9c3',
+      down:'#ff4969',
+      background:'#020711',
+      grid:'#24334e',
+      entry:'#2f8cff',
+      stop:'#ff4969',
+      target:'#12db99',
+      fib:'#43d6e8'
+    };
+
+    let themeColors = {
+      ...defaultColors,
+      ...((data.workspace && data.workspace.colors) || {})
+    };
     let currentCursor = Math.max(0, Math.min(Number(data.cursor ?? 0), Math.max(0, candles.length - 1)));
     let activeTool = 'cursor';
     let drawingStart = null;
@@ -477,10 +525,10 @@ export default async function(component) {
     const chart = LWC.createChart(chartHost, {
       width: chartHost.clientWidth,
       height: chartHost.clientHeight,
-      layout: {background: {type:'solid', color:'#020711'}, textColor:'#8292ad'},
+      layout: {background: {type:'solid', color:themeColors.background}, textColor:'#8292ad'},
       grid: {
-        vertLines: {color:'rgba(52,77,121,.13)'},
-        horzLines: {color:'rgba(52,77,121,.13)'}
+        vertLines: {color:themeColors.grid},
+        horzLines: {color:themeColors.grid}
       },
       rightPriceScale: {borderColor:'rgba(69,99,154,.24)'},
       timeScale: {
@@ -493,12 +541,12 @@ export default async function(component) {
     });
 
     const series = chart.addCandlestickSeries({
-      upColor:'#15d9c3',
-      downColor:'#ff4969',
-      borderUpColor:'#15d9c3',
-      borderDownColor:'#ff4969',
-      wickUpColor:'#15d9c3',
-      wickDownColor:'#ff4969'
+      upColor:themeColors.up,
+      downColor:themeColors.down,
+      borderUpColor:themeColors.up,
+      borderDownColor:themeColors.down,
+      wickUpColor:themeColors.up,
+      wickDownColor:themeColors.down
     });
 
     const volumeSeries = chart.addHistogramSeries({
@@ -552,6 +600,8 @@ export default async function(component) {
     // Header / market labels
     parentElement.querySelector('#symbol-label').textContent = data.symbol_label || data.symbol || '—';
     parentElement.querySelector('#chart-symbol').textContent = data.symbol_label || data.symbol || '—';
+    parentElement.querySelector('#asset-subtitle').textContent =
+      (data.market_name || marketNames[String(data.symbol || '').toUpperCase()] || 'Mercado verificado') + ' · AXION PRIME';
     parentElement.querySelector('#chart-interval').textContent = '· ' + (data.interval || '—');
     parentElement.querySelector('#info-symbol').textContent = data.symbol_label || data.symbol || '—';
     parentElement.querySelector('#info-timeframe').textContent = data.interval || '—';
@@ -699,7 +749,7 @@ export default async function(component) {
     function drawFib(a,b,levels) {
       const left=Math.min(a.x,b.x), right=Math.max(a.x,b.x);
       const top=Math.min(a.y,b.y), bottom=Math.max(a.y,b.y);
-      const colors=['#d5dfef','#43d6e8','#43aeca','#8b74e9','#d1a539','#e19635','#c7773c','#d5dfef'];
+      const colors=['#d5dfef',themeColors.fib,themeColors.fib,'#8b74e9','#d1a539','#e19635','#c7773c','#d5dfef'];
       levels.forEach((lv,i) => {
         const y=top+(bottom-top)*lv;
         drawLine({x:left,y},{x:right+220,y},colors[i%colors.length],[5,4]);
@@ -740,23 +790,69 @@ export default async function(component) {
       ctx.save();
       const rewardTop=Math.min(ye,yt), rewardH=Math.abs(ye-yt);
       const riskTop=Math.min(ye,ys), riskH=Math.abs(ye-ys);
-      ctx.fillStyle=position.direction==='LONG'?'rgba(12,200,130,.11)':'rgba(255,73,105,.11)';
+      ctx.globalAlpha=.12;
+      ctx.fillStyle=position.direction==='LONG'?themeColors.target:themeColors.stop;
       ctx.fillRect(left,rewardTop,right-left,rewardH);
-      ctx.fillStyle=position.direction==='LONG'?'rgba(255,73,105,.11)':'rgba(12,200,130,.11)';
+      ctx.fillStyle=position.direction==='LONG'?themeColors.stop:themeColors.target;
       ctx.fillRect(left,riskTop,right-left,riskH);
+      ctx.globalAlpha=1;
       ctx.restore();
 
-      drawLine({x:left,y:ye},{x:right,y:ye},'#2f8cff',[7,4]);
-      drawLine({x:left,y:ys},{x:right,y:ys},'#ff4969',[7,4]);
-      drawLine({x:left,y:yt},{x:right,y:yt},'#12db99',[7,4]);
+      drawLine({x:left,y:ye},{x:right,y:ye},themeColors.entry,[7,4]);
+      drawLine({x:left,y:ys},{x:right,y:ys},themeColors.stop,[7,4]);
+      drawLine({x:left,y:yt},{x:right,y:yt},themeColors.target,[7,4]);
 
-      [{y:ye,c:'#2f8cff',t:'ENTRADA'},{y:ys,c:'#ff4969',t:'SL'},{y:yt,c:'#12db99',t:'TP'}].forEach(item => {
+      const labels = [
+        {y:ye,c:themeColors.entry,t:'Entrada',v:position.entry},
+        {y:ys,c:themeColors.stop,t:'Stop Loss',v:position.stop},
+        {y:yt,c:themeColors.target,t:'Take Profit',v:position.target}
+      ];
+
+      labels.forEach(item => {
         ctx.save();
+
+        // draggable handle
         ctx.fillStyle=item.c;
-        ctx.beginPath();ctx.arc(right-5,item.y,5,0,Math.PI*2);ctx.fill();
-        ctx.font='10px Inter,system-ui';ctx.fillText(item.t,right-60,item.y-7);
+        ctx.beginPath();ctx.arc(right-7,item.y,5.5,0,Math.PI*2);ctx.fill();
+
+        // TradingView-style name tag
+        const nameW = item.t === 'Take Profit' ? 75 : item.t === 'Stop Loss' ? 68 : 52;
+        ctx.fillStyle=item.c;
+        ctx.beginPath();
+        ctx.roundRect(right-nameW-76,item.y-12,nameW,23,5);
+        ctx.fill();
+        ctx.fillStyle='#ffffff';
+        ctx.font='10px Inter,system-ui';
+        ctx.fillText(item.t,right-nameW-69,item.y+3);
+
+        // price tag on right edge
+        const priceText=fmt(item.v,4);
+        ctx.font='10px Inter,system-ui';
+        const priceW=Math.max(62,ctx.measureText(priceText).width+14);
+        ctx.fillStyle=item.c;
+        ctx.beginPath();
+        ctx.roundRect(right-priceW,item.y-12,priceW,23,4);
+        ctx.fill();
+        ctx.fillStyle='#ffffff';
+        ctx.fillText(priceText,right-priceW+7,item.y+3);
+
         ctx.restore();
       });
+
+      // R:R floating badge in the middle of the position
+      const risk=Math.max(Math.abs(position.entry-position.stop),1e-12);
+      const reward=Math.abs(position.target-position.entry);
+      const rr=(reward/risk).toFixed(2);
+      const midX=(left+right)/2;
+      const midY=(ye+yt)/2;
+      ctx.save();
+      ctx.fillStyle='rgba(5,12,25,.96)';
+      ctx.strokeStyle='rgba(68,209,232,.75)';
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.roundRect(midX-28,midY-14,56,28,7);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ecf6ff';ctx.font='11px Inter,system-ui';
+      ctx.fillText('1:'+rr,midX-18,midY+4);
+      ctx.restore();
     }
 
     function drawAll() {
@@ -895,13 +991,72 @@ export default async function(component) {
       setTriggerValue('position_execute', {...position, cursor:currentCursor});
     };
 
+
+    // TradingView-style color personalization
+    const colorFields = {
+      up:'#color-up',
+      down:'#color-down',
+      background:'#color-bg',
+      grid:'#color-grid',
+      entry:'#color-entry',
+      stop:'#color-stop',
+      target:'#color-target',
+      fib:'#color-fib'
+    };
+
+    function syncColorInputs() {
+      Object.entries(colorFields).forEach(([key, selector]) => {
+        const el=parentElement.querySelector(selector);
+        if (el) el.value=themeColors[key] || defaultColors[key];
+      });
+    }
+
+    function applyTheme() {
+      chart.applyOptions({
+        layout:{background:{type:'solid',color:themeColors.background},textColor:'#8292ad'},
+        grid:{
+          vertLines:{color:themeColors.grid},
+          horzLines:{color:themeColors.grid}
+        }
+      });
+
+      series.applyOptions({
+        upColor:themeColors.up,
+        downColor:themeColors.down,
+        borderUpColor:themeColors.up,
+        borderDownColor:themeColors.down,
+        wickUpColor:themeColors.up,
+        wickDownColor:themeColors.down
+      });
+
+      drawAll();
+    }
+
+    Object.entries(colorFields).forEach(([key, selector]) => {
+      const el=parentElement.querySelector(selector);
+      if (!el) return;
+      el.oninput=() => {
+        themeColors[key]=el.value;
+        applyTheme();
+      };
+    });
+
+    parentElement.querySelector('#reset-colors').onclick=() => {
+      themeColors={...defaultColors};
+      syncColorInputs();
+      applyTheme();
+    };
+
+    syncColorInputs();
+
     // Workspace personalization is persistent frontend state.
     const workspaceName=parentElement.querySelector('#workspace-name');
     parentElement.querySelector('#save-workspace').onclick = () => {
       setStateValue('workspace', {
         name:workspaceName.value || 'Workspace Trader',
         fib_template:parentElement.querySelector('#fib-template').value,
-        risk_template:parentElement.querySelector('#risk-template').value
+        risk_template:parentElement.querySelector('#risk-template').value,
+        colors:{...themeColors}
       });
     };
 
@@ -952,7 +1107,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace",
+    "axion_prime_chart_workspace_v3",
     html=HTML,
     css=CSS,
     js=JS,
@@ -966,7 +1121,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta el terminal AXION REPLAY usando Streamlit Custom Components v2."""
+    """Monta AXION REPLAY V3: Position Tool y personalización visual."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
