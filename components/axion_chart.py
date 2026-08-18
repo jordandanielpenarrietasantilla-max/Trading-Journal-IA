@@ -551,6 +551,14 @@ export default async function(component) {
   const root = parentElement.querySelector('#axion-terminal');
   if (!root || !data) return;
 
+  // Streamlit V2 can reuse the same DOM node between reruns. If the previous
+  // Lightweight Charts instance survives, its canvas remains under the new UI
+  // and makes XAU/Forex look like BTC. Explicitly destroy it before rebuilding.
+  if (typeof parentElement.__axionCleanup === 'function') {
+    try { parentElement.__axionCleanup(); } catch (_) {}
+    parentElement.__axionCleanup = null;
+  }
+
   let cleanupFns = [];
   let playTimer = null;
 
@@ -599,6 +607,9 @@ export default async function(component) {
     const canvas = parentElement.querySelector('#drawing-layer');
     const ctx = canvas.getContext('2d');
     const chartStage = parentElement.querySelector('#chart-stage');
+
+    // Defensive reset: there must be exactly one chart canvas per rerun.
+    chartHost.replaceChildren();
 
     const chart = LWC.createChart(chartHost, {
       width: chartHost.clientWidth,
@@ -1360,12 +1371,17 @@ export default async function(component) {
     applyReplayData(true);
     resizeAll();
 
-    return () => {
+    const cleanup = () => {
       cleanupFns.forEach(fn => {
         try { fn(); } catch (_) {}
       });
+      cleanupFns = [];
       try { chart.remove(); } catch (_) {}
+      try { chartHost.replaceChildren(); } catch (_) {}
     };
+
+    parentElement.__axionCleanup = cleanup;
+    return cleanup;
   } catch (err) {
     console.error('AXION Chart Component error', err);
     root.innerHTML = `<div style="padding:24px;color:#ff8b9d;background:#160810;border:1px solid #51202a;border-radius:12px">
@@ -1377,7 +1393,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v7",
+    "axion_prime_chart_workspace_v8",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1391,7 +1407,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V6: Position Tool 2D libre y colores personalizables."""
+    """Monta AXION REPLAY V8 con refresco limpio de mercado y Position Tool."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
