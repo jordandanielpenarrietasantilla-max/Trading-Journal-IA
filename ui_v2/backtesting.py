@@ -172,6 +172,7 @@ def _init_bt_state() -> None:
         "bt_loaded_interval": None,
         "bt_loaded_date": None,
         "bt_big_chart": False,
+        "bt_workspace_mode": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -348,7 +349,7 @@ def _render_chart(
             <span class="axws-pill">🔥 Heatmap OFF</span>
             <span class="axws-pill">🌍 Sesiones OFF</span>
             <span class="axws-pill">📊 Volumen ON</span>
-            <span class="axws-pill">V5 · DRAW ACTIVE</span>
+            <span class="axws-pill">V6 · TERMINAL</span>
           </div>
         </div>
 
@@ -720,34 +721,132 @@ def _load_dataset(symbol: str, interval: str, start_day: date) -> None:
     st.session_state.bt_trade_result = None
 
 
+
+def _render_workspace_mode() -> None:
+    """Renderiza AXION REPLAY como terminal dedicada, ocupando casi toda la ventana."""
+    frame = st.session_state.bt_dataset
+    market = st.session_state.bt_market
+
+    if frame is None or market is None or frame.empty:
+        st.session_state.bt_workspace_mode = False
+        st.warning("Carga primero un mercado histórico antes de abrir el Workspace.")
+        return
+
+    max_cursor = max(1, len(frame) - 1)
+    st.session_state.bt_cursor = max(1, min(int(st.session_state.bt_cursor), max_cursor))
+    cursor = int(st.session_state.bt_cursor)
+    visible = frame.iloc[: cursor + 1].copy()
+    current = visible.iloc[-1]
+
+    # Barra superior compacta, estilo terminal
+    top1, top2, top3, top4, top5 = st.columns([1.45, .85, 1.0, 1.0, .62])
+    with top1:
+        st.markdown(
+            f"### **AXION REPLAY**  \n"
+            f"<span style='color:#19e4ff;font-size:12px'>"
+            f"{market.display_symbol} · {st.session_state.bt_interval} · VERIFIED</span>",
+            unsafe_allow_html=True,
+        )
+    with top2:
+        new_tf = st.selectbox(
+            "Timeframe",
+            ["5m","15m","30m","1H","4H","1D"],
+            index=["5m","15m","30m","1H","4H","1D"].index(st.session_state.bt_interval),
+            key="workspace_tf",
+            label_visibility="collapsed",
+        )
+        if new_tf != st.session_state.bt_interval:
+            try:
+                _load_dataset(st.session_state.bt_symbol, new_tf, st.session_state.bt_date)
+                st.rerun()
+            except MarketDataError as exc:
+                st.error(str(exc))
+    with top3:
+        st.toggle("🔥 Heatmap", value=False, disabled=True, key="ws_heatmap")
+    with top4:
+        st.toggle("📊 Volumen", value=True, disabled=True, key="ws_volume")
+    with top5:
+        if st.button("✕ Salir", width="stretch"):
+            st.session_state.bt_workspace_mode = False
+            st.rerun()
+
+    # Chart workspace very large
+    _render_chart(
+        visible,
+        market.display_symbol,
+        st.session_state.bt_interval,
+        st.session_state.bt_trade,
+        workspace_height=1080,
+    )
+
+    # Compact replay controls only
+    c1,c2,c3,c4,c5,c6,c7 = st.columns([.72,.82,1,.82,.82,.72,.72])
+    with c1:
+        if st.button("⏮ Inicio", key="ws_start", width="stretch"):
+            st.session_state.bt_cursor = min(80, max_cursor)
+            st.rerun()
+    with c2:
+        if st.button("◀ 1 vela", key="ws_back", width="stretch"):
+            st.session_state.bt_cursor = max(1, cursor-1)
+            st.rerun()
+    with c3:
+        if st.button("▶ Play", key="ws_play", type="primary", width="stretch"):
+            st.session_state.bt_cursor = min(max_cursor, cursor + st.session_state.bt_speed)
+            st.rerun()
+    with c4:
+        st.button("⏸ Pausa", key="ws_pause", disabled=True, width="stretch")
+    with c5:
+        if st.button("▶ 1 vela", key="ws_next", width="stretch"):
+            st.session_state.bt_cursor = min(max_cursor, cursor+1)
+            st.rerun()
+    with c6:
+        if st.button("⏭ Fin", key="ws_end", width="stretch"):
+            st.session_state.bt_cursor = max_cursor
+            st.rerun()
+    with c7:
+        speed = st.selectbox(
+            "Velocidad",
+            [1,2,4,8],
+            index=[1,2,4,8].index(st.session_state.bt_speed if st.session_state.bt_speed in [1,2,4,8] else 1),
+            format_func=lambda x:f"{x}x",
+            key="ws_speed",
+            label_visibility="collapsed",
+        )
+        st.session_state.bt_speed = speed
+
+
 def render_backtesting_lab() -> None:
     apply_v2_theme()
     st.markdown(BACKTEST_CSS, unsafe_allow_html=True)
     _init_bt_state()
 
-    if st.session_state.bt_big_chart:
+    if st.session_state.bt_workspace_mode:
         st.markdown(
             """
             <style>
             section[data-testid="stSidebar"] {display:none !important;}
             header[data-testid="stHeader"] {display:none !important;}
+            footer {display:none !important;}
             [data-testid="stAppViewContainer"] > .main {margin-left:0 !important;}
             .block-container {
                 max-width:100% !important;
-                padding-left:.5rem !important;
-                padding-right:.5rem !important;
-                padding-top:.3rem !important;
+                padding:0.25rem 0.35rem 0.45rem !important;
             }
+            [data-testid="stVerticalBlock"] {gap:.35rem !important;}
             </style>
             """,
             unsafe_allow_html=True,
         )
 
+    if st.session_state.bt_workspace_mode:
+        _render_workspace_mode()
+        return
+
     st.html("""
     <div style="display:inline-block;margin-bottom:8px;padding:5px 9px;border-radius:999px;
                 border:1px solid rgba(25,228,255,.35);background:rgba(25,228,255,.08);
                 color:#19e4ff;font-size:9px;font-weight:900;letter-spacing:.8px;">
-      AXION WORKSPACE V5 · BIG CHART · DRAWING ACTIVE
+      AXION WORKSPACE V6 · DEDICATED TERMINAL
     </div>
     <section class="ax-rp-shell">
       <div class="ax-rp-head">
@@ -868,11 +967,9 @@ def render_backtesting_lab() -> None:
         )
     with c4:
         st.write("")
-        st.session_state.bt_big_chart = st.toggle(
-            "⛶ Modo gráfico grande",
-            value=bool(st.session_state.bt_big_chart),
-            key="bt_big_chart_toggle",
-        )
+        if st.button("⛶ ABRIR WORKSPACE", type="primary", width="stretch"):
+            st.session_state.bt_workspace_mode = True
+            st.rerun()
 
     # Cargar automáticamente cuando activo, fecha o timeframe cambian.
     try:
@@ -919,7 +1016,7 @@ def render_backtesting_lab() -> None:
     """)
 
     # Main workspace: gráfico grande interactivo.
-    if not st.session_state.bt_big_chart:
+    if True:
         t1, t2, t3 = st.columns(3)
         with t1:
             st.toggle("🔥 Heatmap", value=False, disabled=True, help="Se activa en la fase de Liquidity Map.")
@@ -932,7 +1029,7 @@ def render_backtesting_lab() -> None:
             '<div class="ax-rp-source">🖥️ MODO GRÁFICO GRANDE ACTIVO · Herramientas de dibujo visibles · Usa el interruptor superior para volver a la vista normal.</div>'
         )
 
-    workspace_height = 1050 if st.session_state.bt_big_chart else 760
+    workspace_height = 760
     _render_chart(
         visible,
         market.display_symbol,
