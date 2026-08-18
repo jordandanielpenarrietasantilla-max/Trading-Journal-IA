@@ -9,7 +9,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from core.backtest_engine import TradePlan, evaluate_trade
-from core.market_data import MarketDataError, get_backtest_dataset, resolve_symbol
+from core.market_data import MarketDataError, fetch_recent_klines, get_backtest_dataset, resolve_symbol
 from ui_v2.theme import apply_v2_theme
 
 
@@ -47,6 +47,7 @@ BACKTEST_CSS = """
 def _init_bt_state() -> None:
     defaults = {
         "bt_symbol": "BTCUSDT",
+        "bt_mode": "REPLAY",
         "bt_date": date.today() - timedelta(days=30),
         "bt_interval": "1H",
         "bt_dataset": None,
@@ -147,6 +148,53 @@ def _render_chart(frame: pd.DataFrame, symbol_label: str, interval: str, trade: 
     components.html(html, height=625, scrolling=False)
 
 
+
+def _render_live_chart(frame: pd.DataFrame, market_symbol: str, symbol_label: str, interval: str) -> None:
+    candles = json.dumps(_candles_for_chart(frame))
+    volumes = json.dumps(_volume_for_chart(frame))
+    ws_interval = {"5m":"5m","15m":"15m","30m":"30m","1H":"1h","4H":"4h","1D":"1d"}[interval]
+    last_price = float(frame.iloc[-1]["close"])
+    html = f"""
+    <div style="font-family:Inter,system-ui;background:#030712;border:1px solid rgba(75,112,184,.34);border-radius:16px;overflow:hidden;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid rgba(75,112,184,.18);background:linear-gradient(90deg,#071125,#050915);">
+        <div><strong style="color:#f7f9ff;font-size:12px">{symbol_label} · {interval}</strong><div style="color:#667694;font-size:9px;margin-top:3px">LIVE MARKET · BINANCE SPOT</div></div>
+        <div style="text-align:right"><div id="bt-live-price" style="color:#f7f9ff;font-size:18px;font-weight:900">{last_price:,.2f}</div><div id="bt-live-status" style="color:#19e4ff;font-size:8px;font-weight:900">● CONNECTING…</div></div>
+      </div>
+      <div id="bt-live-chart" style="height:560px;width:100%;"></div>
+    </div>
+    <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+    <script>
+      const container = document.getElementById('bt-live-chart');
+      const priceEl = document.getElementById('bt-live-price');
+      const statusEl = document.getElementById('bt-live-status');
+      const chart = LightweightCharts.createChart(container, {{
+        layout: {{ background: {{ type:'solid', color:'#030712' }}, textColor:'#8fa0be' }},
+        grid: {{ vertLines: {{ color:'rgba(58,83,132,.12)' }}, horzLines: {{ color:'rgba(58,83,132,.12)' }} }},
+        rightPriceScale: {{ borderColor:'rgba(72,105,170,.25)' }},
+        timeScale: {{ borderColor:'rgba(72,105,170,.25)', timeVisible:true, secondsVisible:false, rightOffset:5 }},
+        crosshair: {{ mode: LightweightCharts.CrosshairMode.Normal }},
+      }});
+      const series = chart.addCandlestickSeries({{upColor:'#00f58a',downColor:'#ff3158',wickUpColor:'#00f58a',wickDownColor:'#ff3158',borderUpColor:'#00f58a',borderDownColor:'#ff3158'}});
+      const volume = chart.addHistogramSeries({{priceFormat:{{type:'volume'}},priceScaleId:'',scaleMargins:{{top:0.82,bottom:0}}}});
+      series.setData({candles});
+      volume.setData({volumes});
+      chart.timeScale().fitContent();
+      const ws = new WebSocket('wss://stream.binance.com:9443/ws/{market_symbol.lower()}@kline_{ws_interval}');
+      ws.onopen = () => {{ statusEl.textContent='● LIVE · VERIFIED'; statusEl.style.color='#00f58a'; }};
+      ws.onmessage = (event) => {{
+        const msg=JSON.parse(event.data); const k=msg.k; if(!k) return; const t=Math.floor(k.t/1000);
+        series.update({{time:t,open:Number(k.o),high:Number(k.h),low:Number(k.l),close:Number(k.c)}});
+        volume.update({{time:t,value:Number(k.v),color:Number(k.c)>=Number(k.o)?'rgba(0,245,138,.33)':'rgba(255,23,68,.32)'}});
+        priceEl.textContent=Number(k.c).toLocaleString('en-US',{{minimumFractionDigits:2,maximumFractionDigits:8}});
+      }};
+      ws.onerror=()=>{{statusEl.textContent='● CONNECTION ERROR';statusEl.style.color='#ffd166';}};
+      ws.onclose=()=>{{statusEl.textContent='● DISCONNECTED';statusEl.style.color='#ffd166';}};
+      new ResizeObserver(entries=>{{if(entries.length)chart.applyOptions({{width:entries[0].contentRect.width}});}}).observe(container);
+    </script>
+    """
+    components.html(html, height=625, scrolling=False)
+
+
 def _load_dataset(symbol: str, interval: str, start_day: date) -> None:
     with st.spinner("Descargando datos históricos verificados…"):
         market, frame = get_backtest_dataset(symbol, interval, start_day, limit=1000)
@@ -174,35 +222,67 @@ def render_backtesting_lab() -> None:
     </section>
     """)
 
+    mode_col, note_col = st.columns([1.1, 3.2])
+    with mode_col:
+        mode = st.radio("Modo", ["LIVE", "REPLAY"], horizontal=True, index=0 if st.session_state.bt_mode == "LIVE" else 1)
+        st.session_state.bt_mode = mode
+    with note_col:
+        if mode == "LIVE":
+            st.info("🔴 LIVE muestra el mercado actual verificado de Binance Spot. El precio y la vela activa se actualizan mediante WebSocket.")
+        else:
+            st.info("🔵 REPLAY reconstruye mercado historico real y mantiene las velas futuras fuera del grafico.")
+
+    if mode == "LIVE":
+        c1, c2, c3 = st.columns([2.2, 1.0, 1.1])
+        with c1:
+            symbol = st.text_input("Buscar activo", value=st.session_state.bt_symbol, placeholder="BTCUSDT, ETHUSDT, SOLUSDT…", key="bt_live_symbol_input")
+        with c2:
+            interval = st.selectbox("Timeframe", ["5m","15m","30m","1H","4H","1D"], index=["5m","15m","30m","1H","4H","1D"].index(st.session_state.bt_interval), key="bt_live_interval")
+        with c3:
+            st.write(""); st.write("")
+            live_load = st.button("📡 Abrir LIVE", width="stretch")
+        try:
+            market = resolve_symbol(symbol)
+            if live_load or st.session_state.bt_symbol != market.symbol or st.session_state.bt_interval != interval:
+                st.session_state.bt_symbol = market.symbol
+                st.session_state.bt_interval = interval
+            live_frame = fetch_recent_klines(market.symbol, interval, limit=400)
+        except MarketDataError as exc:
+            st.error(str(exc)); return
+        current = live_frame.iloc[-1]
+        first = live_frame.iloc[0]
+        pct = ((float(current["close"])/float(first["open"]))-1)*100 if float(first["open"]) else 0.0
+        st.html(f'<div class="ax-bt-source">● REAL DATA · LIVE · Fuente: {market.provider} · Mercado: {market.display_symbol} · WebSocket Binance · Sin precios sinteticos.</div>')
+        st.html(f"""<div class="ax-bt-metric-grid">
+          <div class="ax-bt-metric"><small>MODO</small><strong>LIVE</strong><span>mercado actual</span></div>
+          <div class="ax-bt-metric"><small>ULTIMO PRECIO REST</small><strong>{_fmt_price(float(current['close']))}</strong><span>{pct:+.2f}% ventana visible</span></div>
+          <div class="ax-bt-metric"><small>VELAS CARGADAS</small><strong>{len(live_frame)}</strong><span>{interval}</span></div>
+          <div class="ax-bt-metric"><small>FUENTE</small><strong>VERIFIED</strong><span>{market.provider}</span></div>
+        </div>""")
+        _render_live_chart(live_frame, market.symbol, market.display_symbol, interval)
+        st.html('<div class="ax-bt-warning">📡 <b>Live:</b> el grafico carga OHLCV reciente por REST y la vela activa se actualiza desde el WebSocket oficial de Binance. El card superior es una instantanea REST; el precio dentro del grafico se actualiza en vivo.</div>')
+        st.html('<div class="ax-bt-panel-title">LIQUIDITY MAP</div>')
+        st.html('<div class="ax-bt-warning"><b>Siguiente capa.</b><br>El heatmap se conectara solo a datos observables o calculos claramente etiquetados. No pintaremos liquidaciones inventadas.</div>')
+        return
+
     c1, c2, c3, c4 = st.columns([2.1, 1.25, 1.0, 1.1])
     with c1:
-        symbol = st.text_input(
-            "Buscar activo",
-            value=st.session_state.bt_symbol,
-            placeholder="BTCUSDT, ETHUSDT, SOLUSDT…",
-            help="La fuente gratuita actual valida mercados Binance Spot. Un símbolo no verificado no se carga.",
-        )
+        symbol = st.text_input("Buscar activo", value=st.session_state.bt_symbol, placeholder="BTCUSDT, ETHUSDT, SOLUSDT…", help="La fuente gratuita actual valida mercados Binance Spot.", key="bt_replay_symbol_input")
     with c2:
-        start_day = st.date_input(
-            "Fecha histórica",
-            value=st.session_state.bt_date,
-            max_value=date.today(),
-        )
+        start_day = st.date_input("Fecha historica", value=st.session_state.bt_date, max_value=date.today(), key="bt_replay_date")
     with c3:
-        interval = st.selectbox("Timeframe", ["5m", "15m", "30m", "1H", "4H", "1D"], index=["5m", "15m", "30m", "1H", "4H", "1D"].index(st.session_state.bt_interval))
+        interval = st.selectbox("Timeframe", ["5m","15m","30m","1H","4H","1D"], index=["5m","15m","30m","1H","4H","1D"].index(st.session_state.bt_interval), key="bt_replay_interval")
     with c4:
-        st.write("")
-        st.write("")
-        load_clicked = st.button("🔎 Cargar mercado", use_container_width=True)
-
+        st.write(""); st.write("")
+        load_clicked = st.button("🔎 Cargar replay", width="stretch")
     if load_clicked or st.session_state.bt_dataset is None:
         try:
             _load_dataset(symbol, interval, start_day)
-            st.success("Mercado verificado y datos históricos cargados.")
+            st.success("Mercado verificado y datos historicos cargados.")
         except MarketDataError as exc:
             st.error(str(exc))
             if st.session_state.bt_dataset is None:
-                st.info("Para probar ahora mismo usa BTCUSDT o ETHUSDT. XAU/USD se activará cuando conectemos una fuente verificable para metales.")
+                st.info("Para probar ahora mismo usa BTCUSDT o ETHUSDT. XAU/USD se activara cuando conectemos una fuente verificable para metales.")
                 return
 
     frame: pd.DataFrame = st.session_state.bt_dataset
@@ -222,23 +302,23 @@ def render_backtesting_lab() -> None:
     st.html('<div class="ax-bt-panel-title">CONTROLES DE REPLAY</div>')
     b1, b2, b3, b4, b5, b6 = st.columns([.7,.7,1.1,.9,.9,1.2])
     with b1:
-        if st.button("⏮", help="Volver al inicio", use_container_width=True):
+        if st.button("⏮", help="Volver al inicio", width="stretch"):
             st.session_state.bt_cursor = min(80, max_cursor)
             st.rerun()
     with b2:
-        if st.button("◀ 1", help="Retroceder una vela", use_container_width=True):
+        if st.button("◀ 1", help="Retroceder una vela", width="stretch"):
             st.session_state.bt_cursor = max(1, st.session_state.bt_cursor - 1)
             st.rerun()
     with b3:
-        if st.button("▶ +1 vela", use_container_width=True):
+        if st.button("▶ +1 vela", width="stretch"):
             st.session_state.bt_cursor = min(max_cursor, st.session_state.bt_cursor + 1)
             st.rerun()
     with b4:
-        if st.button("+5", use_container_width=True):
+        if st.button("+5", width="stretch"):
             st.session_state.bt_cursor = min(max_cursor, st.session_state.bt_cursor + 5)
             st.rerun()
     with b5:
-        if st.button("+20", use_container_width=True):
+        if st.button("+20", width="stretch"):
             st.session_state.bt_cursor = min(max_cursor, st.session_state.bt_cursor + 20)
             st.rerun()
     with b6:
@@ -289,7 +369,7 @@ def render_backtesting_lab() -> None:
         valid, message = plan.validate()
         st.metric("Riesgo / Beneficio", f"1 : {plan.rr:.2f}")
 
-        if st.button("⚡ Ejecutar simulación", use_container_width=True, disabled=not valid):
+        if st.button("⚡ Ejecutar simulación", width="stretch", disabled=not valid):
             st.session_state.bt_trade = {
                 "direction": direction,
                 "entry": entry,
@@ -328,7 +408,7 @@ def render_backtesting_lab() -> None:
                 st.warning("Orden pendiente: el precio todavía no tocó la entrada.")
             st.metric("MFE", f"{result['mfe_r']:.2f} R")
             st.metric("MAE", f"-{result['mae_r']:.2f} R")
-            if st.button("Cancelar / limpiar trade", use_container_width=True):
+            if st.button("Cancelar / limpiar trade", width="stretch"):
                 st.session_state.bt_trade = None
                 st.session_state.bt_trade_result = None
                 st.rerun()
@@ -340,7 +420,7 @@ def render_backtesting_lab() -> None:
     fav_cols = st.columns(4)
     for i, fav in enumerate(st.session_state.bt_favorites[:4]):
         with fav_cols[i]:
-            if st.button(f"⭐ {fav}", key=f"bt_fav_{fav}", use_container_width=True):
+            if st.button(f"⭐ {fav}", key=f"bt_fav_{fav}", width="stretch"):
                 try:
                     _load_dataset(fav, st.session_state.bt_interval, st.session_state.bt_date)
                     st.rerun()
@@ -353,7 +433,7 @@ def render_backtesting_lab() -> None:
     with action_col:
         st.write("")
         st.write("")
-        if st.button("⭐ Guardar", use_container_width=True):
+        if st.button("⭐ Guardar", width="stretch"):
             try:
                 resolved = resolve_symbol(fav_input)
                 if resolved.symbol not in st.session_state.bt_favorites:
