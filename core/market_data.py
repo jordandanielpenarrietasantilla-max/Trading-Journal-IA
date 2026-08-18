@@ -222,3 +222,60 @@ def search_markets(query: str, limit: int = 12) -> list[MarketSymbol]:
         if len(matches) >= limit:
             break
     return matches
+
+
+@st.cache_data(ttl=5, show_spinner=False)
+def fetch_recent_klines(symbol: str, interval: str = "1m", limit: int = 300) -> pd.DataFrame:
+    """Descarga las velas mas recientes verificadas de Binance Spot."""
+    if interval not in INTERVALS:
+        raise MarketDataError(f"Timeframe no soportado: {interval}")
+    params = {
+        "symbol": normalize_symbol(symbol),
+        "interval": INTERVALS[interval],
+        "limit": max(50, min(int(limit), 1000)),
+    }
+    try:
+        response = requests.get(f"{BINANCE_MARKET_BASE}/api/v3/klines", params=params, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        payload: Any = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise MarketDataError("No pudimos descargar las velas actuales del mercado.") from exc
+    if not isinstance(payload, list) or not payload:
+        raise MarketDataError("La fuente no devolvio velas actuales.")
+    rows = []
+    for item in payload:
+        if not isinstance(item, list) or len(item) < 11:
+            continue
+        rows.append({
+            "open_time": pd.to_datetime(item[0], unit="ms", utc=True),
+            "open": float(item[1]),
+            "high": float(item[2]),
+            "low": float(item[3]),
+            "close": float(item[4]),
+            "volume": float(item[5]),
+            "close_time": pd.to_datetime(item[6], unit="ms", utc=True),
+            "quote_volume": float(item[7]),
+            "trades": int(item[8]),
+            "taker_buy_base": float(item[9]),
+            "taker_buy_quote": float(item[10]),
+        })
+    frame = pd.DataFrame(rows)
+    if frame.empty:
+        raise MarketDataError("No se pudieron interpretar las velas actuales.")
+    return frame.sort_values("open_time").reset_index(drop=True)
+
+
+@st.cache_data(ttl=3, show_spinner=False)
+def fetch_ticker_price(symbol: str) -> float:
+    """Obtiene el ultimo precio publicado por Binance Spot."""
+    try:
+        response = requests.get(
+            f"{BINANCE_MARKET_BASE}/api/v3/ticker/price",
+            params={"symbol": normalize_symbol(symbol)},
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return float(payload["price"])
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        raise MarketDataError("No pudimos consultar el precio
