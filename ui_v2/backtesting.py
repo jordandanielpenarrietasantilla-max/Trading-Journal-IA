@@ -168,6 +168,10 @@ def _init_bt_state() -> None:
         "bt_session_wins": 0,
         "bt_session_losses": 0,
         "bt_session_pnl": 0.0,
+        "bt_loaded_symbol": None,
+        "bt_loaded_interval": None,
+        "bt_loaded_date": None,
+        "bt_big_chart": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -213,6 +217,7 @@ def _render_chart(
     symbol_label: str,
     interval: str,
     trade: dict | None = None,
+    workspace_height: int = 720,
 ) -> None:
     """AXION Workspace: gráfico grande + herramientas visuales client-side."""
     candles = json.dumps(_candles_for_chart(frame))
@@ -233,7 +238,7 @@ def _render_chart(
       *{{box-sizing:border-box}}
       body{{margin:0;background:#020711;font-family:Inter,system-ui;color:#d9e5ff}}
       .axws-shell{{
-        height:720px;width:100%;display:grid;grid-template-columns:58px 1fr 245px;
+        height:{workspace_height}px;width:100%;display:grid;grid-template-columns:58px 1fr 245px;
         border:1px solid rgba(79,119,196,.30);border-radius:16px;overflow:hidden;
         background:#020711;
       }}
@@ -343,7 +348,7 @@ def _render_chart(
             <span class="axws-pill">🔥 Heatmap OFF</span>
             <span class="axws-pill">🌍 Sesiones OFF</span>
             <span class="axws-pill">📊 Volumen ON</span>
-            <button id="axws-expand" class="axws-expand">⛶</button>
+            <span class="axws-pill">V4 · WORKSPACE</span>
           </div>
         </div>
 
@@ -630,11 +635,6 @@ def _render_chart(
         p1=null;temp=null;drawAll();
       }});
 
-      document.getElementById('axws-expand').addEventListener('click',()=>{{
-        shell.classList.toggle('full');
-        setTimeout(()=>{{chart.applyOptions({{width:chartEl.clientWidth,height:chartEl.clientHeight}});resizeOverlay();}},80);
-      }});
-
       chart.timeScale().subscribeVisibleTimeRangeChange(()=>drawAll());
       chart.subscribeCrosshairMove(()=>drawAll());
 
@@ -653,7 +653,7 @@ def _render_chart(
       resizeOverlay();
     </script>
     """
-    components.html(html, height=735, scrolling=False)
+    components.html(html, height=workspace_height + 15, scrolling=False)
 
 def _render_live_chart(frame: pd.DataFrame, market_symbol: str, symbol_label: str, interval: str) -> None:
     candles = json.dumps(_candles_for_chart(frame))
@@ -709,6 +709,9 @@ def _load_dataset(symbol: str, interval: str, start_day: date) -> None:
     st.session_state.bt_symbol = market.symbol
     st.session_state.bt_interval = interval
     st.session_state.bt_date = start_day
+    st.session_state.bt_loaded_symbol = market.symbol
+    st.session_state.bt_loaded_interval = interval
+    st.session_state.bt_loaded_date = start_day
     st.session_state.bt_cursor = min(max(80, int(len(frame) * 0.20)), max(1, len(frame) - 1))
     st.session_state.bt_trade = None
     st.session_state.bt_trade_result = None
@@ -723,7 +726,7 @@ def render_backtesting_lab() -> None:
     <div style="display:inline-block;margin-bottom:8px;padding:5px 9px;border-radius:999px;
                 border:1px solid rgba(25,228,255,.35);background:rgba(25,228,255,.08);
                 color:#19e4ff;font-size:9px;font-weight:900;letter-spacing:.8px;">
-      AXION WORKSPACE V3 · DRAWING TOOLS ACTIVE
+      AXION WORKSPACE V4 · AUTO TIMEFRAME · BIG CHART
     </div>
     <section class="ax-rp-shell">
       <div class="ax-rp-head">
@@ -844,16 +847,30 @@ def render_backtesting_lab() -> None:
         )
     with c4:
         st.write("")
-        load_clicked = st.button("▶ Iniciar Backtest", type="primary", width="stretch")
+        st.session_state.bt_big_chart = st.toggle(
+            "🖥️ Gráfico grande",
+            value=bool(st.session_state.bt_big_chart),
+            key="bt_big_chart_toggle",
+        )
 
-    if load_clicked or st.session_state.bt_dataset is None:
-        try:
-            _load_dataset(symbol, interval, start_day)
-        except MarketDataError as exc:
-            st.error(str(exc))
-            if st.session_state.bt_dataset is None:
-                st.info("Para probar ahora mismo usa BTCUSDT o ETHUSDT. XAU/USD se activará cuando conectemos una fuente verificable para metales.")
-                return
+    # Cargar automáticamente cuando activo, fecha o timeframe cambian.
+    try:
+        requested_market = resolve_symbol(symbol)
+        config_changed = (
+            st.session_state.bt_dataset is None
+            or st.session_state.bt_loaded_symbol != requested_market.symbol
+            or st.session_state.bt_loaded_interval != interval
+            or st.session_state.bt_loaded_date != start_day
+        )
+        if config_changed:
+            with st.spinner(f"Cargando {requested_market.display_symbol} · {interval} · {start_day:%d/%m/%Y}…"):
+                _load_dataset(symbol, interval, start_day)
+            st.toast(f"Gráfico actualizado a {interval}", icon="✅")
+    except MarketDataError as exc:
+        st.error(str(exc))
+        if st.session_state.bt_dataset is None:
+            st.info("Para probar ahora mismo usa BTCUSDT o ETHUSDT. XAU/USD se activará cuando conectemos una fuente verificable para metales.")
+            return
 
     frame: pd.DataFrame = st.session_state.bt_dataset
     market = st.session_state.bt_market
@@ -874,22 +891,34 @@ def render_backtesting_lab() -> None:
     <div class="ax-rp-stepbar">
       <div class="ax-rp-step"><small>1 · ACTIVO</small><strong>{market.display_symbol}</strong></div>
       <div class="ax-rp-step"><small>2 · FECHA</small><strong>{st.session_state.bt_date.strftime('%d %b %Y')}</strong></div>
-      <div class="ax-rp-step"><small>3 · TIMEFRAME</small><strong>{st.session_state.bt_interval}</strong></div>
+      <div class="ax-rp-step"><small>3 · TIMEFRAME</small><strong>{interval}</strong></div>
       <div class="ax-rp-step go"><small>4 · SESIÓN</small><strong>REPLAY ACTIVO</strong></div>
     </div>
     <div class="ax-rp-source">● DATOS VERIFICADOS · {market.provider} · {len(frame):,} velas descargadas · Futuro oculto.</div>
     """)
 
     # Main workspace: gráfico grande interactivo.
-    t1, t2, t3 = st.columns(3)
-    with t1:
-        st.toggle("🔥 Heatmap", value=False, disabled=True, help="Se activa en la fase de Liquidity Map.")
-    with t2:
-        st.toggle("🌍 Sesiones", value=False, disabled=True, help="Se activa en la fase de sesiones.")
-    with t3:
-        st.toggle("📊 Volumen", value=True, disabled=True)
+    if not st.session_state.bt_big_chart:
+        t1, t2, t3 = st.columns(3)
+        with t1:
+            st.toggle("🔥 Heatmap", value=False, disabled=True, help="Se activa en la fase de Liquidity Map.")
+        with t2:
+            st.toggle("🌍 Sesiones", value=False, disabled=True, help="Se activa en la fase de sesiones.")
+        with t3:
+            st.toggle("📊 Volumen", value=True, disabled=True)
+    else:
+        st.html(
+            '<div class="ax-rp-source">🖥️ MODO GRÁFICO GRANDE ACTIVO · Herramientas de dibujo visibles · Usa el interruptor superior para volver a la vista normal.</div>'
+        )
 
-    _render_chart(visible, market.display_symbol, st.session_state.bt_interval, st.session_state.bt_trade)
+    workspace_height = 900 if st.session_state.bt_big_chart else 720
+    _render_chart(
+        visible,
+        market.display_symbol,
+        interval,
+        st.session_state.bt_trade,
+        workspace_height=workspace_height,
+    )
 
     # Replay controls del motor Python.
     st.html('<div class="ax-rp-panel-title">CONTROLES DE REPLAY</div>')
