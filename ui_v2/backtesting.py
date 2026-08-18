@@ -204,6 +204,78 @@ def render_backtesting_lab() -> None:
     apply_v2_theme()
     _init_state()
 
+    st.markdown(
+        '''
+        <style>
+        .axion-backtest-hero{
+            margin: 0 0 14px 0;
+            padding: 20px 22px;
+            border: 1px solid rgba(78,132,220,.22);
+            border-radius: 16px;
+            background:
+              radial-gradient(circle at 85% 15%, rgba(111,75,255,.16), transparent 35%),
+              linear-gradient(135deg, rgba(5,15,31,.96), rgba(8,11,24,.96));
+            box-shadow: 0 16px 50px rgba(0,0,0,.18);
+        }
+        .axion-backtest-kicker{
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 2.2px;
+            color: #59d9ee;
+            margin-bottom: 7px;
+        }
+        .axion-backtest-title{
+            margin: 0;
+            color: #f4f7ff;
+            font-size: clamp(24px,3vw,38px);
+            line-height: 1.04;
+            font-weight: 900;
+            letter-spacing: -1px;
+        }
+        .axion-backtest-title span{
+            background: linear-gradient(90deg,#55d9ee,#8d6cff);
+            -webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;
+        }
+        .axion-backtest-copy{
+            margin-top: 9px;
+            color: #91a2bf;
+            font-size: 13px;
+            max-width: 900px;
+        }
+        .axion-backtest-badge{
+            display:inline-flex;
+            align-items:center;
+            gap:7px;
+            margin-top:12px;
+            padding:7px 10px;
+            border-radius:999px;
+            border:1px solid rgba(255,190,75,.22);
+            background:rgba(255,174,51,.06);
+            color:#d7b16b;
+            font-size:10px;
+            font-weight:700;
+            letter-spacing:.3px;
+        }
+        </style>
+
+        <div class="axion-backtest-hero">
+          <div class="axion-backtest-kicker">AXION PRIME · BACKTESTING LAB</div>
+          <h1 class="axion-backtest-title">
+            Perfecciona tu estrategia con <span>hasta 2 años de data histórica</span>
+          </h1>
+          <div class="axion-backtest-copy">
+            Practica, repite escenarios y analiza tus decisiones con Replay,
+            Position Tool, Fibonacci y herramientas de dibujo sobre datos históricos verificados.
+          </div>
+          <div class="axion-backtest-badge">
+            ◷ BACKTESTING HISTÓRICO · ESTE MÓDULO NO INCLUYE MERCADO EN TIEMPO REAL
+          </div>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
+
     # First verified load.
     if st.session_state.bt_dataset is None:
         try:
@@ -233,6 +305,7 @@ def render_backtesting_lab() -> None:
         "symbol_label": market.display_symbol,
         "interval": st.session_state.bt_interval,
         "source": market.provider,
+        "market_name": getattr(market, "market_name", None) or market.display_symbol,
         "start_date": st.session_state.bt_date.isoformat(),
         "candles": _candles(frame),
         "volumes": _volumes(frame),
@@ -255,6 +328,6 @@ def render_backtesting_lab() -> None:
     _render_trade_status()
 
     st.caption(
-        "AXION Chart Component V2 · datos históricos verificados · "
-        "replay, drawings y fullscreen viven dentro del terminal."
+        "AXION REPLAY · datos históricos verificados · "
+        "el mercado en tiempo real se integrará por separado en AXION LIVE."
     )
