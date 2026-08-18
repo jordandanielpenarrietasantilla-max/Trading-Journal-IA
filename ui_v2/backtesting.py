@@ -15,31 +15,138 @@ from ui_v2.theme import apply_v2_theme
 
 BACKTEST_CSS = """
 <style>
-.ax-bt-hero {
-    margin-bottom: 16px;
-    padding: 20px 22px;
+/* ---------- AXION REPLAY UX ---------- */
+.ax-rp-shell {
+    margin-bottom: 14px;
+    padding: 18px 20px 16px;
     background:
-        radial-gradient(circle at 86% 18%, rgba(255,209,102,.10), transparent 25%),
-        radial-gradient(circle at 10% 0%, rgba(25,228,255,.10), transparent 28%),
-        linear-gradient(145deg, rgba(7,16,36,.98), rgba(3,8,20,.99));
-    border:1px solid rgba(78,128,210,.34);
+        radial-gradient(circle at 9% 10%, rgba(25,228,255,.11), transparent 27%),
+        radial-gradient(circle at 91% 15%, rgba(126,87,255,.12), transparent 28%),
+        linear-gradient(145deg, rgba(6,14,31,.99), rgba(3,7,18,.99));
+    border:1px solid rgba(69,119,201,.32);
     border-radius:20px;
 }
-.ax-bt-kicker {color:#19e4ff;font-size:9px;font-weight:950;letter-spacing:2px;}
-.ax-bt-title {margin-top:7px;color:#f7f9ff;font-size:34px;font-weight:950;letter-spacing:-1.4px;}
-.ax-bt-sub {margin-top:7px;color:#91a0bf;font-size:12px;line-height:1.55;}
-.ax-bt-badges {display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;}
-.ax-bt-badge {padding:5px 9px;border-radius:999px;border:1px solid rgba(25,228,255,.25);background:rgba(25,228,255,.07);color:#b9f7ff;font-size:8px;font-weight:900;letter-spacing:.7px;}
-.ax-bt-badge.gold {border-color:rgba(255,209,102,.32);background:rgba(255,209,102,.08);color:#ffe6a1;}
-.ax-bt-panel-title {margin:12px 0 8px;color:#f3f6ff;font-size:11px;font-weight:950;letter-spacing:.9px;}
-.ax-bt-source {padding:10px 12px;border:1px solid rgba(0,245,138,.25);background:rgba(0,245,138,.055);border-radius:12px;color:#a7fbd2;font-size:9px;}
-.ax-bt-warning {padding:10px 12px;border:1px solid rgba(255,209,102,.27);background:rgba(255,209,102,.055);border-radius:12px;color:#e5d9b5;font-size:9px;line-height:1.5;}
-.ax-bt-metric-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 16px;}
-.ax-bt-metric {padding:13px;border:1px solid rgba(77,111,179,.28);background:linear-gradient(145deg,rgba(9,18,39,.95),rgba(4,9,23,.96));border-radius:14px;}
-.ax-bt-metric small {display:block;color:#71809f;font-size:7px;font-weight:900;letter-spacing:1px;}
-.ax-bt-metric strong {display:block;margin-top:6px;color:#f7f9ff;font-size:18px;font-weight:950;}
-.ax-bt-metric span {display:block;margin-top:4px;color:#19e4ff;font-size:8px;}
-@media(max-width:850px){.ax-bt-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.ax-bt-title{font-size:28px;}}
+.ax-rp-head {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+}
+.ax-rp-brand {color:#19e4ff;font-size:10px;font-weight:950;letter-spacing:2.1px;}
+.ax-rp-title {
+    margin-top:5px;color:#f7f9ff;font-size:36px;font-weight:950;
+    letter-spacing:-1.6px;line-height:1;
+}
+.ax-rp-title .cyan {color:#19e4ff;}
+.ax-rp-sub {margin-top:8px;color:#91a0bf;font-size:11px;line-height:1.5;}
+.ax-rp-badges {display:flex;gap:7px;flex-wrap:wrap;}
+.ax-rp-badge {
+    padding:7px 10px;border-radius:999px;border:1px solid rgba(25,228,255,.26);
+    background:rgba(25,228,255,.065);color:#b9f7ff;
+    font-size:8px;font-weight:900;letter-spacing:.55px;white-space:nowrap;
+}
+.ax-rp-badge.purple {border-color:rgba(126,87,255,.34);background:rgba(126,87,255,.08);color:#d6ccff;}
+.ax-rp-badge.green {border-color:rgba(0,245,138,.26);background:rgba(0,245,138,.06);color:#a7fbd2;}
+
+.ax-rp-mode-note {
+    padding:10px 12px;border:1px solid rgba(25,228,255,.18);
+    background:linear-gradient(90deg,rgba(8,32,64,.68),rgba(15,22,55,.72));
+    border-radius:12px;color:#9ecbff;font-size:9px;line-height:1.45;
+}
+.ax-rp-stepbar {
+    margin:12px 0 8px;padding:10px 13px;border-radius:14px;
+    border:1px solid rgba(69,119,201,.23);
+    background:rgba(5,12,27,.72);
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+}
+.ax-rp-step {
+    min-height:45px;padding:9px 10px;border-radius:11px;
+    border:1px solid rgba(77,111,179,.18);background:rgba(8,17,37,.68);
+}
+.ax-rp-step small {display:block;color:#6f80a2;font-size:7px;font-weight:950;letter-spacing:.9px;}
+.ax-rp-step strong {display:block;margin-top:4px;color:#eef4ff;font-size:10px;}
+.ax-rp-step.go {border-color:rgba(126,87,255,.34);background:linear-gradient(135deg,rgba(25,228,255,.08),rgba(126,87,255,.11));}
+
+.ax-rp-source {
+    margin:8px 0 10px;padding:8px 11px;border-radius:10px;
+    border:1px solid rgba(0,245,138,.22);background:rgba(0,245,138,.045);
+    color:#9af2c7;font-size:8px;
+}
+.ax-rp-toolbar {
+    margin:6px 0 8px;padding:8px 10px;border-radius:11px;
+    border:1px solid rgba(77,111,179,.20);background:rgba(6,13,29,.78);
+    color:#94a7c9;font-size:8px;
+}
+.ax-rp-panel-title {
+    margin:10px 0 7px;color:#f3f6ff;font-size:10px;font-weight:950;letter-spacing:.9px;
+}
+.ax-rp-warning {
+    padding:9px 11px;border:1px solid rgba(255,209,102,.24);
+    background:rgba(255,209,102,.045);border-radius:11px;
+    color:#ddd2ae;font-size:8px;line-height:1.45;
+}
+.ax-rp-metric-grid {
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:9px;margin:10px 0 13px;
+}
+.ax-rp-metric {
+    padding:11px 12px;border:1px solid rgba(77,111,179,.24);
+    background:linear-gradient(145deg,rgba(8,17,37,.95),rgba(4,9,23,.96));
+    border-radius:13px;
+}
+.ax-rp-metric small {display:block;color:#6f80a2;font-size:7px;font-weight:950;letter-spacing:.9px;}
+.ax-rp-metric strong {display:block;margin-top:5px;color:#f7f9ff;font-size:17px;font-weight:950;}
+.ax-rp-metric span {display:block;margin-top:3px;color:#19e4ff;font-size:7.5px;}
+
+.ax-rp-progress-wrap {
+    margin:8px 0 12px;padding:10px 12px;border-radius:12px;
+    border:1px solid rgba(77,111,179,.20);background:rgba(5,12,27,.78);
+}
+.ax-rp-progress-top {display:flex;justify-content:space-between;gap:12px;color:#9aa9c3;font-size:8px;}
+.ax-rp-progress-track {height:7px;border-radius:999px;background:#101b38;margin-top:8px;overflow:hidden;}
+.ax-rp-progress-fill {height:100%;background:linear-gradient(90deg,#15d9cc,#4d70ff,#7d57ff);border-radius:999px;}
+.ax-rp-progress-value {color:#19e4ff;font-size:13px;font-weight:950;}
+
+.ax-rp-trade-summary {
+    margin-top:8px;padding:10px;border-radius:12px;border:1px solid rgba(25,228,255,.22);
+    background:rgba(25,228,255,.045);
+}
+.ax-rp-trade-summary div {display:flex;justify-content:space-between;gap:8px;margin:4px 0;color:#9aabc6;font-size:8px;}
+.ax-rp-trade-summary b {color:#eef4ff;}
+.ax-rp-trade-summary .good {color:#00f58a;font-weight:900;}
+
+.ax-rp-bottom-grid {
+    display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+    gap:8px;margin:12px 0;
+}
+.ax-rp-bottom-card {
+    padding:11px;border:1px solid rgba(77,111,179,.22);
+    border-radius:12px;background:linear-gradient(145deg,rgba(8,17,37,.92),rgba(4,9,23,.95));
+}
+.ax-rp-bottom-card small {color:#6f80a2;font-size:7px;font-weight:950;letter-spacing:.8px;}
+.ax-rp-bottom-card strong {display:block;margin-top:5px;color:#f7f9ff;font-size:16px;}
+.ax-rp-bottom-card .pos {color:#00f58a}.ax-rp-bottom-card .neg {color:#ff516e}
+
+div[data-testid="stRadio"] > div {gap:6px;}
+div[data-testid="stRadio"] label {
+    border:1px solid rgba(77,111,179,.26);
+    background:rgba(7,15,33,.88);
+    padding:7px 12px !important;border-radius:10px;
+}
+div[data-testid="stButton"] button {
+    border-radius:10px !important;
+    border:1px solid rgba(77,111,179,.30) !important;
+}
+div[data-testid="stButton"] button[kind="primary"] {
+    background:linear-gradient(90deg,#19cfea,#7857ff) !important;
+}
+@media(max-width:1000px){
+    .ax-rp-stepbar{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .ax-rp-bottom-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media(max-width:720px){
+    .ax-rp-title{font-size:29px}
+    .ax-rp-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .ax-rp-bottom-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
 </style>
 """
 
@@ -57,6 +164,10 @@ def _init_bt_state() -> None:
         "bt_trade": None,
         "bt_trade_result": None,
         "bt_favorites": ["BTCUSDT", "ETHUSDT"],
+        "bt_session_trades": 0,
+        "bt_session_wins": 0,
+        "bt_session_losses": 0,
+        "bt_session_pnl": 0.0,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -214,33 +325,54 @@ def render_backtesting_lab() -> None:
     _init_bt_state()
 
     st.html("""
-    <section class="ax-bt-hero">
-      <div class="ax-bt-kicker">AXION PRIME · MARKET INTELLIGENCE</div>
-      <div class="ax-bt-title">Backtesting Lab</div>
-      <div class="ax-bt-sub">Replay histórico con datos reales, futuro oculto y simulación de riesgo. AXION PRIME solo muestra mercados que puede verificar en la fuente conectada.</div>
-      <div class="ax-bt-badges"><span class="ax-bt-badge">HISTORICAL DATA</span><span class="ax-bt-badge">NO LOOK-AHEAD</span><span class="ax-bt-badge gold">NO SYNTHETIC PRICES</span></div>
+    <section class="ax-rp-shell">
+      <div class="ax-rp-head">
+        <div>
+          <div class="ax-rp-brand">AXION PRIME · PERFORMANCE COMMAND OS</div>
+          <div class="ax-rp-title"><span class="cyan">AXION</span> REPLAY</div>
+          <div class="ax-rp-sub">Practica el mercado con datos reales, futuro oculto y simulación de riesgo.</div>
+        </div>
+        <div class="ax-rp-badges">
+          <span class="ax-rp-badge">🛡 HISTORICAL DATA</span>
+          <span class="ax-rp-badge purple">✓ NO LOOK-AHEAD</span>
+          <span class="ax-rp-badge green">● VERIFIED MARKETS</span>
+        </div>
+      </div>
     </section>
     """)
 
-    mode_col, note_col = st.columns([1.1, 3.2])
-    with mode_col:
-        mode = st.radio("Modo", ["LIVE", "REPLAY"], horizontal=True, index=0 if st.session_state.bt_mode == "LIVE" else 1)
-        st.session_state.bt_mode = mode
-    with note_col:
-        if mode == "LIVE":
-            st.info("🔴 LIVE muestra el mercado actual verificado de Binance Spot. El precio y la vela activa se actualizan mediante WebSocket.")
-        else:
-            st.info("🔵 REPLAY reconstruye mercado historico real y mantiene las velas futuras fuera del grafico.")
+    # ----- MODO -----
+    mode = st.radio(
+        "Modo de mercado",
+        ["📡 Mercado en vivo", "🕘 Backtesting histórico"],
+        horizontal=True,
+        index=0 if st.session_state.bt_mode == "LIVE" else 1,
+        label_visibility="collapsed",
+    )
+    st.session_state.bt_mode = "LIVE" if "vivo" in mode else "REPLAY"
 
-    if mode == "LIVE":
-        c1, c2, c3 = st.columns([2.2, 1.0, 1.1])
+    if st.session_state.bt_mode == "LIVE":
+        st.html('<div class="ax-rp-mode-note">📡 <b>Mercado en vivo:</b> precio y vela activa actualizados desde Binance Spot. Sin precios sintéticos.</div>')
+
+        c1, c2, c3 = st.columns([2.3, 1.0, 1.15])
         with c1:
-            symbol = st.text_input("Buscar activo", value=st.session_state.bt_symbol, placeholder="BTCUSDT, ETHUSDT, SOLUSDT…", key="bt_live_symbol_input")
+            symbol = st.text_input(
+                "1. Activo",
+                value=st.session_state.bt_symbol,
+                placeholder="BTCUSDT, ETHUSDT, SOLUSDT…",
+                key="bt_live_symbol_input",
+            )
         with c2:
-            interval = st.selectbox("Timeframe", ["5m","15m","30m","1H","4H","1D"], index=["5m","15m","30m","1H","4H","1D"].index(st.session_state.bt_interval), key="bt_live_interval")
+            interval = st.selectbox(
+                "2. Timeframe",
+                ["5m", "15m", "30m", "1H", "4H", "1D"],
+                index=["5m", "15m", "30m", "1H", "4H", "1D"].index(st.session_state.bt_interval),
+                key="bt_live_interval",
+            )
         with c3:
-            st.write(""); st.write("")
-            live_load = st.button("📡 Abrir LIVE", width="stretch")
+            st.write("")
+            live_load = st.button("▶ Abrir mercado", type="primary", width="stretch")
+
         try:
             market = resolve_symbol(symbol)
             if live_load or st.session_state.bt_symbol != market.symbol or st.session_state.bt_interval != interval:
@@ -248,41 +380,79 @@ def render_backtesting_lab() -> None:
                 st.session_state.bt_interval = interval
             live_frame = fetch_recent_klines(market.symbol, interval, limit=400)
         except MarketDataError as exc:
-            st.error(str(exc)); return
+            st.error(str(exc))
+            return
+
         current = live_frame.iloc[-1]
         first = live_frame.iloc[0]
-        pct = ((float(current["close"])/float(first["open"]))-1)*100 if float(first["open"]) else 0.0
-        st.html(f'<div class="ax-bt-source">● REAL DATA · LIVE · Fuente: {market.provider} · Mercado: {market.display_symbol} · WebSocket Binance · Sin precios sinteticos.</div>')
-        st.html(f"""<div class="ax-bt-metric-grid">
-          <div class="ax-bt-metric"><small>MODO</small><strong>LIVE</strong><span>mercado actual</span></div>
-          <div class="ax-bt-metric"><small>ULTIMO PRECIO REST</small><strong>{_fmt_price(float(current['close']))}</strong><span>{pct:+.2f}% ventana visible</span></div>
-          <div class="ax-bt-metric"><small>VELAS CARGADAS</small><strong>{len(live_frame)}</strong><span>{interval}</span></div>
-          <div class="ax-bt-metric"><small>FUENTE</small><strong>VERIFIED</strong><span>{market.provider}</span></div>
-        </div>""")
+        pct = ((float(current["close"]) / float(first["open"])) - 1) * 100 if float(first["open"]) else 0.0
+
+        st.html(f"""
+        <div class="ax-rp-stepbar">
+          <div class="ax-rp-step"><small>1 · ACTIVO</small><strong>{market.display_symbol}</strong></div>
+          <div class="ax-rp-step"><small>2 · TIMEFRAME</small><strong>{interval}</strong></div>
+          <div class="ax-rp-step"><small>3 · FUENTE</small><strong>{market.provider}</strong></div>
+          <div class="ax-rp-step go"><small>4 · ESTADO</small><strong>● LIVE VERIFIED</strong></div>
+        </div>
+        <div class="ax-rp-source">● DATOS VERIFICADOS · {market.provider} · WebSocket Binance · OHLCV real.</div>
+        <div class="ax-rp-metric-grid">
+          <div class="ax-rp-metric"><small>MODO</small><strong>LIVE</strong><span>mercado actual</span></div>
+          <div class="ax-rp-metric"><small>PRECIO</small><strong>{_fmt_price(float(current['close']))}</strong><span>{pct:+.2f}% ventana visible</span></div>
+          <div class="ax-rp-metric"><small>VELAS</small><strong>{len(live_frame)}</strong><span>{interval}</span></div>
+          <div class="ax-rp-metric"><small>FUENTE</small><strong>VERIFIED</strong><span>{market.provider}</span></div>
+        </div>
+        """)
+
+        t1, t2, t3 = st.columns(3)
+        with t1:
+            st.toggle("🔥 Heatmap", value=False, disabled=True, help="Se activará al conectar la capa de liquidez.")
+        with t2:
+            st.toggle("🌍 Sesiones", value=False, disabled=True)
+        with t3:
+            st.toggle("📊 Volumen", value=True, disabled=True)
+
         _render_live_chart(live_frame, market.symbol, market.display_symbol, interval)
-        st.html('<div class="ax-bt-warning">📡 <b>Live:</b> el grafico carga OHLCV reciente por REST y la vela activa se actualiza desde el WebSocket oficial de Binance. El card superior es una instantanea REST; el precio dentro del grafico se actualiza en vivo.</div>')
-        st.html('<div class="ax-bt-panel-title">LIQUIDITY MAP</div>')
-        st.html('<div class="ax-bt-warning"><b>Siguiente capa.</b><br>El heatmap se conectara solo a datos observables o calculos claramente etiquetados. No pintaremos liquidaciones inventadas.</div>')
+
+        st.html('<div class="ax-rp-warning"><b>Heatmap:</b> reservado para datos verificables o cálculos claramente etiquetados. AXION PRIME no mostrará liquidaciones inventadas.</div>')
         return
 
-    c1, c2, c3, c4 = st.columns([2.1, 1.25, 1.0, 1.1])
+    # ----- REPLAY HISTÓRICO -----
+    st.html('<div class="ax-rp-mode-note">🕘 <b>Backtesting histórico:</b> AXION reconstruye el mercado con OHLCV real y mantiene el futuro fuera del gráfico.</div>')
+
+    c1, c2, c3, c4 = st.columns([2.0, 1.25, .95, 1.15])
     with c1:
-        symbol = st.text_input("Buscar activo", value=st.session_state.bt_symbol, placeholder="BTCUSDT, ETHUSDT, SOLUSDT…", help="La fuente gratuita actual valida mercados Binance Spot.", key="bt_replay_symbol_input")
+        symbol = st.text_input(
+            "1. Activo",
+            value=st.session_state.bt_symbol,
+            placeholder="BTCUSDT, ETHUSDT, SOLUSDT…",
+            help="La fuente gratuita actual valida mercados Binance Spot.",
+            key="bt_replay_symbol_input",
+        )
     with c2:
-        start_day = st.date_input("Fecha historica", value=st.session_state.bt_date, max_value=date.today(), key="bt_replay_date")
+        start_day = st.date_input(
+            "2. Fecha",
+            value=st.session_state.bt_date,
+            max_value=date.today(),
+            key="bt_replay_date",
+        )
     with c3:
-        interval = st.selectbox("Timeframe", ["5m","15m","30m","1H","4H","1D"], index=["5m","15m","30m","1H","4H","1D"].index(st.session_state.bt_interval), key="bt_replay_interval")
+        interval = st.selectbox(
+            "3. Timeframe",
+            ["5m", "15m", "30m", "1H", "4H", "1D"],
+            index=["5m", "15m", "30m", "1H", "4H", "1D"].index(st.session_state.bt_interval),
+            key="bt_replay_interval",
+        )
     with c4:
-        st.write(""); st.write("")
-        load_clicked = st.button("🔎 Cargar replay", width="stretch")
+        st.write("")
+        load_clicked = st.button("▶ Iniciar Backtest", type="primary", width="stretch")
+
     if load_clicked or st.session_state.bt_dataset is None:
         try:
             _load_dataset(symbol, interval, start_day)
-            st.success("Mercado verificado y datos historicos cargados.")
         except MarketDataError as exc:
             st.error(str(exc))
             if st.session_state.bt_dataset is None:
-                st.info("Para probar ahora mismo usa BTCUSDT o ETHUSDT. XAU/USD se activara cuando conectemos una fuente verificable para metales.")
+                st.info("Para probar ahora mismo usa BTCUSDT o ETHUSDT. XAU/USD se activará cuando conectemos una fuente verificable para metales.")
                 return
 
     frame: pd.DataFrame = st.session_state.bt_dataset
@@ -291,68 +461,104 @@ def render_backtesting_lab() -> None:
         st.warning("No hay datos cargados.")
         return
 
-    st.html(
-        f'<div class="ax-bt-source">● REAL DATA · Fuente: {market.provider} · Mercado: {market.display_symbol} · '
-        f'{len(frame):,} velas descargadas · Los precios futuros permanecen fuera del gráfico.</div>'
-    )
-
     max_cursor = max(1, len(frame) - 1)
     st.session_state.bt_cursor = max(1, min(int(st.session_state.bt_cursor), max_cursor))
-
-    st.html('<div class="ax-bt-panel-title">CONTROLES DE REPLAY</div>')
-    b1, b2, b3, b4, b5, b6 = st.columns([.7,.7,1.1,.9,.9,1.2])
-    with b1:
-        if st.button("⏮", help="Volver al inicio", width="stretch"):
-            st.session_state.bt_cursor = min(80, max_cursor)
-            st.rerun()
-    with b2:
-        if st.button("◀ 1", help="Retroceder una vela", width="stretch"):
-            st.session_state.bt_cursor = max(1, st.session_state.bt_cursor - 1)
-            st.rerun()
-    with b3:
-        if st.button("▶ +1 vela", width="stretch"):
-            st.session_state.bt_cursor = min(max_cursor, st.session_state.bt_cursor + 1)
-            st.rerun()
-    with b4:
-        if st.button("+5", width="stretch"):
-            st.session_state.bt_cursor = min(max_cursor, st.session_state.bt_cursor + 5)
-            st.rerun()
-    with b5:
-        if st.button("+20", width="stretch"):
-            st.session_state.bt_cursor = min(max_cursor, st.session_state.bt_cursor + 20)
-            st.rerun()
-    with b6:
-        speed = st.selectbox("Avance rápido", [1, 2, 4, 8, 16], index=[1,2,4,8,16].index(st.session_state.bt_speed), format_func=lambda x: f"{x}x")
-        st.session_state.bt_speed = speed
-
     cursor = int(st.session_state.bt_cursor)
     visible = frame.iloc[: cursor + 1].copy()
     current = visible.iloc[-1]
     first = visible.iloc[0]
     pct = ((float(current["close"]) / float(first["open"])) - 1) * 100 if float(first["open"]) else 0.0
+    progress = (cursor / max_cursor) * 100 if max_cursor else 0.0
 
-    st.html(
-        f"""
-        <div class="ax-bt-metric-grid">
-          <div class="ax-bt-metric"><small>REPLAY POINT</small><strong>{pd.Timestamp(current['open_time']).strftime('%d %b %Y')}</strong><span>{pd.Timestamp(current['open_time']).strftime('%H:%M UTC')}</span></div>
-          <div class="ax-bt-metric"><small>PRECIO ACTUAL</small><strong>{_fmt_price(float(current['close']))}</strong><span>{pct:+.2f}% desde inicio</span></div>
-          <div class="ax-bt-metric"><small>VELAS VISIBLES</small><strong>{len(visible)}</strong><span>de {len(frame)} descargadas</span></div>
-          <div class="ax-bt-metric"><small>FUENTE</small><strong>VERIFIED</strong><span>{market.provider}</span></div>
-        </div>
-        """
-    )
+    st.html(f"""
+    <div class="ax-rp-stepbar">
+      <div class="ax-rp-step"><small>1 · ACTIVO</small><strong>{market.display_symbol}</strong></div>
+      <div class="ax-rp-step"><small>2 · FECHA</small><strong>{st.session_state.bt_date.strftime('%d %b %Y')}</strong></div>
+      <div class="ax-rp-step"><small>3 · TIMEFRAME</small><strong>{st.session_state.bt_interval}</strong></div>
+      <div class="ax-rp-step go"><small>4 · SESIÓN</small><strong>REPLAY ACTIVO</strong></div>
+    </div>
+    <div class="ax-rp-source">● DATOS VERIFICADOS · {market.provider} · {len(frame):,} velas descargadas · Futuro oculto.</div>
+    """)
 
-    left, right = st.columns([3.25, 1.15], gap="large")
+    # Main workspace: chart hero + trade terminal.
+    left, right = st.columns([3.45, 1.15], gap="large")
+
     with left:
+        # Layer toggles: visual for UX now; heatmap/session become functional in next phases.
+        tog1, tog2, tog3 = st.columns(3)
+        with tog1:
+            st.toggle("🔥 Heatmap", value=False, disabled=True, help="Próxima capa: liquidez verificable.")
+        with tog2:
+            st.toggle("🌍 Sesiones", value=False, disabled=True, help="Próxima capa: Londres, NY, Asia.")
+        with tog3:
+            show_volume = st.toggle("📊 Volumen", value=True, disabled=True)
+
         _render_chart(visible, market.display_symbol, st.session_state.bt_interval, st.session_state.bt_trade)
-        st.html('<div class="ax-bt-warning">🔒 <b>No look-ahead:</b> el navegador solo recibe las velas visibles hasta el punto de replay. Las velas posteriores no se envían al gráfico.</div>')
+
+        # Replay controls directly under the chart.
+        st.html('<div class="ax-rp-panel-title">REPLAY</div>')
+        r1, r2, r3, r4, r5, r6, rs = st.columns([.8,.85,1.0,.95,.9,.8,1.0])
+        with r1:
+            if st.button("⏮ Inicio", width="stretch"):
+                st.session_state.bt_cursor = min(80, max_cursor)
+                st.rerun()
+        with r2:
+            if st.button("◀ 1 vela", width="stretch"):
+                st.session_state.bt_cursor = max(1, st.session_state.bt_cursor - 1)
+                st.rerun()
+        with r3:
+            if st.button("▶ Play", type="primary", width="stretch", help="Play automático se activa en la siguiente fase."):
+                st.session_state.bt_cursor = min(max_cursor, st.session_state.bt_cursor + st.session_state.bt_speed)
+                st.rerun()
+        with r4:
+            st.button("⏸ Pausa", width="stretch", disabled=True, help="Play/Pause automático en Fase 2.")
+        with r5:
+            if st.button("▶ 1 vela", width="stretch"):
+                st.session_state.bt_cursor = min(max_cursor, st.session_state.bt_cursor + 1)
+                st.rerun()
+        with r6:
+            if st.button("⏭ Fin", width="stretch"):
+                st.session_state.bt_cursor = max_cursor
+                st.rerun()
+        with rs:
+            speed = st.selectbox(
+                "Velocidad",
+                [1, 2, 4, 8],
+                index=[1,2,4,8].index(st.session_state.bt_speed if st.session_state.bt_speed in [1,2,4,8] else 1),
+                format_func=lambda x: f"{x}x",
+                label_visibility="collapsed",
+            )
+            st.session_state.bt_speed = speed
+
+        start_label = pd.Timestamp(frame.iloc[0]["open_time"]).strftime("%d %b %Y")
+        end_label = pd.Timestamp(frame.iloc[-1]["open_time"]).strftime("%d %b %Y")
+        now_label = pd.Timestamp(current["open_time"]).strftime("%d %b %Y · %H:%M UTC")
+        st.html(f"""
+        <div class="ax-rp-progress-wrap">
+          <div class="ax-rp-progress-top">
+            <span>{start_label}</span>
+            <span><b>{now_label}</b> · Progreso <span class="ax-rp-progress-value">{progress:.0f}%</span></span>
+            <span>{end_label}</span>
+          </div>
+          <div class="ax-rp-progress-track"><div class="ax-rp-progress-fill" style="width:{progress:.2f}%"></div></div>
+        </div>
+        """)
+
+        st.html(f"""
+        <div class="ax-rp-metric-grid">
+          <div class="ax-rp-metric"><small>REPLAY POINT</small><strong>{pd.Timestamp(current['open_time']).strftime('%d %b %Y')}</strong><span>{pd.Timestamp(current['open_time']).strftime('%H:%M UTC')}</span></div>
+          <div class="ax-rp-metric"><small>PRECIO ACTUAL</small><strong>{_fmt_price(float(current['close']))}</strong><span>{pct:+.2f}% desde inicio</span></div>
+          <div class="ax-rp-metric"><small>VELAS VISIBLES</small><strong>{len(visible)}</strong><span>de {len(frame)} descargadas</span></div>
+          <div class="ax-rp-metric"><small>FUENTE</small><strong>VERIFIED</strong><span>{market.provider}</span></div>
+        </div>
+        """)
 
     with right:
-        st.html('<div class="ax-bt-panel-title">SIMULADOR DE TRADE</div>')
+        st.html('<div class="ax-rp-panel-title">SIMULADOR DE TRADES</div>')
         current_price = float(current["close"])
         default_dist = max(current_price * 0.005, 0.000001)
 
-        direction = st.radio("Dirección", ["LONG", "SHORT"], horizontal=True)
+        direction = st.radio("Dirección", ["LONG", "SHORT"], horizontal=True, label_visibility="collapsed")
         if direction == "LONG":
             default_sl = current_price - default_dist
             default_tp = current_price + default_dist * 2
@@ -363,13 +569,22 @@ def render_backtesting_lab() -> None:
         entry = st.number_input("Entrada", min_value=0.0, value=float(current_price), format="%.8f")
         sl = st.number_input("Stop Loss", min_value=0.0, value=float(max(default_sl, 0.00000001)), format="%.8f")
         tp = st.number_input("Take Profit", min_value=0.0, value=float(max(default_tp, 0.00000001)), format="%.8f")
-        risk_amount = st.number_input("Riesgo ($)", min_value=1.0, value=100.0, step=10.0)
+        risk_amount = st.number_input("Riesgo $", min_value=1.0, value=100.0, step=10.0)
 
         plan = TradePlan(direction=direction, entry=entry, stop=sl, target=tp, risk_amount=risk_amount)
         valid, message = plan.validate()
-        st.metric("Riesgo / Beneficio", f"1 : {plan.rr:.2f}")
 
-        if st.button("⚡ Ejecutar simulación", width="stretch", disabled=not valid):
+        risk_distance = abs(entry - sl)
+        reward_distance = abs(tp - entry)
+        st.html(f"""
+        <div class="ax-rp-trade-summary">
+          <div><span>Riesgo / Recompensa</span><b class="good">1 : {plan.rr:.2f}</b></div>
+          <div><span>Distancia al SL</span><b>{_fmt_price(risk_distance)}</b></div>
+          <div><span>Distancia al TP</span><b>{_fmt_price(reward_distance)}</b></div>
+        </div>
+        """)
+
+        if st.button("▶ Ejecutar simulación", type="primary", width="stretch", disabled=not valid):
             st.session_state.bt_trade = {
                 "direction": direction,
                 "entry": entry,
@@ -381,22 +596,36 @@ def render_backtesting_lab() -> None:
             }
             st.session_state.bt_trade_result = None
             st.rerun()
+
         if not valid:
             st.caption(message)
 
+        # Active trade.
         if st.session_state.bt_trade:
             trade = st.session_state.bt_trade
             trade_plan = TradePlan(
-                direction=trade["direction"], entry=float(trade["entry"]), stop=float(trade["stop"]),
-                target=float(trade["target"]), risk_amount=float(trade["risk_amount"]),
+                direction=trade["direction"],
+                entry=float(trade["entry"]),
+                stop=float(trade["stop"]),
+                target=float(trade["target"]),
+                risk_amount=float(trade["risk_amount"]),
             )
             from_index = int(trade["created_index"])
             trade_candles = frame.iloc[from_index: cursor + 1].copy()
             result = evaluate_trade(trade_plan, trade_candles)
+            old_status = st.session_state.bt_trade_result["status"] if isinstance(st.session_state.bt_trade_result, dict) else None
             st.session_state.bt_trade_result = result
-            st.html('<div class="ax-bt-panel-title">OPERACIÓN ACTIVA</div>')
-            st.write(f"**{trade['direction']}** · Entry `{_fmt_price(trade['entry'])}`")
-            st.write(f"SL `{_fmt_price(trade['stop'])}` · TP `{_fmt_price(trade['target'])}`")
+
+            # Count closed trade once per status transition.
+            if result["status"] in ("WIN", "LOSS") and old_status not in ("WIN", "LOSS"):
+                st.session_state.bt_session_trades += 1
+                st.session_state.bt_session_pnl += float(result["pnl"])
+                if result["status"] == "WIN":
+                    st.session_state.bt_session_wins += 1
+                else:
+                    st.session_state.bt_session_losses += 1
+
+            st.html('<div class="ax-rp-panel-title">OPERACIÓN</div>')
             status = result["status"]
             if status == "WIN":
                 st.success(f"TP alcanzado · {result['r_multiple']:+.2f}R · ${result['pnl']:+,.2f}")
@@ -405,39 +634,78 @@ def render_backtesting_lab() -> None:
             elif status == "OPEN":
                 st.info(f"Abierta · {result['r_multiple']:+.2f}R · ${result['pnl']:+,.2f}")
             else:
-                st.warning("Orden pendiente: el precio todavía no tocó la entrada.")
-            st.metric("MFE", f"{result['mfe_r']:.2f} R")
-            st.metric("MAE", f"-{result['mae_r']:.2f} R")
-            if st.button("Cancelar / limpiar trade", width="stretch"):
+                st.warning("Pendiente: el precio todavía no tocó la entrada.")
+
+            st.html(f"""
+            <div class="ax-rp-trade-summary">
+              <div><span>Entry</span><b>{_fmt_price(trade['entry'])}</b></div>
+              <div><span>Stop</span><b>{_fmt_price(trade['stop'])}</b></div>
+              <div><span>Target</span><b>{_fmt_price(trade['target'])}</b></div>
+              <div><span>MFE</span><b>{result['mfe_r']:.2f}R</b></div>
+              <div><span>MAE</span><b>-{result['mae_r']:.2f}R</b></div>
+            </div>
+            """)
+
+            if st.button("Limpiar operación", width="stretch"):
                 st.session_state.bt_trade = None
                 st.session_state.bt_trade_result = None
                 st.rerun()
 
-        st.html('<div class="ax-bt-panel-title">LIQUIDITY MAP</div>')
-        st.html('<div class="ax-bt-warning"><b>Preparado, no falsificado.</b><br>La capa de heatmap se conectará a datos verificables. Esta versión no pinta “liquidaciones” inventadas a partir del precio.</div>')
+        st.html('<div class="ax-rp-panel-title">AXION AI REVIEW</div>')
+        st.html("""
+        <div class="ax-rp-warning">
+          <b>BETA · Preparado para Fase 6</b><br>
+          La revisión IA todavía no emite señales de mercado. Aquí evaluaremos ejecución, riesgo, disciplina y contexto verificable del replay.
+        </div>
+        """)
 
-    st.html('<div class="ax-bt-panel-title">FAVORITOS DE LA SESIÓN</div>')
-    fav_cols = st.columns(4)
-    for i, fav in enumerate(st.session_state.bt_favorites[:4]):
-        with fav_cols[i]:
-            if st.button(f"⭐ {fav}", key=f"bt_fav_{fav}", width="stretch"):
+        st.html(f'<div class="ax-rp-source">🛡 Datos verificados · {market.provider}</div>')
+
+    # Session metrics strip.
+    trades = int(st.session_state.bt_session_trades)
+    wins = int(st.session_state.bt_session_wins)
+    losses = int(st.session_state.bt_session_losses)
+    pnl = float(st.session_state.bt_session_pnl)
+    win_rate = (wins / trades * 100) if trades else 0.0
+    latest = st.session_state.bt_trade_result if isinstance(st.session_state.bt_trade_result, dict) else {}
+    mfe = float(latest.get("mfe_r", 0.0))
+    mae = float(latest.get("mae_r", 0.0))
+    profit_factor = (wins * 2 / losses) if losses > 0 else (wins * 2 if wins else 0.0)
+
+    st.html(f"""
+    <div class="ax-rp-bottom-grid">
+      <div class="ax-rp-bottom-card"><small>RESULTADO SESIÓN</small><strong class="{'pos' if pnl >= 0 else 'neg'}">${pnl:+,.2f}</strong></div>
+      <div class="ax-rp-bottom-card"><small>WIN RATE</small><strong>{win_rate:.1f}%</strong></div>
+      <div class="ax-rp-bottom-card"><small>MFE ACTUAL</small><strong>{mfe:.2f}R</strong></div>
+      <div class="ax-rp-bottom-card"><small>MAE ACTUAL</small><strong class="neg">-{mae:.2f}R</strong></div>
+      <div class="ax-rp-bottom-card"><small>PROFIT FACTOR*</small><strong>{profit_factor:.2f}</strong></div>
+      <div class="ax-rp-bottom-card"><small>TRADES CERRADOS</small><strong>{trades}</strong></div>
+    </div>
+    <div style="color:#566785;font-size:7px;margin-top:-6px">* Métrica provisional de sesión. El motor estadístico completo se implementa en la fase de Analytics.</div>
+    """)
+
+    # Favorites: collapse them so they don't interrupt the trading workflow.
+    with st.expander("⭐ Mercados favoritos", expanded=False):
+        fav_cols = st.columns(4)
+        for i, fav in enumerate(st.session_state.bt_favorites[:4]):
+            with fav_cols[i]:
+                if st.button(f"⭐ {fav}", key=f"bt_fav_{fav}", width="stretch"):
+                    try:
+                        _load_dataset(fav, st.session_state.bt_interval, st.session_state.bt_date)
+                        st.rerun()
+                    except MarketDataError as exc:
+                        st.error(str(exc))
+
+        add_col, action_col = st.columns([3,1])
+        with add_col:
+            fav_input = st.text_input("Agregar favorito", placeholder="Ej: SOLUSDT", key="bt_fav_input")
+        with action_col:
+            st.write("")
+            if st.button("Guardar", width="stretch"):
                 try:
-                    _load_dataset(fav, st.session_state.bt_interval, st.session_state.bt_date)
-                    st.rerun()
+                    resolved = resolve_symbol(fav_input)
+                    if resolved.symbol not in st.session_state.bt_favorites:
+                        st.session_state.bt_favorites.append(resolved.symbol)
+                    st.success(f"{resolved.display_symbol} agregado.")
                 except MarketDataError as exc:
                     st.error(str(exc))
-
-    add_col, action_col = st.columns([3,1])
-    with add_col:
-        fav_input = st.text_input("Agregar favorito", placeholder="Ej: SOLUSDT", key="bt_fav_input")
-    with action_col:
-        st.write("")
-        st.write("")
-        if st.button("⭐ Guardar", width="stretch"):
-            try:
-                resolved = resolve_symbol(fav_input)
-                if resolved.symbol not in st.session_state.bt_favorites:
-                    st.session_state.bt_favorites.append(resolved.symbol)
-                st.success(f"{resolved.display_symbol} agregado a favoritos.")
-            except MarketDataError as exc:
-                st.error(str(exc))
