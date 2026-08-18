@@ -278,4 +278,4 @@ def fetch_ticker_price(symbol: str) -> float:
         payload = response.json()
         return float(payload["price"])
     except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-        raise MarketDataError("No pudimos consultar el precio
+        raise MarketDataError("No pudimos consultar el precio actual.") from exc
