@@ -129,7 +129,7 @@ HTML = r"""
               <option value="3">1 : 3</option>
             </select>
           </label>
-          <div class="panel-note">Haz clic sobre el precio para colocar la entrada. Después arrastra Entrada, SL o TP.</div>
+          <div class="panel-note">Haz clic sobre el precio para colocar la entrada. Después arrastra los niveles como en un Position Tool.</div>
         </div>
 
         <div class="replay-dock">
@@ -781,77 +781,100 @@ export default async function(component) {
       parentElement.querySelector('#position-rr').textContent='1 : '+(reward/risk).toFixed(2);
     }
 
+    function drawRightPriceTag(y, text, bg, opts = {}) {
+      const r = canvasRect();
+      const padX = 8;
+      const h = opts.height || 22;
+      const x = r.width - (opts.offsetRight || 4);
+      ctx.save();
+      ctx.font = '10px Inter,system-ui';
+      const w = Math.max(opts.minWidth || 66, ctx.measureText(text).width + padX * 2);
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.roundRect(x - w, y - h / 2, w, h, 4);
+      ctx.fill();
+      ctx.fillStyle = opts.textColor || '#ffffff';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x - w + padX, y);
+      ctx.restore();
+      return {x: x - w, w, h};
+    }
+
     function drawPosition() {
       if (!position) return;
-      const r=canvasRect();
-      const left=Math.max(45,r.width*.16), right=Math.max(left+120,r.width-40);
-      const ye=yFromPrice(position.entry), ys=yFromPrice(position.stop), yt=yFromPrice(position.target);
+      const r = canvasRect();
 
+      const anchorX = Math.max(160, r.width * 0.62);
+      const boxWidth = Math.max(130, Math.min(240, r.width * 0.22));
+      const left = anchorX;
+      const right = Math.min(r.width - 92, left + boxWidth);
+
+      const ye = yFromPrice(position.entry);
+      const ys = yFromPrice(position.stop);
+      const yt = yFromPrice(position.target);
+
+      const topRisk = Math.min(ye, ys);
+      const riskH = Math.max(1, Math.abs(ye - ys));
+      const topReward = Math.min(ye, yt);
+      const rewardH = Math.max(1, Math.abs(ye - yt));
+
+      // TradingView-like compact block: red risk area, green reward area
       ctx.save();
-      const rewardTop=Math.min(ye,yt), rewardH=Math.abs(ye-yt);
-      const riskTop=Math.min(ye,ys), riskH=Math.abs(ye-ys);
-      ctx.globalAlpha=.12;
-      ctx.fillStyle=position.direction==='LONG'?themeColors.target:themeColors.stop;
-      ctx.fillRect(left,rewardTop,right-left,rewardH);
-      ctx.fillStyle=position.direction==='LONG'?themeColors.stop:themeColors.target;
-      ctx.fillRect(left,riskTop,right-left,riskH);
-      ctx.globalAlpha=1;
+      ctx.globalAlpha = .34;
+      ctx.fillStyle = position.direction === 'LONG' ? themeColors.target : themeColors.stop;
+      ctx.fillRect(left, topReward, right - left, rewardH);
+      ctx.fillStyle = position.direction === 'LONG' ? themeColors.stop : themeColors.target;
+      ctx.fillRect(left, topRisk, right - left, riskH);
+      ctx.globalAlpha = 1;
+
+      ctx.strokeStyle = 'rgba(255,255,255,.08)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left, Math.min(topRisk, topReward), right - left, Math.max(ys, yt) - Math.min(ys, yt));
       ctx.restore();
 
-      drawLine({x:left,y:ye},{x:right,y:ye},themeColors.entry,[7,4]);
-      drawLine({x:left,y:ys},{x:right,y:ys},themeColors.stop,[7,4]);
-      drawLine({x:left,y:yt},{x:right,y:yt},themeColors.target,[7,4]);
+      // entry line stretches through chart; stop/target only over block
+      drawLine({x:0, y:ye}, {x:r.width, y:ye}, themeColors.entry, [3, 3]);
+      drawLine({x:left, y:ys}, {x:right, y:ys}, themeColors.stop, []);
+      drawLine({x:left, y:yt}, {x:right, y:yt}, themeColors.target, []);
 
-      const labels = [
-        {y:ye,c:themeColors.entry,t:'Entrada',v:position.entry},
-        {y:ys,c:themeColors.stop,t:'Stop Loss',v:position.stop},
-        {y:yt,c:themeColors.target,t:'Take Profit',v:position.target}
-      ];
-
-      labels.forEach(item => {
+      // Small handles at the right edge of the position block
+      [
+        {y:ys, c:themeColors.stop},
+        {y:ye, c:themeColors.entry},
+        {y:yt, c:themeColors.target},
+      ].forEach(item => {
         ctx.save();
-
-        // draggable handle
-        ctx.fillStyle=item.c;
-        ctx.beginPath();ctx.arc(right-7,item.y,5.5,0,Math.PI*2);ctx.fill();
-
-        // TradingView-style name tag
-        const nameW = item.t === 'Take Profit' ? 75 : item.t === 'Stop Loss' ? 68 : 52;
-        ctx.fillStyle=item.c;
+        ctx.fillStyle = item.c;
         ctx.beginPath();
-        ctx.roundRect(right-nameW-76,item.y-12,nameW,23,5);
+        ctx.arc(right, item.y, 4.5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle='#ffffff';
-        ctx.font='10px Inter,system-ui';
-        ctx.fillText(item.t,right-nameW-69,item.y+3);
-
-        // price tag on right edge
-        const priceText=fmt(item.v,4);
-        ctx.font='10px Inter,system-ui';
-        const priceW=Math.max(62,ctx.measureText(priceText).width+14);
-        ctx.fillStyle=item.c;
-        ctx.beginPath();
-        ctx.roundRect(right-priceW,item.y-12,priceW,23,4);
-        ctx.fill();
-        ctx.fillStyle='#ffffff';
-        ctx.fillText(priceText,right-priceW+7,item.y+3);
-
         ctx.restore();
       });
 
-      // R:R floating badge in the middle of the position
-      const risk=Math.max(Math.abs(position.entry-position.stop),1e-12);
-      const reward=Math.abs(position.target-position.entry);
-      const rr=(reward/risk).toFixed(2);
-      const midX=(left+right)/2;
-      const midY=(ye+yt)/2;
+      // Right-side scale labels like TradingView
+      drawRightPriceTag(ys, fmt(position.stop, 2), themeColors.stop, {minWidth: 86});
+      drawRightPriceTag(ye, fmt(position.entry, 2), '#a7aeb9', {textColor:'#142032', minWidth: 86});
+      drawRightPriceTag(yt, fmt(position.target, 2), themeColors.target, {minWidth: 86});
+
+      // Optional tiny current marker text inside block
+      const risk = Math.max(Math.abs(position.entry - position.stop), 1e-12);
+      const reward = Math.abs(position.target - position.entry);
+      const rr = (reward / risk).toFixed(2);
+      const centerY = (ye + yt) / 2;
+      const rrText = `1:${rr}`;
       ctx.save();
-      ctx.fillStyle='rgba(5,12,25,.96)';
-      ctx.strokeStyle='rgba(68,209,232,.75)';
-      ctx.lineWidth=1;
-      ctx.beginPath();ctx.roundRect(midX-28,midY-14,56,28,7);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#ecf6ff';ctx.font='11px Inter,system-ui';
-      ctx.fillText('1:'+rr,midX-18,midY+4);
+      ctx.font = '10px Inter,system-ui';
+      const rrW = Math.max(44, ctx.measureText(rrText).width + 16);
+      ctx.fillStyle = 'rgba(8,16,30,.94)';
+      ctx.strokeStyle = 'rgba(107,194,233,.65)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(left + 10, centerY - 12, rrW, 24, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#eff7ff';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(rrText, left + 18, centerY);
       ctx.restore();
     }
 
@@ -891,6 +914,13 @@ export default async function(component) {
 
       parentElement.querySelector('#fib-panel').classList.toggle('open',tool==='fib');
       parentElement.querySelector('#position-panel').classList.toggle('open',tool==='long'||tool==='short');
+
+      const longTab = parentElement.querySelector('#position-long');
+      const shortTab = parentElement.querySelector('#position-short');
+      if (longTab && shortTab) {
+        longTab.classList.toggle('selected', tool === 'long');
+        shortTab.classList.toggle('selected', tool === 'short');
+      }
 
       canvas.style.pointerEvents = tool==='cursor' ? 'none' : 'auto';
       canvas.style.cursor = tool==='cursor' ? 'default' : 'crosshair';
@@ -1107,7 +1137,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v3",
+    "axion_prime_chart_workspace_v4",
     html=HTML,
     css=CSS,
     js=JS,
