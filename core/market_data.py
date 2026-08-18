@@ -432,6 +432,65 @@ def fetch_massive_aggregates(
     return frame.iloc[:requested].reset_index(drop=True)
 
 
+
+@st.cache_data(ttl=5, show_spinner=False)
+def fetch_recent_klines(symbol: str, interval: str = "1m", limit: int = 300) -> pd.DataFrame:
+    """
+    Compatibilidad con el Market Stream existente de AXION.
+    Descarga las velas más recientes verificadas de Binance Spot.
+    """
+    if interval not in INTERVALS:
+        raise MarketDataError(f"Timeframe no soportado: {interval}")
+
+    params = {
+        "symbol": normalize_symbol(symbol),
+        "interval": INTERVALS[interval],
+        "limit": max(50, min(int(limit), 1000)),
+    }
+
+    try:
+        response = requests.get(
+            f"{BINANCE_MARKET_BASE}/api/v3/klines",
+            params=params,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        payload: Any = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise MarketDataError(
+            "No pudimos descargar las velas actuales del mercado."
+        ) from exc
+
+    if not isinstance(payload, list) or not payload:
+        raise MarketDataError("La fuente no devolvió velas actuales.")
+
+    rows = []
+    for item in payload:
+        if not isinstance(item, list) or len(item) < 11:
+            continue
+
+        rows.append(
+            {
+                "open_time": pd.to_datetime(item[0], unit="ms", utc=True),
+                "open": float(item[1]),
+                "high": float(item[2]),
+                "low": float(item[3]),
+                "close": float(item[4]),
+                "volume": float(item[5]),
+                "close_time": pd.to_datetime(item[6], unit="ms", utc=True),
+                "quote_volume": float(item[7]),
+                "trades": int(item[8]),
+                "taker_buy_base": float(item[9]),
+                "taker_buy_quote": float(item[10]),
+            }
+        )
+
+    frame = pd.DataFrame(rows)
+    if frame.empty:
+        raise MarketDataError("No se pudieron interpretar las velas actuales.")
+
+    return frame.sort_values("open_time").reset_index(drop=True)
+
 def get_backtest_dataset(
     user_symbol: str,
     interval: str,
