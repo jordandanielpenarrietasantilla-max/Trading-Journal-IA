@@ -510,6 +510,7 @@ def render_v2_sidebar() -> None:
         _nav("➕ Registrar Trade", "Registrar Trade", "ax_trade", active)
         _nav("📕 Track Record", "Track Record", "ax_track", active)
         _nav("🤖 Chat IA", "Chat IA", "ax_chat", active)
+        _nav("⏱️ Backtesting Lab", "Backtesting Lab", "ax_backtest", active)
 
         st.html('<div class="ax-section">ANÁLISIS Y MEJORA</div>')
         _nav("🧠 Psicotrading", "Psicotrading", "ax_psy", active)
