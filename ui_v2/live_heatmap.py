@@ -1,8 +1,257 @@
 from __future__ import annotations
 
-import streamlit as st
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
-from core.orderflow_history import load_orderflow_history
+import streamlit as st
+from supabase import Client, create_client
+
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+
+
+def _secret(name: str) -> str | None:
+    value = os.getenv(name)
+    if value:
+        return str(value).strip()
+
+    try:
+        value = st.secrets.get(name)
+        if value:
+            return str(value).strip()
+    except Exception:
+        pass
+
+    # Optional nested structure:
+    # [supabase]
+    # url = "..."
+    # service_role_key = "..."
+    try:
+        supabase_cfg = st.secrets.get("supabase", {})
+        nested_name = {
+            "SUPABASE_URL": "url",
+            "SUPABASE_SERVICE_ROLE_KEY": "service_role_key",
+        }.get(name)
+        if nested_name:
+            value = supabase_cfg.get(nested_name)
+            if value:
+                return str(value).strip()
+    except Exception:
+        pass
+
+    return None
+
+
+@st.cache_resource(show_spinner=False)
+def _client() -> Client:
+    url = _secret("SUPABASE_URL")
+    key = _secret("SUPABASE_SERVICE_ROLE_KEY")
+
+    if not url:
+        raise RuntimeError(
+            "Falta SUPABASE_URL en los Secrets de Streamlit."
+        )
+
+    if not key:
+        raise RuntimeError(
+            "Falta SUPABASE_SERVICE_ROLE_KEY en los Secrets de Streamlit. "
+            "La clave se usa únicamente del lado del servidor y nunca se envía al navegador."
+        )
+
+    return create_client(url, key)
+
+
+def _iso_to_ms(value: Any) -> int:
+    if value is None:
+        return 0
+
+    text = str(value).strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+
+    dt = datetime.fromisoformat(text)
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return int(dt.timestamp() * 1000)
+
+
+def _fetch_all(
+    *,
+    table: str,
+    columns: str,
+    symbol: str,
+    cutoff_iso: str,
+    page_size: int = 1000,
+) -> list[dict[str, Any]]:
+    client = _client()
+
+    rows: list[dict[str, Any]] = []
+    offset = 0
+
+    while True:
+        response = (
+            client.table(table)
+            .select(columns)
+            .eq("symbol", symbol)
+            .gte("ts", cutoff_iso)
+            .order("ts", desc=False)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+
+        batch = list(response.data or [])
+        rows.extend(batch)
+
+        if len(batch) < page_size:
+            break
+
+        offset += page_size
+
+        # Safety guard: more than enough for the AXION chart.
+        if offset >= 10_000:
+            break
+
+    return rows
+
+
+def _downsample_evenly(
+    rows: list[dict[str, Any]],
+    max_points: int,
+) -> list[dict[str, Any]]:
+    if len(rows) <= max_points:
+        return rows
+
+    if max_points <= 1:
+        return [rows[-1]]
+
+    last = len(rows) - 1
+
+    indices = sorted(
+        {
+            round(i * last / (max_points - 1))
+            for i in range(max_points)
+        }
+    )
+
+    return [rows[i] for i in indices]
+
+
+def _compact_depth_row(row: dict[str, Any]) -> dict[str, Any]:
+    buckets_raw = row.get("buckets") or []
+    compact: list[list[float]] = []
+
+    if isinstance(buckets_raw, list):
+        for item in buckets_raw:
+            if not isinstance(item, dict):
+                continue
+
+            try:
+                p = float(item.get("p"))
+                b = float(item.get("b", 0))
+                a = float(item.get("a", 0))
+                q = float(item.get("q", b + a))
+            except (TypeError, ValueError):
+                continue
+
+            compact.append([p, b, a, q])
+
+    return {
+        "t": _iso_to_ms(row.get("ts")),
+        "m": float(row.get("mid") or 0),
+        "bb": float(row.get("best_bid") or 0),
+        "ba": float(row.get("best_ask") or 0),
+        "sp": float(row.get("spread") or 0),
+        "s": float(row.get("bucket_step") or 1),
+        "x": compact,
+    }
+
+
+def _compact_trade_row(row: dict[str, Any]) -> list[float | int]:
+    return [
+        _iso_to_ms(row.get("ts")),
+        float(row.get("open") or 0),
+        float(row.get("high") or 0),
+        float(row.get("low") or 0),
+        float(row.get("close") or 0),
+        float(row.get("volume") or 0),
+        float(row.get("buy_volume") or 0),
+        float(row.get("sell_volume") or 0),
+        float(row.get("delta") or 0),
+        float(row.get("vwap") or 0),
+        int(row.get("trade_count") or 0),
+    ]
+
+
+@st.cache_data(ttl=5, show_spinner=False)
+def load_orderflow_history(
+    *,
+    symbol: str = "BTCUSDT",
+    minutes: int = 30,
+    max_depth_columns: int = 900,
+) -> dict[str, Any]:
+    """
+    Load real historical order-flow data recorded by AXION.
+
+    Depth is downsampled only in the time dimension to keep the Streamlit
+    component payload performant. Bucket quantities themselves are unchanged.
+    Trade-second rows are preserved at 1-second resolution.
+    """
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=minutes)
+    cutoff_iso = cutoff.isoformat()
+
+    depth_rows = _fetch_all(
+        table="orderflow_depth",
+        columns=(
+            "ts,mid,best_bid,best_ask,spread,"
+            "bucket_step,buckets"
+        ),
+        symbol=symbol,
+        cutoff_iso=cutoff_iso,
+    )
+
+    trade_rows = _fetch_all(
+        table="orderflow_trade_seconds",
+        columns=(
+            "ts,open,high,low,close,volume,"
+            "buy_volume,sell_volume,delta,vwap,trade_count"
+        ),
+        symbol=symbol,
+        cutoff_iso=cutoff_iso,
+    )
+
+    depth_rows = _downsample_evenly(
+        depth_rows,
+        max_points=max_depth_columns,
+    )
+
+    depth = [
+        _compact_depth_row(row)
+        for row in depth_rows
+        if row.get("ts")
+    ]
+
+    trades = [
+        _compact_trade_row(row)
+        for row in trade_rows
+        if row.get("ts")
+    ]
+
+    return {
+        "symbol": symbol,
+        "minutes": minutes,
+        "generated_at_ms": int(now.timestamp() * 1000),
+        "depth": depth,
+        "trades": trades,
+        "depth_count": len(depth),
+        "trade_count": len(trades),
+    }
+
 
 
 HTML = r"""
@@ -856,7 +1105,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_boceto3_orderflow_pro_v1",
+    "axion_boceto3_orderflow_pro_v1_selfcontained",
     html=HTML,
     css=CSS,
     js=JS,
