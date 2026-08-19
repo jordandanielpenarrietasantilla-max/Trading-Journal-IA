@@ -198,15 +198,27 @@ HTML = r"""
             <input type="color" id="drawing-color" value="#47d8eb">
           </label>
 
-          <select id="drawing-line-style" class="context-select" title="Estilo de línea">
-            <option value="solid">━ Sólida</option>
-            <option value="dashed">┅ Guiones</option>
-            <option value="dotted">·· Puntos</option>
-          </select>
+          <div class="context-segment line-style-segment" title="Estilo de línea">
+            <button type="button" class="line-style-btn active" data-line-style="solid" title="Línea sólida">━</button>
+            <button type="button" class="line-style-btn" data-line-style="dashed" title="Línea con guiones">┅</button>
+            <button type="button" class="line-style-btn" data-line-style="dotted" title="Línea punteada">···</button>
+          </div>
 
-          <select id="drawing-line-width" class="context-select context-width" title="Grosor">
-            <option value="1">1 px</option>
-            <option value="2" selected>2 px</option>
+          <div class="context-segment line-width-segment" title="Grosor">
+            <button type="button" class="line-width-btn active" data-line-width="1">1</button>
+            <button type="button" class="line-width-btn" data-line-width="2">2</button>
+            <button type="button" class="line-width-btn" data-line-width="3">3</button>
+            <button type="button" class="line-width-btn" data-line-width="4">4</button>
+          </div>
+
+          <select id="drawing-line-style" hidden>
+            <option value="solid" selected>Sólida</option>
+            <option value="dashed">Guiones</option>
+            <option value="dotted">Puntos</option>
+          </select>
+          <select id="drawing-line-width" hidden>
+            <option value="1" selected>1 px</option>
+            <option value="2">2 px</option>
             <option value="3">3 px</option>
             <option value="4">4 px</option>
           </select>
@@ -660,6 +672,35 @@ button{user-select:none}
   outline:none;
 }
 .context-width{width:58px}
+.context-segment{
+  height:28px;
+  display:flex;
+  align-items:center;
+  overflow:hidden;
+  border:1px solid #424246;
+  border-radius:5px;
+  background:#232326;
+}
+.context-segment button{
+  min-width:29px;
+  height:27px;
+  border:0;
+  border-right:1px solid #3a3a3d;
+  background:transparent;
+  color:#aeb1b7;
+  font-size:10px;
+  cursor:pointer;
+  padding:0 7px;
+}
+.context-segment button:last-child{border-right:0}
+.context-segment button:hover{background:#333336;color:#fff}
+.context-segment button.active{
+  background:#3a3a3e;
+  color:#63d9ef;
+  box-shadow:inset 0 -2px 0 #4dcbe7;
+}
+.line-style-segment button{min-width:34px;font-weight:700}
+.line-width-segment button{min-width:27px;padding:0 5px}
 .context-range{
   height:28px;
   display:flex;
@@ -1013,7 +1054,7 @@ export default async function(component) {
     let drawingStyle = {
       color:'#47d8eb',
       lineStyle:'solid',
-      lineWidth:2,
+      lineWidth:1,
       opacity:.90,
       fillOpacity:.12,
       extendLeft:false,
@@ -1316,8 +1357,8 @@ export default async function(component) {
     }
 
     function dashForStyle(style,width=1) {
-      if (style==='dotted') return [Math.max(1,width),Math.max(3,width*2.4)];
-      if (style==='dashed') return [Math.max(5,width*3.5),Math.max(4,width*2.5)];
+      if (style==='dotted') return [1,Math.max(4,width*3)];
+      if (style==='dashed') return [Math.max(6,width*4),Math.max(4,width*3)];
       return [];
     }
 
@@ -1942,6 +1983,7 @@ export default async function(component) {
       drawingExtendRight.checked=Boolean(s.extendRight);
       drawingExtendLeftBtn.classList.toggle('on',drawingExtendLeft.checked);
       drawingExtendRightBtn.classList.toggle('on',drawingExtendRight.checked);
+      refreshDirectStyleButtons();
     }
 
     function drawSelectionOverlay(d) {
@@ -2012,6 +2054,8 @@ export default async function(component) {
     const drawingColorInput=parentElement.querySelector('#drawing-color');
     const drawingLineStyle=parentElement.querySelector('#drawing-line-style');
     const drawingLineWidth=parentElement.querySelector('#drawing-line-width');
+    const lineStyleButtons=[...parentElement.querySelectorAll('[data-line-style]')];
+    const lineWidthButtons=[...parentElement.querySelectorAll('[data-line-width]')];
     const drawingOpacity=parentElement.querySelector('#drawing-opacity');
     const drawingFillOpacity=parentElement.querySelector('#drawing-fill-opacity');
     const drawingExtendLeft=parentElement.querySelector('#drawing-extend-left');
@@ -2019,6 +2063,15 @@ export default async function(component) {
     const drawingExtendLeftBtn=parentElement.querySelector('#drawing-extend-left-btn');
     const drawingExtendRightBtn=parentElement.querySelector('#drawing-extend-right-btn');
     const contextDeleteSelected=parentElement.querySelector('#context-delete-selected');
+
+    function refreshDirectStyleButtons() {
+      lineStyleButtons.forEach(btn => {
+        btn.classList.toggle('active',btn.dataset.lineStyle===drawingLineStyle.value);
+      });
+      lineWidthButtons.forEach(btn => {
+        btn.classList.toggle('active',btn.dataset.lineWidth===drawingLineWidth.value);
+      });
+    }
 
     function syncDrawingStyleFromControls() {
       drawingStyle={
@@ -2041,8 +2094,23 @@ export default async function(component) {
 
       drawingExtendLeftBtn.classList.toggle('on',drawingExtendLeft.checked);
       drawingExtendRightBtn.classList.toggle('on',drawingExtendRight.checked);
+      refreshDirectStyleButtons();
       drawAll();
     }
+
+    lineStyleButtons.forEach(btn => {
+      btn.onclick=() => {
+        drawingLineStyle.value=btn.dataset.lineStyle;
+        syncDrawingStyleFromControls();
+      };
+    });
+
+    lineWidthButtons.forEach(btn => {
+      btn.onclick=() => {
+        drawingLineWidth.value=btn.dataset.lineWidth;
+        syncDrawingStyleFromControls();
+      };
+    });
 
     drawingExtendLeftBtn.onclick=() => {
       drawingExtendLeft.checked=!drawingExtendLeft.checked;
@@ -2110,13 +2178,7 @@ export default async function(component) {
         'zone-mode',
         tool==='rectangle' || selectedType==='rectangle'
       );
-      if (tool==='rectangle' && selectedDrawingIndex < 0) {
-        // Professional default for zones: fine border and subtle fill.
-        drawingLineWidth.value='1';
-        drawingFillOpacity.value='10';
-        drawingOpacity.value='85';
-        syncDrawingStyleFromControls();
-      }
+
 
       parentElement.querySelector('#drawing-style-tool').textContent=
         selectedDrawingIndex >= 0 ? 'OBJETO SELECCIONADO' :
@@ -2800,7 +2862,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v19",
+    "axion_prime_chart_workspace_v21",
     html=HTML,
     css=CSS,
     js=JS,
@@ -2814,7 +2876,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V19 con toolbar profesional y propiedades contextuales."""
+    """Monta AXION REPLAY V21 sin estilos forzados; configuración manual por usuario."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
