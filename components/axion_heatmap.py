@@ -118,12 +118,13 @@ HTML = r"""
         </div>
 
         <div class="heatmap-canvas">
+          <canvas id="real-heatmap-canvas"></canvas>
           <div class="grid"></div>
 
           <div class="feed-warning">
-            <div class="warning-eyebrow">HEATMAP ORDER FLOW</div>
-            <strong>Esperando profundidad real de mercado</strong>
-            <p>
+            <div class="warning-eyebrow" id="feed-eyebrow">HEATMAP ORDER FLOW</div>
+            <strong id="feed-title">Esperando profundidad real de mercado</strong>
+            <p id="feed-message">
               El precio puede conectarse de forma independiente, pero las bandas de liquidez,
               órdenes pasivas, DOM y delta permanecerán vacías hasta recibir un order book verificable.
             </p>
@@ -169,21 +170,21 @@ HTML = r"""
     <section class="live-metrics">
       <article class="metric-card">
         <div class="metric-title buy">LIQUIDEZ COMPRADORA</div>
-        <div class="metric-value disabled">—</div>
+        <div class="metric-value disabled" id="buy-liquidity">—</div>
         <div class="metric-sub">Order book requerido</div>
         <div class="meter"><i></i></div>
       </article>
 
       <article class="metric-card">
         <div class="metric-title sell">LIQUIDEZ VENDEDORA</div>
-        <div class="metric-value disabled">—</div>
+        <div class="metric-value disabled" id="sell-liquidity">—</div>
         <div class="metric-sub">Order book requerido</div>
         <div class="meter sell-meter"><i></i></div>
       </article>
 
       <article class="metric-card">
         <div class="metric-title delta">DELTA ACUMULADO</div>
-        <div class="metric-value disabled">—</div>
+        <div class="metric-value disabled" id="delta-value">—</div>
         <div class="metric-sub">Trades agresores requeridos</div>
         <div class="delta-meter"><i></i></div>
       </article>
@@ -423,19 +424,30 @@ button{user-select:none}
 .chart-head strong{font-size:12px;color:#eef4fc}
 .chart-head span{color:#7888a1}
 .heatmap-canvas{position:absolute;inset:34px 0 22px 0;overflow:hidden;background:#030711}
+#real-heatmap-canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:1;
+}
 .grid{
   position:absolute;inset:0;
+  z-index:2;
+
   background-image:
     linear-gradient(rgba(51,71,103,.20) 1px,transparent 1px),
     linear-gradient(90deg,rgba(51,71,103,.18) 1px,transparent 1px);
   background-size:100% 54px,90px 100%
 }
 .current-price-line{
+  z-index:5;
   position:absolute;left:0;right:0;top:56%;
   border-top:1px dashed rgba(69,214,235,.32)
 }
 .feed-warning{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  position:absolute;
+  z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);
   width:min(430px,62%);padding:18px 22px;text-align:center;
   border:1px solid rgba(78,106,154,.30);border-radius:12px;
   background:rgba(5,12,22,.88);backdrop-filter:blur(8px);
@@ -445,6 +457,28 @@ button{user-select:none}
 .feed-warning strong{display:block;margin-top:6px;font-size:13px;color:#eef4fc}
 .feed-warning p{margin:7px auto 0;max-width:360px;color:#718098;font-size:7.5px;line-height:1.5}
 .warning-badges{display:flex;justify-content:center;gap:6px;margin-top:12px}
+
+.feed-warning.connected{
+  top:16px;
+  left:16px;
+  transform:none;
+  width:auto;
+  max-width:360px;
+  padding:8px 11px;
+  text-align:left;
+  border-color:rgba(40,226,160,.22);
+  background:rgba(4,16,23,.78);
+}
+.feed-warning.connected .warning-eyebrow{color:#3ce4a5}
+.feed-warning.connected strong{font-size:9px;margin-top:2px}
+.feed-warning.connected p{display:none}
+.feed-warning.connected .warning-badges{display:none}
+.heatmap-canvas.live-connected{
+  background:
+    radial-gradient(circle at 55% 40%,rgba(36,86,146,.09),transparent 34%),
+    #030711;
+}
+
 .warning-badges span{
   padding:5px 7px;border:1px solid #34445e;border-radius:999px;
   color:#8997ab;background:#08111d;font-size:6px;font-weight:800;letter-spacing:.55px
@@ -524,13 +558,45 @@ export default function(component) {
   const shell=parentElement.querySelector('#axion-live-shell');
   if (!shell) return;
 
+  let destroyed=false;
+  let depthSocket=null;
+  let reconnectTimer=null;
+  let drawTimer=null;
+  let resizeObserver=null;
+
   const symbolSelect=parentElement.querySelector('#symbol-select');
   const intensity=parentElement.querySelector('#intensity');
   const contrast=parentElement.querySelector('#contrast');
   const tfButtons=[...parentElement.querySelectorAll('[data-tf]')];
 
-  const currentSymbol=String(data?.symbol || 'XAUUSD').toUpperCase();
+  const heatCanvas=parentElement.querySelector('#real-heatmap-canvas');
+  const heatCtx=heatCanvas?.getContext('2d');
+  const heatStage=parentElement.querySelector('.heatmap-canvas');
+  const feedWarning=parentElement.querySelector('.feed-warning');
+  const feedEyebrow=parentElement.querySelector('#feed-eyebrow');
+  const feedTitle=parentElement.querySelector('#feed-title');
+  const feedMessage=parentElement.querySelector('#feed-message');
+
+  const headerPrice=parentElement.querySelector('#header-price');
+  const headerChange=parentElement.querySelector('#header-change');
+  const buyLiquidityEl=parentElement.querySelector('#buy-liquidity');
+  const sellLiquidityEl=parentElement.querySelector('#sell-liquidity');
+  const deltaEl=parentElement.querySelector('#delta-value');
+
+  let currentSymbol=String(data?.symbol || 'XAUUSD').toUpperCase();
   const currentTf=String(data?.timeframe || '15m');
+
+  let book={bids:new Map(),asks:new Map(),lastUpdateId:0};
+  let bufferedEvents=[];
+  let snapshotReady=false;
+  let previousMid=null;
+  let firstMid=null;
+
+  // Rolling columns. Each column contains price/qty data captured from the real book.
+  let history=[];
+  const MAX_HISTORY=170;
+  const LEVELS_PER_SIDE=65;
+  let captureTimer=null;
 
   symbolSelect.value=currentSymbol;
   tfButtons.forEach(btn=>btn.classList.toggle('active',btn.dataset.tf===currentTf));
@@ -539,7 +605,7 @@ export default function(component) {
     return value==='BTCUSDT' ? 'BTC/USDT' : 'XAU/USD';
   }
   function symbolSubtitle(value){
-    return value==='BTCUSDT' ? 'Bitcoin / TetherUS' : 'Oro / Dólar estadounidense';
+    return value==='BTCUSDT' ? 'Bitcoin / TetherUS · Binance Spot' : 'Oro / Dólar estadounidense';
   }
   function paintHeader(){
     const label=symbolLabel(symbolSelect.value);
@@ -548,6 +614,29 @@ export default function(component) {
     parentElement.querySelector('#instrument-sub').textContent=symbolSubtitle(symbolSelect.value);
   }
   paintHeader();
+
+  function setFeedState(kind,title,message=''){
+    if(!feedWarning) return;
+    feedWarning.classList.toggle('connected',kind==='connected');
+
+    if(kind==='connected'){
+      feedEyebrow.textContent='● BINANCE ORDER BOOK · LIVE';
+      feedTitle.textContent=title;
+      feedMessage.textContent='';
+    }else if(kind==='connecting'){
+      feedEyebrow.textContent='HEATMAP ORDER FLOW';
+      feedTitle.textContent=title || 'Conectando profundidad real...';
+      feedMessage.textContent=message || 'AXION está sincronizando el snapshot y las actualizaciones del libro.';
+    }else if(kind==='unavailable'){
+      feedEyebrow.textContent='MARKET DEPTH NO DISPONIBLE';
+      feedTitle.textContent=title || 'Este activo todavía no tiene una fuente de profundidad conectada';
+      feedMessage.textContent=message || 'AXION no generará liquidez sintética.';
+    }else{
+      feedEyebrow.textContent='CONEXIÓN INTERRUMPIDA';
+      feedTitle.textContent=title || 'Reconectando profundidad real...';
+      feedMessage.textContent=message || 'No se mostrarán datos nuevos hasta recuperar el feed.';
+    }
+  }
 
   function updateServerClock(){
     const d=new Date();
@@ -565,13 +654,342 @@ export default function(component) {
     if(hour>=13 && hour<22) session='Nueva York';
     const sessionEl=parentElement.querySelector('#header-session');
     if(sessionEl) sessionEl.textContent=session;
+    const bottomSession=parentElement.querySelector('#session-name');
+    if(bottomSession) bottomSession.textContent=session;
   }
   updateServerClock();
   const clockTimer=setInterval(updateServerClock,1000);
 
+  function clearFeed(){
+    if(depthSocket){
+      try{ depthSocket.onclose=null; depthSocket.close(); }catch(_){}
+      depthSocket=null;
+    }
+    if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer=null; }
+    if(captureTimer){ clearInterval(captureTimer); captureTimer=null; }
+    book={bids:new Map(),asks:new Map(),lastUpdateId:0};
+    bufferedEvents=[];
+    snapshotReady=false;
+    history=[];
+    previousMid=null;
+    firstMid=null;
+    updateMarketStats();
+    drawHeatmap();
+  }
+
+  function normalizeLevels(raw){
+    return (Array.isArray(raw)?raw:[])
+      .map(x=>[Number(x[0]),Number(x[1])])
+      .filter(x=>Number.isFinite(x[0]) && Number.isFinite(x[1]) && x[0]>0 && x[1]>=0);
+  }
+
+  function applySide(map,levels){
+    for(const [price,qty] of normalizeLevels(levels)){
+      if(qty===0) map.delete(price);
+      else map.set(price,qty);
+    }
+  }
+
+  function applyDepthEvent(evt){
+    applySide(book.bids,evt.b);
+    applySide(book.asks,evt.a);
+    book.lastUpdateId=Number(evt.u || book.lastUpdateId);
+  }
+
+  function sortedBook(){
+    const bids=[...book.bids.entries()].sort((a,b)=>b[0]-a[0]);
+    const asks=[...book.asks.entries()].sort((a,b)=>a[0]-b[0]);
+    return {bids,asks};
+  }
+
+  function currentMid(){
+    const {bids,asks}=sortedBook();
+    if(!bids.length || !asks.length) return null;
+    return (bids[0][0]+asks[0][0])/2;
+  }
+
+  function formatPrice(v){
+    if(!Number.isFinite(v)) return '—';
+    return v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  function formatQty(v){
+    if(!Number.isFinite(v)) return '—';
+    if(v>=1000) return (v/1000).toFixed(2)+'K';
+    return v.toFixed(2);
+  }
+
+  function updateMarketStats(){
+    const {bids,asks}=sortedBook();
+    const mid=currentMid();
+
+    if(mid!=null){
+      headerPrice.textContent=formatPrice(mid);
+      if(firstMid==null) firstMid=mid;
+      const pct=((mid-firstMid)/firstMid)*100;
+      headerChange.textContent=(pct>=0?'+':'')+pct.toFixed(3)+'% · Binance Spot';
+      headerChange.classList.remove('waiting','positive','negative');
+      headerChange.classList.add(pct>=0?'positive':'negative');
+
+      const priceLine=parentElement.querySelector('.current-price-line');
+      if(priceLine) priceLine.style.top='50%';
+      previousMid=mid;
+    }else{
+      headerPrice.textContent='—';
+      headerChange.textContent=currentSymbol==='BTCUSDT'?'Sincronizando feed':'Depth no disponible';
+      headerChange.className='quote-change waiting';
+    }
+
+    const bidQty=bids.slice(0,LEVELS_PER_SIDE).reduce((s,x)=>s+x[1],0);
+    const askQty=asks.slice(0,LEVELS_PER_SIDE).reduce((s,x)=>s+x[1],0);
+    if(buyLiquidityEl) buyLiquidityEl.textContent=bidQty?formatQty(bidQty)+' BTC':'—';
+    if(sellLiquidityEl) sellLiquidityEl.textContent=askQty?formatQty(askQty)+' BTC':'—';
+
+    // This is NOT trade delta. It is explicitly order-book imbalance.
+    if(deltaEl){
+      const total=bidQty+askQty;
+      const imbalance=total>0 ? ((bidQty-askQty)/total)*100 : 0;
+      deltaEl.textContent=total>0 ? (imbalance>=0?'+':'')+imbalance.toFixed(1)+'% OB':'—';
+    }
+  }
+
+  function captureColumn(){
+    if(!snapshotReady || currentSymbol!=='BTCUSDT') return;
+    const {bids,asks}=sortedBook();
+    const mid=currentMid();
+    if(mid==null) return;
+
+    history.push({
+      t:Date.now(),
+      mid,
+      bids:bids.slice(0,LEVELS_PER_SIDE),
+      asks:asks.slice(0,LEVELS_PER_SIDE)
+    });
+    if(history.length>MAX_HISTORY) history.shift();
+    updateMarketStats();
+    drawHeatmap();
+  }
+
+  function heatColor(norm,isAsk){
+    const strength=Math.max(0,Math.min(1,norm));
+    const alpha=.10 + strength*.88;
+    if(strength>.80){
+      return `rgba(255,190,55,${alpha})`;
+    }
+    if(strength>.55){
+      return isAsk
+        ? `rgba(245,82,94,${alpha})`
+        : `rgba(34,211,177,${alpha})`;
+    }
+    if(strength>.28){
+      return isAsk
+        ? `rgba(113,55,150,${alpha})`
+        : `rgba(19,105,159,${alpha})`;
+    }
+    return `rgba(14,46,94,${Math.max(.05,alpha*.6)})`;
+  }
+
+  function resizeHeatmap(){
+    if(!heatCanvas || !heatStage) return;
+    const r=heatStage.getBoundingClientRect();
+    const dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1));
+    const w=Math.max(1,Math.floor(r.width*dpr));
+    const h=Math.max(1,Math.floor(r.height*dpr));
+    if(heatCanvas.width!==w || heatCanvas.height!==h){
+      heatCanvas.width=w;
+      heatCanvas.height=h;
+    }
+    drawHeatmap();
+  }
+
+  function drawHeatmap(){
+    if(!heatCtx || !heatCanvas) return;
+    const w=heatCanvas.width;
+    const h=heatCanvas.height;
+    heatCtx.clearRect(0,0,w,h);
+
+    if(!history.length) return;
+
+    const allMids=history.map(c=>c.mid);
+    const latest=history[history.length-1];
+    const prices=[];
+    latest.bids.forEach(x=>prices.push(x[0]));
+    latest.asks.forEach(x=>prices.push(x[0]));
+    if(!prices.length) return;
+
+    // Scale is centered around the current visible depth range.
+    let minP=Math.min(...prices);
+    let maxP=Math.max(...prices);
+    const pad=(maxP-minP)*.10 || latest.mid*.0005;
+    minP-=pad;
+    maxP+=pad;
+
+    const allQty=[];
+    for(const col of history){
+      col.bids.forEach(x=>allQty.push(x[1]));
+      col.asks.forEach(x=>allQty.push(x[1]));
+    }
+    allQty.sort((a,b)=>a-b);
+    const q95=allQty.length ? allQty[Math.floor((allQty.length-1)*.95)] : 1;
+    const qtyScale=Math.max(q95,1e-9);
+
+    const cw=w/Math.max(MAX_HISTORY,history.length);
+    const xOffset=w-cw*history.length;
+
+    history.forEach((col,i)=>{
+      const x=xOffset+i*cw;
+      for(const [price,qty] of col.bids){
+        if(price<minP || price>maxP) continue;
+        const y=h-((price-minP)/(maxP-minP))*h;
+        const norm=Math.min(1,qty/qtyScale);
+        heatCtx.fillStyle=heatColor(norm,false);
+        heatCtx.fillRect(x,y-2.2,cw+1,4.4);
+      }
+      for(const [price,qty] of col.asks){
+        if(price<minP || price>maxP) continue;
+        const y=h-((price-minP)/(maxP-minP))*h;
+        const norm=Math.min(1,qty/qtyScale);
+        heatCtx.fillStyle=heatColor(norm,true);
+        heatCtx.fillRect(x,y-2.2,cw+1,4.4);
+      }
+    });
+
+    // Current mid line from real book.
+    const midY=h-((latest.mid-minP)/(maxP-minP))*h;
+    heatCtx.strokeStyle='rgba(83,220,236,.85)';
+    heatCtx.lineWidth=Math.max(1,window.devicePixelRatio||1);
+    heatCtx.setLineDash([5,4]);
+    heatCtx.beginPath();
+    heatCtx.moveTo(0,midY);
+    heatCtx.lineTo(w,midY);
+    heatCtx.stroke();
+    heatCtx.setLineDash([]);
+  }
+
+  async function fetchSnapshot(){
+    const url='https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=1000';
+    const response=await fetch(url,{cache:'no-store'});
+    if(!response.ok) throw new Error('Snapshot HTTP '+response.status);
+    const snap=await response.json();
+
+    const bids=new Map();
+    const asks=new Map();
+    for(const [p,q] of normalizeLevels(snap.bids)) if(q>0) bids.set(p,q);
+    for(const [p,q] of normalizeLevels(snap.asks)) if(q>0) asks.set(p,q);
+
+    book={bids,asks,lastUpdateId:Number(snap.lastUpdateId||0)};
+
+    // Discard updates entirely before snapshot.
+    bufferedEvents=bufferedEvents.filter(evt=>Number(evt.u)>book.lastUpdateId);
+
+    // Find first event that bridges snapshot update id.
+    let start=-1;
+    for(let i=0;i<bufferedEvents.length;i++){
+      const evt=bufferedEvents[i];
+      const U=Number(evt.U),u=Number(evt.u);
+      if(U<=book.lastUpdateId+1 && u>=book.lastUpdateId+1){
+        start=i;
+        break;
+      }
+    }
+
+    if(start>=0){
+      for(let i=start;i<bufferedEvents.length;i++){
+        const evt=bufferedEvents[i];
+        if(Number(evt.u)<=book.lastUpdateId) continue;
+        applyDepthEvent(evt);
+      }
+    }
+
+    bufferedEvents=[];
+    snapshotReady=true;
+    setFeedState('connected','BTC/USDT · profundidad real conectada');
+    heatStage?.classList.add('live-connected');
+    updateMarketStats();
+
+    if(captureTimer) clearInterval(captureTimer);
+    captureColumn();
+    captureTimer=setInterval(captureColumn,700);
+  }
+
+  function connectBinanceDepth(){
+    clearFeed();
+
+    if(currentSymbol!=='BTCUSDT'){
+      setFeedState(
+        'unavailable',
+        'XAU/USD todavía no tiene Market Depth conectado',
+        'Para oro conectaremos una fuente real de profundidad de GC/MGC. AXION no mostrará liquidez sintética.'
+      );
+      return;
+    }
+
+    setFeedState('connecting','Conectando BTC/USDT a Binance Spot...');
+
+    const ws='wss://stream.binance.com:9443/ws/btcusdt@depth@100ms';
+    depthSocket=new WebSocket(ws);
+
+    depthSocket.onmessage=(event)=>{
+      if(destroyed) return;
+      let evt;
+      try{evt=JSON.parse(event.data)}catch(_){return}
+
+      if(!snapshotReady){
+        bufferedEvents.push(evt);
+        if(bufferedEvents.length>5000) bufferedEvents.shift();
+        return;
+      }
+
+      const expected=book.lastUpdateId+1;
+      const U=Number(evt.U),u=Number(evt.u);
+
+      if(u<expected) return;
+
+      // A gap means the local book can no longer be trusted. Restart sync.
+      if(U>expected){
+        setFeedState('error','Secuencia del order book interrumpida','AXION volverá a sincronizar el snapshot para no mostrar profundidad incorrecta.');
+        snapshotReady=false;
+        history=[];
+        fetchSnapshot().catch(()=>{
+          scheduleReconnect();
+        });
+        return;
+      }
+
+      applyDepthEvent(evt);
+    };
+
+    depthSocket.onopen=()=>{
+      fetchSnapshot().catch(err=>{
+        console.error('AXION Binance snapshot',err);
+        setFeedState('error','No se pudo sincronizar Binance',String(err?.message||err));
+        scheduleReconnect();
+      });
+    };
+
+    depthSocket.onerror=()=>{
+      setFeedState('error','Error en WebSocket de Binance','AXION intentará reconectar automáticamente.');
+    };
+
+    depthSocket.onclose=()=>{
+      if(!destroyed && currentSymbol==='BTCUSDT'){
+        setFeedState('error','Conexión Binance cerrada','Reconectando...');
+        scheduleReconnect();
+      }
+    };
+  }
+
+  function scheduleReconnect(){
+    if(destroyed || currentSymbol!=='BTCUSDT') return;
+    if(reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer=setTimeout(connectBinanceDepth,1800);
+  }
+
   symbolSelect.onchange=()=>{
+    currentSymbol=String(symbolSelect.value||'XAUUSD').toUpperCase();
     paintHeader();
-    setTriggerValue('symbol',symbolSelect.value);
+    setTriggerValue('symbol',currentSymbol);
+    connectBinanceDepth();
   };
 
   tfButtons.forEach(btn=>{
@@ -582,7 +1000,10 @@ export default function(component) {
     };
   });
 
-  intensity.oninput=()=>setStateValue('heatmap_intensity',Number(intensity.value));
+  intensity.oninput=()=>{
+    setStateValue('heatmap_intensity',Number(intensity.value));
+    if(heatCanvas) heatCanvas.style.opacity=String(Math.max(.18,Number(intensity.value)/100));
+  };
 
   contrast.oninput=()=>{
     setStateValue('heatmap_contrast',Number(contrast.value));
@@ -621,12 +1042,25 @@ export default function(component) {
     }catch(err){console.error('AXION Heatmap fullscreen',err)}
   };
 
-  return ()=>{clearInterval(clockTimer)};
+  if(heatStage && typeof ResizeObserver!=='undefined'){
+    resizeObserver=new ResizeObserver(resizeHeatmap);
+    resizeObserver.observe(heatStage);
+  }
+  resizeHeatmap();
+  connectBinanceDepth();
+
+  return ()=>{
+    destroyed=true;
+    clearInterval(clockTimer);
+    clearFeed();
+    if(drawTimer) clearInterval(drawTimer);
+    resizeObserver?.disconnect();
+  };
 }
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v4",
+    "axion_live_heatmap_v5_data",
     html=HTML,
     css=CSS,
     js=JS,
@@ -642,7 +1076,7 @@ def render_axion_live_heatmap(
     height: int = 860,
 ):
     """
-    Renderiza AXION LIVE / Heatmap V4.
+    Renderiza AXION LIVE / Heatmap V5 DATA.
     No genera ni simula datos de liquidez.
     """
     payload = {
