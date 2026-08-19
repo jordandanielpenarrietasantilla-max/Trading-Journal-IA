@@ -54,8 +54,14 @@ HTML = r"""
       <button class="draw-btn" type="button" data-tool="trend" title="Línea de tendencia">
         <svg viewBox="0 0 24 24"><path d="M5 18L19 6"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/></svg><span>Tendencia</span>
       </button>
+      <button class="draw-btn" type="button" data-tool="ray" title="Rayo">
+        <svg viewBox="0 0 24 24"><path d="M5 18L18 7"/><path d="M14 7h4v4"/><circle cx="5" cy="18" r="2"/></svg><span>Rayo</span>
+      </button>
       <button class="draw-btn" type="button" data-tool="horizontal" title="Línea horizontal">
         <svg viewBox="0 0 24 24"><path d="M4 12h16"/></svg><span>Horizontal</span>
+      </button>
+      <button class="draw-btn" type="button" data-tool="vertical" title="Línea vertical">
+        <svg viewBox="0 0 24 24"><path d="M12 4v16"/></svg><span>Vertical</span>
       </button>
       <button class="draw-btn" type="button" data-tool="rectangle" title="Rectángulo">
         <svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12"/></svg><span>Zona</span>
@@ -99,6 +105,48 @@ HTML = r"""
       <div class="chart-stage" id="chart-stage">
         <div id="chart-host"></div>
         <canvas id="drawing-layer"></canvas>
+
+        <div class="drawing-style-panel" id="drawing-style-panel">
+          <div class="drawing-style-title">
+            <span>ESTILO DE DIBUJO</span>
+            <span id="drawing-style-tool">TENDENCIA</span>
+          </div>
+          <div class="drawing-style-controls">
+            <label title="Color">
+              <span>Color</span>
+              <input type="color" id="drawing-color" value="#47d8eb">
+            </label>
+            <label title="Estilo de línea">
+              <span>Línea</span>
+              <select id="drawing-line-style">
+                <option value="solid">Sólida</option>
+                <option value="dashed">Guiones</option>
+                <option value="dotted">Puntos</option>
+              </select>
+            </label>
+            <label title="Grosor">
+              <span>Grosor</span>
+              <select id="drawing-line-width">
+                <option value="1">1 px</option>
+                <option value="2" selected>2 px</option>
+                <option value="3">3 px</option>
+                <option value="4">4 px</option>
+              </select>
+            </label>
+            <label class="opacity-control" title="Opacidad">
+              <span>Opacidad</span>
+              <input type="range" id="drawing-opacity" min="20" max="100" value="90">
+            </label>
+            <label class="mini-check" title="Extender a la izquierda">
+              <input type="checkbox" id="drawing-extend-left">
+              <span>← Ext.</span>
+            </label>
+            <label class="mini-check" title="Extender a la derecha">
+              <input type="checkbox" id="drawing-extend-right">
+              <span>Ext. →</span>
+            </label>
+          </div>
+        </div>
 
         <div class="floating-tool-panel" id="fib-panel">
           <div class="floating-title"><span>Fibonacci</span><button type="button" data-close-panel>×</button></div>
@@ -435,6 +483,46 @@ button{user-select:none}
   border:1px solid rgba(59,206,225,.28);border-radius:10px;padding:10px;z-index:15
 }
 .floating-tool-panel.open{display:block}
+.drawing-style-panel{
+  position:absolute;
+  top:9px;
+  left:10px;
+  z-index:12;
+  display:none;
+  min-width:520px;
+  max-width:calc(100% - 20px);
+  padding:8px 10px;
+  border:1px solid rgba(73,119,186,.28);
+  border-radius:9px;
+  background:rgba(4,11,23,.96);
+  box-shadow:0 12px 34px rgba(0,0,0,.34);
+  backdrop-filter:blur(10px);
+}
+.drawing-style-panel.open{display:block}
+.drawing-style-title{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:14px;margin-bottom:7px;font-size:7px;font-weight:800;
+  letter-spacing:.8px;color:#687c9d
+}
+#drawing-style-tool{color:#54d8ea}
+.drawing-style-controls{display:flex;align-items:end;gap:7px;flex-wrap:wrap}
+.drawing-style-controls label{
+  display:flex;flex-direction:column;gap:3px;font-size:7px;color:#7789a7
+}
+.drawing-style-controls input[type=color]{
+  width:38px;height:27px;border:1px solid #314660;border-radius:5px;
+  padding:2px;background:#06101d;cursor:pointer
+}
+.drawing-style-controls select{
+  height:28px;border:1px solid #263a55;border-radius:5px;
+  background:#06101d;color:#dbe7fa;padding:0 7px;font-size:8px
+}
+.drawing-style-controls input[type=range]{width:82px}
+.drawing-style-controls .mini-check{
+  flex-direction:row;align-items:center;height:28px;padding:0 6px;
+  border:1px solid #263a55;border-radius:5px;background:#06101d
+}
+.drawing-style-controls .mini-check input{accent-color:#42d5e8}
 .floating-title{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:800;color:#e6eefb}
 .floating-title button{border:0;background:transparent;color:#7e8daa;font-size:18px;cursor:pointer}
 .fib-levels{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
@@ -599,6 +687,14 @@ export default async function(component) {
     let drawingStart = null;
     let drawingDraft = null;
     let drawings = [];
+    let drawingStyle = {
+      color:'#47d8eb',
+      lineStyle:'solid',
+      lineWidth:2,
+      opacity:.90,
+      extendLeft:false,
+      extendRight:false
+    };
     let position = null;
     let draggingPositionHandle = null;
     let draggingWholePosition = false;
@@ -884,42 +980,187 @@ export default async function(component) {
       const y = series.priceToCoordinate(Number(p));
       return y == null ? 0 : Number(y);
     }
-    function drawLine(a,b,color='#47d8eb',dash=[]) {
+    function hexToRgba(hex,opacity=1) {
+      const clean=String(hex||'#47d8eb').replace('#','');
+      const value=parseInt(clean.length===3
+        ? clean.split('').map(x=>x+x).join('')
+        : clean,16);
+      const r=(value>>16)&255;
+      const g=(value>>8)&255;
+      const b=value&255;
+      return `rgba(${r},${g},${b},${Math.max(0,Math.min(1,opacity))})`;
+    }
+
+    function dashForStyle(style,width=1) {
+      if (style==='dotted') return [Math.max(1,width),Math.max(3,width*2.4)];
+      if (style==='dashed') return [Math.max(5,width*3.5),Math.max(4,width*2.5)];
+      return [];
+    }
+
+    function currentDrawingStyle(overrides={}) {
+      return {
+        color:drawingStyle.color,
+        lineStyle:drawingStyle.lineStyle,
+        lineWidth:drawingStyle.lineWidth,
+        opacity:drawingStyle.opacity,
+        extendLeft:drawingStyle.extendLeft,
+        extendRight:drawingStyle.extendRight,
+        ...overrides
+      };
+    }
+
+    function pointToAnchor(p) {
+      let logical=chart.timeScale().coordinateToLogical(p.x);
+      if (logical == null) logical=currentCursor;
+      return {
+        logical:Number(logical),
+        price:priceFromY(p.y)
+      };
+    }
+
+    function anchorToPoint(a) {
+      if (!a) return null;
+      const x=chart.timeScale().logicalToCoordinate(Number(a.logical));
+      const y=yFromPrice(Number(a.price));
+      if (x == null || y == null) return null;
+      return {x:Number(x),y:Number(y)};
+    }
+
+    function drawLine(a,b,style=currentDrawingStyle()) {
+      if (!a || !b) return;
+      let p1={...a},p2={...b};
+
+      // Extend trend lines/rays to chart edges while preserving slope.
+      if ((style.extendLeft || style.extendRight) && Math.abs(p2.x-p1.x) > .001) {
+        const r=canvasRect();
+        const dx=p2.x-p1.x;
+        const dy=p2.y-p1.y;
+        const slope=dy/dx;
+
+        if (style.extendLeft) {
+          const x=0;
+          p1={x,y:p1.y+slope*(x-p1.x)};
+        }
+        if (style.extendRight) {
+          const x=r.width;
+          p2={x,y:p2.y+slope*(x-p2.x)};
+        }
+      }
+
       ctx.save();
-      ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.setLineDash(dash);
-      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.globalAlpha=Number(style.opacity ?? 1);
+      ctx.strokeStyle=style.color || '#47d8eb';
+      ctx.lineWidth=Number(style.lineWidth || 1);
+      ctx.lineCap=style.lineStyle==='dotted' ? 'round' : 'butt';
+      ctx.setLineDash(dashForStyle(style.lineStyle,style.lineWidth));
+      ctx.beginPath();
+      ctx.moveTo(p1.x,p1.y);
+      ctx.lineTo(p2.x,p2.y);
+      ctx.stroke();
       ctx.restore();
     }
-    function drawZone(a,b) {
-      const x=Math.min(a.x,b.x), y=Math.min(a.y,b.y);
-      const w=Math.abs(a.x-b.x), h=Math.abs(a.y-b.y);
+
+    function drawZone(a,b,style=currentDrawingStyle()) {
+      if (!a || !b) return;
+      const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);
+      const w=Math.abs(a.x-b.x),h=Math.abs(a.y-b.y);
       ctx.save();
-      ctx.fillStyle='rgba(44,172,208,.09)';
-      ctx.strokeStyle='rgba(69,211,231,.86)';
-      ctx.lineWidth=1.2;
-      ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);
+      ctx.fillStyle=hexToRgba(style.color,Math.min(.24,(style.opacity ?? .9)*.18));
+      ctx.strokeStyle=hexToRgba(style.color,style.opacity ?? .9);
+      ctx.lineWidth=Number(style.lineWidth || 1);
+      ctx.setLineDash(dashForStyle(style.lineStyle,style.lineWidth));
+      ctx.fillRect(x,y,w,h);
+      ctx.strokeRect(x,y,w,h);
       ctx.restore();
     }
+
     function fibLevels() {
       return [...parentElement.querySelectorAll('[data-fib-level]')]
         .filter(x => x.checked)
         .map(x => Number(x.dataset.fibLevel));
     }
-    function drawFib(a,b,levels) {
-      const left=Math.min(a.x,b.x), right=Math.max(a.x,b.x);
-      const top=Math.min(a.y,b.y), bottom=Math.max(a.y,b.y);
-      const colors=['#d5dfef',themeColors.fib,themeColors.fib,'#8b74e9','#d1a539','#e19635','#c7773c','#d5dfef'];
-      levels.forEach((lv,i) => {
+
+    function drawFib(a,b,levels,style=currentDrawingStyle({color:themeColors.fib})) {
+      if (!a || !b) return;
+      const left=Math.min(a.x,b.x),right=Math.max(a.x,b.x);
+      const top=Math.min(a.y,b.y),bottom=Math.max(a.y,b.y);
+      const r=canvasRect();
+
+      levels.forEach((lv) => {
         const y=top+(bottom-top)*lv;
-        drawLine({x:left,y},{x:right+220,y},colors[i%colors.length],[5,4]);
-        ctx.save();ctx.font='11px Inter,system-ui';ctx.fillStyle=colors[i%colors.length];
-        ctx.fillText(String(lv),right+226,y+4);ctx.restore();
+        let x1=style.extendLeft ? 0 : left;
+        let x2=style.extendRight ? r.width : right;
+        drawLine({x:x1,y},{x:x2,y},style);
+        ctx.save();
+        ctx.globalAlpha=style.opacity ?? 1;
+        ctx.font='10px Inter,system-ui';
+        ctx.fillStyle=style.color;
+        ctx.fillText(String(lv),Math.min(r.width-34,x2+5),y-4);
+        ctx.restore();
       });
-      drawLine(a,b,'#9caac0',[6,5]);
+
+      drawLine(a,b,currentDrawingStyle({
+        color:'#9caac0',
+        lineStyle:'dashed',
+        lineWidth:1,
+        opacity:.8
+      }));
     }
-    function drawLabel(p,text) {
-      ctx.save();ctx.font='12px Inter,system-ui';ctx.fillStyle='#edf4ff';
-      ctx.fillText(text,p.x+5,p.y-6);ctx.restore();
+
+    function drawLabel(p,text,style=currentDrawingStyle({color:'#edf4ff'})) {
+      if (!p) return;
+      ctx.save();
+      ctx.globalAlpha=style.opacity ?? 1;
+      ctx.font='12px Inter,system-ui';
+      ctx.fillStyle=style.color || '#edf4ff';
+      ctx.fillText(text,p.x+5,p.y-6);
+      ctx.restore();
+    }
+
+    function renderAnchoredDrawing(d) {
+      const r=canvasRect();
+      const style=d.style || currentDrawingStyle();
+
+      if (d.type==='horizontal') {
+        const y=yFromPrice(d.price);
+        drawLine({x:0,y},{x:r.width,y},style);
+        return;
+      }
+
+      if (d.type==='vertical') {
+        const x=chart.timeScale().logicalToCoordinate(Number(d.logical));
+        if (x == null) return;
+        drawLine({x,y:0},{x,y:r.height},style);
+        return;
+      }
+
+      if (d.type==='text') {
+        drawLabel(anchorToPoint(d.a),d.text,style);
+        return;
+      }
+
+      const a=anchorToPoint(d.a);
+      const b=anchorToPoint(d.b);
+      if (!a || !b) return;
+
+      if (d.type==='trend' || d.type==='ray') {
+        const lineStyle={...style};
+        if (d.type==='ray') lineStyle.extendRight=true;
+        drawLine(a,b,lineStyle);
+      } else if (d.type==='rectangle') {
+        drawZone(a,b,style);
+      } else if (d.type==='fib') {
+        drawFib(a,b,d.levels || [],style);
+      } else if (d.type==='measure') {
+        drawLine(a,b,style);
+        const priceDelta=Math.abs(Number(d.a.price)-Number(d.b.price));
+        const pct=Math.abs(priceDelta/Math.max(Math.abs(Number(d.a.price)),1e-12))*100;
+        drawLabel(
+          {x:(a.x+b.x)/2,y:(a.y+b.y)/2},
+          `${fmt(priceDelta,Math.abs(d.a.price)<10?5:2)} · ${pct.toFixed(2)}%`,
+          currentDrawingStyle({color:'#c7d2e4',opacity:.95})
+        );
+      }
     }
 
     function updatePositionPanel() {
@@ -1294,23 +1535,23 @@ export default async function(component) {
       const r=canvasRect();
       ctx.clearRect(0,0,r.width,r.height);
 
-      drawings.forEach(d => {
-        if (d.type==='trend') drawLine(d.a,d.b);
-        if (d.type==='horizontal') drawLine({x:0,y:d.a.y},{x:r.width,y:d.a.y},'#d3a63a',[6,5]);
-        if (d.type==='rectangle') drawZone(d.a,d.b);
-        if (d.type==='fib') drawFib(d.a,d.b,d.levels);
-        if (d.type==='measure') {
-          drawLine(d.a,d.b,'#bdc9dc',[4,4]);
-          drawLabel({x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}, Math.round(Math.hypot(d.a.x-d.b.x,d.a.y-d.b.y))+' px');
-        }
-        if (d.type==='text') drawLabel(d.a,d.text);
-      });
+      drawings.forEach(renderAnchoredDrawing);
 
+      // While drawing, preview remains in screen coordinates. Once released,
+      // it is converted to logical-time + price and becomes chart-anchored.
       if (drawingStart && drawingDraft) {
-        if (activeTool==='trend') drawLine(drawingStart,drawingDraft);
-        if (activeTool==='rectangle') drawZone(drawingStart,drawingDraft);
-        if (activeTool==='fib') drawFib(drawingStart,drawingDraft,fibLevels());
-        if (activeTool==='measure') drawLine(drawingStart,drawingDraft,'#bdc9dc',[4,4]);
+        const previewStyle=currentDrawingStyle();
+        if (activeTool==='trend'||activeTool==='ray') {
+          const s={...previewStyle};
+          if (activeTool==='ray') s.extendRight=true;
+          drawLine(drawingStart,drawingDraft,s);
+        }
+        if (activeTool==='rectangle') drawZone(drawingStart,drawingDraft,previewStyle);
+        if (activeTool==='fib') drawFib(drawingStart,drawingDraft,fibLevels(),previewStyle);
+        if (activeTool==='measure') drawLine(
+          drawingStart,drawingDraft,
+          currentDrawingStyle({color:'#bdc9dc',lineStyle:'dashed'})
+        );
       }
 
       drawPosition();
@@ -1323,12 +1564,54 @@ export default async function(component) {
       draggingPositionHandle=null;
       draggingWholePosition=false;
 
-      parentElement.querySelectorAll('[data-tool]').forEach(btn => {
+      const drawingColorInput=parentElement.querySelector('#drawing-color');
+    const drawingLineStyle=parentElement.querySelector('#drawing-line-style');
+    const drawingLineWidth=parentElement.querySelector('#drawing-line-width');
+    const drawingOpacity=parentElement.querySelector('#drawing-opacity');
+    const drawingExtendLeft=parentElement.querySelector('#drawing-extend-left');
+    const drawingExtendRight=parentElement.querySelector('#drawing-extend-right');
+
+    function syncDrawingStyleFromControls() {
+      drawingStyle={
+        color:drawingColorInput.value,
+        lineStyle:drawingLineStyle.value,
+        lineWidth:Number(drawingLineWidth.value||2),
+        opacity:Number(drawingOpacity.value||90)/100,
+        extendLeft:Boolean(drawingExtendLeft.checked),
+        extendRight:Boolean(drawingExtendRight.checked)
+      };
+      drawAll();
+    }
+
+    [
+      drawingColorInput,drawingLineStyle,drawingLineWidth,drawingOpacity,
+      drawingExtendLeft,drawingExtendRight
+    ].forEach(el => {
+      el.oninput=syncDrawingStyleFromControls;
+      el.onchange=syncDrawingStyleFromControls;
+    });
+
+    parentElement.querySelectorAll('[data-tool]').forEach(btn => {
         btn.classList.toggle('active',btn.dataset.tool===tool);
       });
 
       parentElement.querySelector('#fib-panel').classList.toggle('open',tool==='fib');
       parentElement.querySelector('#position-panel').classList.toggle('open',tool==='long'||tool==='short');
+
+      const drawingTools=new Set([
+        'trend','ray','horizontal','vertical','rectangle','fib','text','measure'
+      ]);
+      const stylePanel=parentElement.querySelector('#drawing-style-panel');
+      stylePanel.classList.toggle('open',drawingTools.has(tool));
+      parentElement.querySelector('#drawing-style-tool').textContent=
+        tool==='trend'?'TENDENCIA':
+        tool==='ray'?'RAYO':
+        tool==='horizontal'?'HORIZONTAL':
+        tool==='vertical'?'VERTICAL':
+        tool==='rectangle'?'ZONA':
+        tool==='fib'?'FIBONACCI':
+        tool==='text'?'TEXTO':
+        tool==='measure'?'MEDICIÓN':'DIBUJO';
 
       const longTab = parentElement.querySelector('#position-long');
       const shortTab = parentElement.querySelector('#position-short');
@@ -1504,7 +1787,24 @@ export default async function(component) {
       // Drawing tools intentionally intercept chart navigation while drawing.
       if (activeTool==='horizontal') {
         interceptPointer(e);
-        drawings.push({type:'horizontal',a:p});
+        drawings.push({
+          type:'horizontal',
+          price:priceFromY(p.y),
+          style:currentDrawingStyle()
+        });
+        drawAll();
+        return;
+      }
+
+      if (activeTool==='vertical') {
+        interceptPointer(e);
+        let logical=chart.timeScale().coordinateToLogical(p.x);
+        if (logical == null) logical=currentCursor;
+        drawings.push({
+          type:'vertical',
+          logical:Number(logical),
+          style:currentDrawingStyle()
+        });
         drawAll();
         return;
       }
@@ -1512,12 +1812,17 @@ export default async function(component) {
       if (activeTool==='text') {
         interceptPointer(e);
         const label=window.prompt('Texto para el gráfico:','Nota');
-        if (label) drawings.push({type:'text',a:p,text:label});
+        if (label) drawings.push({
+          type:'text',
+          a:pointToAnchor(p),
+          text:label,
+          style:currentDrawingStyle()
+        });
         drawAll();
         return;
       }
 
-      if (['trend','rectangle','fib','measure'].includes(activeTool)) {
+      if (['trend','ray','rectangle','fib','measure'].includes(activeTool)) {
         interceptPointer(e);
         drawingStart=p;
         drawingDraft=p;
@@ -1600,7 +1905,13 @@ export default async function(component) {
 
       interceptPointer(e);
       const finish=pointerPoint(e);
-      const d={type:activeTool,a:drawingStart,b:finish};
+      const d={
+        type:activeTool,
+        a:pointToAnchor(drawingStart),
+        b:pointToAnchor(finish),
+        style:currentDrawingStyle()
+      };
+      if (activeTool==='ray') d.style={...d.style,extendRight:true};
       if (activeTool==='fib') d.levels=fibLevels();
       drawings.push(d);
       drawingStart=null;
@@ -1776,7 +2087,8 @@ export default async function(component) {
         name:workspaceName.value || 'Workspace Trader',
         fib_template:parentElement.querySelector('#fib-template').value,
         risk_template:parentElement.querySelector('#risk-template').value,
-        colors:{...themeColors}
+        colors:{...themeColors},
+        drawing_style:{...drawingStyle}
       };
       setStateValue('workspace', workspacePayload);
       try {
@@ -1806,6 +2118,17 @@ export default async function(component) {
       syncColorInputs();
       applyTheme();
     }
+
+    if (currentWorkspace.drawing_style) {
+      drawingStyle={...drawingStyle,...currentWorkspace.drawing_style};
+      drawingColorInput.value=drawingStyle.color;
+      drawingLineStyle.value=drawingStyle.lineStyle;
+      drawingLineWidth.value=String(drawingStyle.lineWidth);
+      drawingOpacity.value=String(Math.round(Number(drawingStyle.opacity)*100));
+      drawingExtendLeft.checked=Boolean(drawingStyle.extendLeft);
+      drawingExtendRight.checked=Boolean(drawingStyle.extendRight);
+    }
+
     applyFibTemplate(fibTemplateSelect.value);
 
     function resizeCanvas() {
@@ -1855,7 +2178,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v14",
+    "axion_prime_chart_workspace_v15",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1869,7 +2192,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V14 con estado visual dinámico de la operación."""
+    """Monta AXION REPLAY V15 con dibujos anclados y estilos profesionales."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
