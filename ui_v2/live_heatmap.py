@@ -300,7 +300,7 @@ HTML = r"""
 
     <div class="toolbar-controls">
       <span>Intensidad</span>
-      <input id="heat-intensity" type="range" min="45" max="100" value="82">
+      <input id="heat-intensity" type="range" min="45" max="100" value="70">
       <span>Histórico</span>
       <strong id="history-label">30m</strong>
     </div>
@@ -627,7 +627,7 @@ export default function(component) {
   let resizeObserver=null;
 
   let currentTf=String(data?.timeframe||'1m');
-  let intensity=.82;
+  let intensity=.70;
 
   const history=data?.history||{};
   const HISTORY_MS=Math.max(5,Number(history.minutes||30))*60_000;
@@ -833,9 +833,9 @@ export default function(component) {
       :bias>.2?`rgba(80,42,136,${(.16+n*.66)*a})`
       :`rgba(61,42,128,${(.16+n*.66)*a})`;
     if(n<.58)return`rgba(139,46,151,${(.19+n*.64)*a})`;
-    if(n<.78)return`rgba(220,56,82,${(.24+n*.61)*a})`;
-    if(n<.92)return`rgba(255,111,38,${(.32+n*.54)*a})`;
-    return`rgba(255,210,48,${(.48+n*.45)*a})`
+    if(n<.78)return`rgba(220,56,82,${(.20+n*.50)*a})`;
+    if(n<.92)return`rgba(255,111,38,${(.26+n*.46)*a})`;
+    return`rgba(255,210,48,${(.36+n*.38)*a})`
   }
 
   function drawGrid(ctx,w,h,q){
@@ -847,7 +847,7 @@ export default function(component) {
   function drawHeat(){
     resizeCanvas(heatCanvas);
     const q=dpr(),w=heatCanvas.width,h=heatCanvas.height;
-    hctx.clearRect(0,0,w,h);hctx.fillStyle='#02060d';hctx.fillRect(0,0,w,h);
+    hctx.clearRect(0,0,w,h);hctx.fillStyle='#01050b';hctx.fillRect(0,0,w,h);
     drawGrid(hctx,w,h,q);
 
     const win=timeWindow(),cols=depthHistory.filter(c=>c.t>=win.start&&c.t<=win.end);
@@ -901,7 +901,7 @@ export default function(component) {
     }
     const vwap=vol>0?notional/vol:null;
     if(Number.isFinite(vwap)&&vwap>=minP&&vwap<=maxP){
-      const y=yOf(vwap);octx.strokeStyle='rgba(83,169,255,.72)';octx.lineWidth=1*q;
+      const y=yOf(vwap);octx.strokeStyle='rgba(83,169,255,.84)';octx.lineWidth=1*q;
       octx.setLineDash([7*q,5*q]);octx.beginPath();octx.moveTo(0,y);octx.lineTo(w,y);octx.stroke();
       octx.setLineDash([]);octx.fillStyle='#6eafff';octx.font=`${7*q}px Inter`;octx.fillText('VWAP',8*q,Math.max(11*q,y-4*q))
     }
@@ -915,38 +915,83 @@ export default function(component) {
     }
     const poc=[...profile.entries()].sort((a,b)=>b[1]-a[1])[0];
     if(poc&&poc[0]>=minP&&poc[0]<=maxP){
-      const y=yOf(poc[0]);octx.strokeStyle='rgba(246,177,48,.9)';octx.lineWidth=1*q;
+      const y=yOf(poc[0]);octx.strokeStyle='rgba(246,177,48,.96)';octx.lineWidth=1*q;
       octx.setLineDash([8*q,5*q]);octx.beginPath();octx.moveTo(0,y);octx.lineTo(w,y);octx.stroke();
       octx.setLineDash([]);octx.fillStyle='#f2b33c';octx.font=`${7*q}px Inter`;octx.fillText('FLOW POC',45*q,Math.max(11*q,y-4*q))
     }
 
     // Candles clearly ABOVE heatmap.
     const theoretical=(tfMs()/(win.end-win.start))*w;
-    const bodyW=clamp(theoretical*.54,4*q,10*q),wickW=clamp(bodyW*.18,1*q,1.7*q);
+    const bodyW=clamp(theoretical*.72,5.5*q,13*q);
+    const wickW=clamp(bodyW*.20,1.4*q,2.2*q);
 
     for(const c of cnds){
       if(![c.o,c.h,c.l,c.c].every(Number.isFinite)||c.h<minP||c.l>maxP)continue;
       const x=xOf(c.t+tfMs()/2);
       if(x<0||x>w)continue;
       const yh=yOf(c.h),yl=yOf(c.l),yo=yOf(c.o),yc=yOf(c.c),up=c.c>=c.o;
-      const fill=up?'#25ddb2':'#f25369',edge=up?'#8af1d3':'#ff96a4';
+      const fill=up?'#18e1ae':'#ff4f68';
+      const edge=up?'#b3ffe7':'#ffd0d7';
+      const halo=up?'rgba(24,225,174,.18)':'rgba(255,79,104,.18)';
 
-      octx.strokeStyle='rgba(0,4,10,.96)';octx.lineWidth=wickW+2*q;
+      // subtle local dimming behind candle so it never gets lost in heat
+      const shadeTop=Math.min(yh,yl)-3*q;
+      const shadeH=Math.abs(yl-yh)+6*q;
+      octx.fillStyle='rgba(2,6,12,.22)';
+      octx.fillRect(x-bodyW*.9,shadeTop,bodyW*1.8,shadeH);
+
+      // outer wick halo / separator
+      octx.strokeStyle='rgba(0,3,8,.98)';
+      octx.lineWidth=wickW+2.4*q;
       octx.beginPath();octx.moveTo(x,yh);octx.lineTo(x,yl);octx.stroke();
 
-      octx.strokeStyle=edge;octx.lineWidth=wickW;
+      // visible wick
+      octx.strokeStyle=edge;
+      octx.lineWidth=wickW;
       octx.beginPath();octx.moveTo(x,yh);octx.lineTo(x,yl);octx.stroke();
 
-      const top=Math.min(yo,yc),bodyH=Math.max(2.2*q,Math.abs(yc-yo));
-      octx.fillStyle='rgba(0,4,10,.96)';
-      octx.fillRect(x-bodyW/2-1*q,top-1*q,bodyW+2*q,bodyH+2*q);
-      octx.fillStyle=fill;octx.fillRect(x-bodyW/2,top,bodyW,bodyH);
-      octx.strokeStyle=edge;octx.lineWidth=.7*q;octx.strokeRect(x-bodyW/2+.35*q,top+.35*q,Math.max(1*q,bodyW-.7*q),Math.max(1*q,bodyH-.7*q))
+      const top=Math.min(yo,yc);
+      const bodyH=Math.max(3.2*q,Math.abs(yc-yo));
+
+      // body shadow
+      octx.save();
+      octx.shadowColor=halo;
+      octx.shadowBlur=5*q;
+
+      // outer dark frame
+      octx.fillStyle='rgba(0,3,8,.98)';
+      octx.fillRect(
+        x-bodyW/2-1.3*q,
+        top-1.3*q,
+        bodyW+2.6*q,
+        bodyH+2.6*q
+      );
+
+      // candle body
+      octx.fillStyle=fill;
+      octx.fillRect(
+        x-bodyW/2,
+        top,
+        bodyW,
+        bodyH
+      );
+
+      // fine highlight edge
+      octx.strokeStyle=edge;
+      octx.lineWidth=.9*q;
+      octx.strokeRect(
+        x-bodyW/2+.45*q,
+        top+.45*q,
+        Math.max(1*q,bodyW-.9*q),
+        Math.max(1*q,bodyH-.9*q)
+      );
+
+      octx.restore();
     }
 
     const m=mid()??vp.m;
     if(Number.isFinite(m)&&m>=minP&&m<=maxP){
-      const y=yOf(m);octx.strokeStyle='rgba(242,248,253,.9)';octx.lineWidth=1*q;
+      const y=yOf(m);octx.strokeStyle='rgba(246,250,255,.96)';octx.lineWidth=1*q;
       octx.setLineDash([4*q,4*q]);octx.beginPath();octx.moveTo(0,y);octx.lineTo(w,y);octx.stroke();octx.setLineDash([]);
       const label=` ${fmt(m,2)} `;octx.font=`${7.5*q}px Inter`;const tw=octx.measureText(label).width;
       octx.fillStyle='#eaf2fa';octx.fillRect(w-tw-10*q,y-9*q,tw+7*q,14*q);
@@ -1105,7 +1150,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_boceto3_orderflow_pro_v1_selfcontained",
+    "axion_boceto3_orderflow_pro_v2_candles",
     html=HTML,
     css=CSS,
     js=JS,
