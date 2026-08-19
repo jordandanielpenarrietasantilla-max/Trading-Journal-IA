@@ -49,18 +49,6 @@ HTML = r"""
     </div>
   </header>
 
-  <aside class="of-sidebar">
-    <button class="nav-btn active" type="button"><span>⌁</span><small>Gráfico</small></button>
-    <button class="nav-btn" type="button"><span>⠿</span><small>Heatmap</small></button>
-    <button class="nav-btn" type="button"><span>≋</span><small>Órdenes</small></button>
-    <button class="nav-btn" type="button"><span>⌗</span><small>Posiciones</small></button>
-    <button class="nav-btn" type="button"><span>▥</span><small>Libro DOM</small></button>
-    <button class="nav-btn" type="button"><span>▤</span><small>Noticias</small></button>
-    <button class="nav-btn" type="button"><span>▣</span><small>Calendario</small></button>
-    <div class="sidebar-spacer"></div>
-    <button class="nav-btn" type="button"><span>⚙</span><small>Ajustes</small></button>
-    <div class="sidebar-brand">AXION<br><span>PRIME</span></div>
-  </aside>
 
   <main class="of-main">
     <section class="modebar">
@@ -93,10 +81,14 @@ HTML = r"""
           <span id="feed-message">Sincronizando libro, trades y velas.</span>
         </div>
 
+        <div class="price-scale" id="price-scale">
+          <span>—</span><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span>
+        </div>
+
         <div class="chart-tags">
           <span class="tag seller" id="seller-zone">ZONA DE LIQUIDEZ VENDEDORA</span>
           <span class="tag buyer" id="buyer-zone">ZONA DE LIQUIDEZ COMPRADORA</span>
-          <span class="tag order" id="order-block">BLOQUE DE ÓRDENES</span>
+          <span class="tag seller" id="secondary-seller-zone">LIQUIDEZ DESTACADA</span>
         </div>
       </div>
 
@@ -177,15 +169,15 @@ CSS = r"""
 button,select,input{font:inherit}
 button{user-select:none}
 .axion-orderflow{
-  width:100%;height:920px;min-height:760px;overflow:hidden;
-  display:grid;grid-template-columns:70px minmax(0,1fr);grid-template-rows:70px minmax(0,1fr);
+  width:100%;height:880px;min-height:720px;overflow:hidden;
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:64px minmax(0,1fr);
   color:#dce5f4;background:#030812;border:1px solid #162337;border-radius:12px
 }
 .axion-orderflow:fullscreen{width:100vw;height:100vh;border:0;border-radius:0}
 
 .of-header{
-  grid-column:1/3;display:grid;
-  grid-template-columns:190px 190px 140px minmax(250px,1fr) auto auto;
+  grid-column:1;display:grid;
+  grid-template-columns:185px 185px 130px minmax(260px,1fr) auto auto;
   align-items:center;gap:10px;padding:0 12px;
   border-bottom:1px solid #172437;background:linear-gradient(180deg,#07101a,#040a13)
 }
@@ -220,28 +212,14 @@ button{user-select:none}
 }
 .square-btn:hover{color:white;border-color:#3d5e7e}.square-btn.small{width:32px;height:29px}
 
-.of-sidebar{
-  grid-column:1;grid-row:2;display:flex;flex-direction:column;align-items:center;
-  gap:3px;padding:8px 5px;background:#050b14;border-right:1px solid #18263a
-}
-.nav-btn{
-  width:56px;height:54px;border:1px solid transparent;border-radius:8px;
-  background:transparent;color:#66758d;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:2px;cursor:pointer
-}
-.nav-btn span{font-size:17px}.nav-btn small{font-size:6.5px}
-.nav-btn:hover{background:#0e1724;color:#dce8f7}.nav-btn.active{background:#0a1a2a;color:#4fd8ec;box-shadow:inset 2px 0 #28cff0}
-.sidebar-spacer{flex:1}
-.sidebar-brand{font-size:10px;line-height:1.05;font-weight:850;letter-spacing:1px;color:#d8e3f1;padding-bottom:8px}
-.sidebar-brand span{color:#50d8ed}
 
-.of-main{grid-column:2;grid-row:2;min-width:0;min-height:0;display:grid;grid-template-rows:48px minmax(0,1fr) 166px 24px}
+.of-main{grid-column:1;grid-row:2;min-width:0;min-height:0;display:grid;grid-template-rows:46px minmax(0,1fr) 150px 22px}
 .modebar{
   display:flex;align-items:center;justify-content:space-between;padding:6px 10px;
   border-bottom:1px solid #17263a;background:#060d17
 }
 .mode-tabs{display:flex;gap:4px;align-items:center}.mode{
-  height:32px;padding:0 14px;border:1px solid #1b293d;border-radius:5px;
+  height:30px;padding:0 12px;border:1px solid #1b293d;border-radius:5px;
   background:#07101c;color:#748299;cursor:pointer;font-size:8px
 }
 .mode.active{color:#eaf9ff;background:linear-gradient(135deg,#145ca9,#4166ff);border-color:#3579ce}
@@ -252,7 +230,7 @@ button{user-select:none}
 }
 .mode-right input{width:105px}
 
-.chart-shell{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 205px;background:#030711}
+.chart-shell{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 190px;background:#030711}
 .chart-wrap{position:relative;min-width:0;min-height:0;border-right:1px solid #1a293d}
 #main-canvas{position:absolute;inset:0;width:100%;height:100%}
 .profile{position:relative;min-height:0;background:#050b14}
@@ -269,6 +247,16 @@ button{user-select:none}
 .profile-stats div{display:flex;flex-direction:column;justify-content:center;padding-left:8px;border-right:1px solid #162337}
 .profile-stats div:last-child{border-right:0}.profile-stats span{font-size:5.5px;color:#697990}.profile-stats b{font-size:8px;margin-top:3px;color:#dce7f4}
 
+
+.price-scale{
+  position:absolute;right:6px;top:10px;bottom:10px;z-index:7;
+  display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;
+  pointer-events:none;color:#73839a;font-size:6.5px;font-variant-numeric:tabular-nums
+}
+.price-scale span{
+  padding:2px 4px;border-radius:4px;background:rgba(4,10,18,.58)
+}
+
 .feed-state{
   position:absolute;left:14px;top:12px;z-index:8;padding:7px 10px;border-radius:7px;
   border:1px solid rgba(46,218,170,.2);background:rgba(4,14,23,.78);backdrop-filter:blur(6px)
@@ -281,7 +269,7 @@ button{user-select:none}
 }
 .tag.seller{color:#ff6d7c;border:1px solid rgba(255,77,99,.56)}
 .tag.buyer{color:#46d9b3;border:1px solid rgba(48,220,170,.52)}
-.tag.order{color:#ff835d;border:1px solid rgba(255,98,66,.48)}
+
 
 .metric-strip{display:grid;grid-template-columns:1fr 1fr 1fr .8fr 1.25fr;background:#07101b;border-top:1px solid #18283c}
 .metric-strip article{padding:16px 18px;border-right:1px solid #18283c;min-width:0}.metric-strip article:last-child{border-right:0}
@@ -541,66 +529,185 @@ export default function(component) {
     ctx.clearRect(0,0,w,h);
     ctx.fillStyle='#030711';ctx.fillRect(0,0,w,h);
 
-    let priceSamples=[];
-    for(const c of candles){priceSamples.push(c.h,c.l)}
-    if(heatHistory.length){
-      const last=heatHistory[heatHistory.length-1];
-      last.bids.forEach(x=>priceSamples.push(x[0]));last.asks.forEach(x=>priceSamples.push(x[0]))
-    }
-    if(!priceSamples.length)return;
-    let minP=Math.min(...priceSamples),maxP=Math.max(...priceSamples),pad=(maxP-minP)*.06||1;minP-=pad;maxP+=pad;
+    const mid=midPrice();
+    if(mid==null && !candles.length)return;
+
+    /*
+      IMPORTANT:
+      The order book exists only near the current price. Using the full
+      candle-history range compresses genuine depth into a thin band.
+      AXION therefore uses a current-market viewport, similar to order-flow
+      terminals: recent candles + visible depth around the live mid.
+    */
+    const recent=candles.slice(-56);
+    const {bids,asks}=sortedBook();
+
+    let localSamples=[];
+    recent.forEach(c=>localSamples.push(c.h,c.l));
+    bids.slice(0,LEVELS_SIDE).forEach(x=>localSamples.push(x[0]));
+    asks.slice(0,LEVELS_SIDE).forEach(x=>localSamples.push(x[0]));
+
+    if(!localSamples.length)return;
+
+    let rawMin=Math.min(...localSamples),rawMax=Math.max(...localSamples);
+
+    // Limit viewport around current market so real depth remains readable.
+    const center=mid ?? ((rawMin+rawMax)/2);
+    const recentRange=Math.max(
+      1,
+      ...recent.map(c=>Math.max(Math.abs(c.h-center),Math.abs(c.l-center)))
+    );
+    const bookRange=Math.max(
+      1,
+      bids.length ? Math.abs(bids[Math.min(LEVELS_SIDE-1,bids.length-1)][0]-center) : 1,
+      asks.length ? Math.abs(asks[Math.min(LEVELS_SIDE-1,asks.length-1)][0]-center) : 1
+    );
+
+    // Blend depth and recent candle range, but prevent giant historic spikes
+    // from flattening the heatmap.
+    const halfRange=Math.max(bookRange*1.18, Math.min(recentRange, bookRange*3.2), center*.00055);
+    let minP=center-halfRange;
+    let maxP=center+halfRange;
+
     const yOf=p=>h-((p-minP)/(maxP-minP))*h;
 
     // grid
-    ctx.strokeStyle='rgba(51,70,103,.22)';ctx.lineWidth=1*q;
-    for(let i=1;i<9;i++){let y=h*i/9;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
-    for(let i=1;i<12;i++){let x=w*i/12;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+    ctx.strokeStyle='rgba(43,62,94,.24)';
+    ctx.lineWidth=1*q;
+    for(let i=1;i<9;i++){
+      const y=h*i/9;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+    }
+    for(let i=1;i<14;i++){
+      const x=w*i/14;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();
+    }
 
-    // heatmap
+    // rolling order-book heatmap
     if(heatHistory.length){
       const quantities=[];
-      for(const col of heatHistory){col.bids.forEach(x=>quantities.push(x[1]));col.asks.forEach(x=>quantities.push(x[1]))}
+      for(const col of heatHistory){
+        col.bids.forEach(x=>quantities.push(x[1]));
+        col.asks.forEach(x=>quantities.push(x[1]));
+      }
       quantities.sort((a,b)=>a-b);
-      const scale=quantities.length?quantities[Math.floor((quantities.length-1)*.96)]||1:1;
-      const cw=w/Math.max(MAX_HEAT_COLS,heatHistory.length),offset=w-cw*heatHistory.length;
+      const q90=quantities.length?quantities[Math.floor((quantities.length-1)*.90)]||1:1;
+      const q98=quantities.length?quantities[Math.floor((quantities.length-1)*.98)]||q90:q90;
+
+      const cols=Math.max(95,MAX_HEAT_COLS);
+      const cw=w/cols;
+      const offset=w-cw*heatHistory.length;
+
       heatHistory.forEach((col,i)=>{
         const x=offset+i*cw;
-        for(const [p,qty] of col.bids){if(p<minP||p>maxP)continue;ctx.fillStyle=heatColor(Math.min(1,qty/scale),false);ctx.fillRect(x,yOf(p)-2*q,cw+1*q,4*q)}
-        for(const [p,qty] of col.asks){if(p<minP||p>maxP)continue;ctx.fillStyle=heatColor(Math.min(1,qty/scale),true);ctx.fillRect(x,yOf(p)-2*q,cw+1*q,4*q)}
+
+        const drawLevel=(p,qty,isAsk)=>{
+          if(p<minP||p>maxP)return;
+          const y=yOf(p);
+          const n90=Math.min(1,qty/Math.max(q90,1e-9));
+          const extreme=qty>=q98;
+          ctx.fillStyle=extreme
+            ? `rgba(255,196,42,${.58+.34*n90})`
+            : heatColor(n90,isAsk);
+
+          const bandH=extreme?6.0*q:4.2*q;
+          ctx.fillRect(x,y-bandH/2,cw+1.3*q,bandH);
+        };
+
+        col.bids.forEach(([p,qty])=>drawLevel(p,qty,false));
+        col.asks.forEach(([p,qty])=>drawLevel(p,qty,true));
       });
     }
 
     // VWAP
     if(tradeQtySum){
-      const vwap=tradeValueSum/tradeQtySum,y=yOf(vwap);
-      ctx.strokeStyle='rgba(255,177,42,.9)';ctx.lineWidth=1.25*q;ctx.setLineDash([6*q,5*q]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();ctx.setLineDash([])
+      const vwap=tradeValueSum/tradeQtySum;
+      if(vwap>=minP&&vwap<=maxP){
+        const y=yOf(vwap);
+        ctx.strokeStyle='rgba(245,167,38,.92)';
+        ctx.lineWidth=1.15*q;
+        ctx.setLineDash([7*q,5*q]);
+        ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle='#f0ad3d';ctx.font=`${7*q}px Inter`;
+        ctx.fillText('VWAP',8*q,Math.max(11*q,y-4*q));
+      }
     }
 
-    // candles
-    if(candles.length){
-      const visible=candles.slice(-110),cw=w/visible.length,body=Math.max(2*q,cw*.52);
-      visible.forEach((c,i)=>{
-        const x=i*cw+cw*.5,yo=yOf(c.o),yc=yOf(c.c),yh=yOf(c.h),yl=yOf(c.l),up=c.c>=c.o;
-        ctx.strokeStyle=up?'rgba(47,218,180,.92)':'rgba(244,80,99,.92)';ctx.fillStyle=ctx.strokeStyle;ctx.lineWidth=1*q;
-        ctx.beginPath();ctx.moveTo(x,yh);ctx.lineTo(x,yl);ctx.stroke();
-        ctx.fillRect(x-body/2,Math.min(yo,yc),body,Math.max(1*q,Math.abs(yc-yo)))
-      })
+    // Candles sit ON TOP of the heatmap.
+    if(recent.length){
+      const candleAreaW=w*.91;
+      const cw=candleAreaW/recent.length;
+      const body=Math.max(2.2*q,cw*.48);
+      recent.forEach((c,i)=>{
+        const x=i*cw+cw*.5;
+        if(c.h<minP||c.l>maxP)return;
+
+        const yo=yOf(c.o),yc=yOf(c.c),yh=yOf(c.h),yl=yOf(c.l);
+        const up=c.c>=c.o;
+        const color=up?'rgba(48,224,185,.96)':'rgba(246,82,102,.96)';
+        ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=1*q;
+
+        ctx.beginPath();
+        ctx.moveTo(x,Math.max(0,yh));
+        ctx.lineTo(x,Math.min(h,yl));
+        ctx.stroke();
+
+        ctx.fillRect(
+          x-body/2,
+          Math.max(0,Math.min(yo,yc)),
+          body,
+          Math.max(1.2*q,Math.min(h,Math.abs(yc-yo)))
+        );
+      });
     }
 
-    // current price
-    const mid=midPrice();
+    // current mid
     if(mid!=null){
-      const y=yOf(mid);ctx.strokeStyle='rgba(238,244,252,.72)';ctx.lineWidth=1*q;ctx.setLineDash([4*q,4*q]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#e9f0f8';ctx.font=`${8*q}px Inter`;ctx.fillText(fmt(mid,2),w-58*q,Math.max(10*q,y-4*q))
+      const y=yOf(mid);
+      ctx.strokeStyle='rgba(232,243,252,.82)';
+      ctx.lineWidth=1*q;
+      ctx.setLineDash([4*q,4*q]);
+      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+      ctx.setLineDash([]);
+
+      const label=` ${fmt(mid,2)} `;
+      ctx.font=`${7.5*q}px Inter`;
+      const tw=ctx.measureText(label).width;
+      ctx.fillStyle='rgba(239,245,251,.96)';
+      ctx.fillRect(w-tw-8*q,y-9*q,tw+5*q,14*q);
+      ctx.fillStyle='#07101a';
+      ctx.fillText(label,w-tw-6*q,y+1*q);
     }
 
-    // labels from strongest real current book levels
-    const {bids,asks}=sortedBook();
-    const strongBid=bids.slice(0,LEVELS_SIDE).sort((a,b)=>b[1]-a[1])[0];
-    const strongAsk=asks.slice(0,LEVELS_SIDE).sort((a,b)=>b[1]-a[1])[0];
-    positionTag(parentElement.querySelector('#buyer-zone'),strongBid?yOf(strongBid[0])/q:null,'left');
-    positionTag(parentElement.querySelector('#seller-zone'),strongAsk?yOf(strongAsk[0])/q:null,'left');
-    positionTag(parentElement.querySelector('#order-block'),strongAsk?Math.max(40,yOf(strongAsk[0])/q-55):null,'center');
+    // Visible price scale.
+    const scaleEls=[...parentElement.querySelectorAll('#price-scale span')];
+    scaleEls.forEach((el,i)=>{
+      const p=maxP-(maxP-minP)*(i/(scaleEls.length-1));
+      el.textContent=fmt(p,2);
+    });
+
+    // Real liquidity labels from current book.
+    const bidRank=bids.slice(0,LEVELS_SIDE).sort((a,b)=>b[1]-a[1]);
+    const askRank=asks.slice(0,LEVELS_SIDE).sort((a,b)=>b[1]-a[1]);
+
+    const strongBid=bidRank[0];
+    const strongAsk=askRank[0];
+    const secondAsk=askRank[1];
+
+    positionTag(
+      parentElement.querySelector('#buyer-zone'),
+      strongBid && strongBid[0]>=minP && strongBid[0]<=maxP ? yOf(strongBid[0])/q : null,
+      'left'
+    );
+    positionTag(
+      parentElement.querySelector('#seller-zone'),
+      strongAsk && strongAsk[0]>=minP && strongAsk[0]<=maxP ? yOf(strongAsk[0])/q : null,
+      'left'
+    );
+    positionTag(
+      parentElement.querySelector('#secondary-seller-zone'),
+      secondAsk && secondAsk[0]>=minP && secondAsk[0]<=maxP ? yOf(secondAsk[0])/q : null,
+      'center'
+    );
 
     drawProfile(minP,maxP);
   }
@@ -618,8 +725,8 @@ export default function(component) {
     const maxV=Math.max(...bins.map(x=>x[1]),1),yOf=p=>h-((p-minP)/(maxP-minP))*h;
     for(const [p,v] of bins){
       const buy=tradedBuyByBin.get(p)||0,sell=tradedSellByBin.get(p)||0,total=Math.max(v,1e-9),width=(v/maxV)*w*.82,y=yOf(p),bh=Math.max(2*q,h/90);
-      const left=w-width;
-      pctx.fillStyle=`rgba(108,70,188,${.22+.55*(v/maxV)})`;pctx.fillRect(left,y-bh/2,width,bh);
+      const left=w-width-3*q;
+      pctx.fillStyle=`rgba(116,79,205,${.28+.58*(v/maxV)})`;pctx.fillRect(left,y-bh/2,width,bh);
       if(buy>sell){pctx.fillStyle='rgba(44,207,172,.72)';pctx.fillRect(w-width*(buy/total),y-bh/2,width*(buy/total),bh)}
       else{pctx.fillStyle='rgba(230,98,55,.66)';pctx.fillRect(w-width*(sell/total),y-bh/2,width*(sell/total),bh)}
     }
@@ -704,7 +811,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v6_fix_selfcontained",
+    "axion_live_heatmap_v7_terminal",
     html=HTML,
     css=CSS,
     js=JS,
@@ -717,7 +824,7 @@ def render_axion_live_heatmap(
     symbol: str = "BTCUSDT",
     timeframe: str = "1m",
     key: str = "axion_live_heatmap",
-    height: int = 920,
+    height: int = 880,
 ):
     return _component(
         data={"symbol": symbol, "timeframe": timeframe},
@@ -761,6 +868,6 @@ def render_live_heatmap() -> None:
         symbol=st.session_state.live_symbol,
         timeframe=st.session_state.live_timeframe,
         key="axion_live_heatmap_workspace",
-        height=920,
+        height=880,
     )
     _handle_result(result)
