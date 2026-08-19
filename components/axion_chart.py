@@ -932,12 +932,17 @@ export default async function(component) {
       const dir=parentElement.querySelector('#position-direction');
       dir.textContent=position.direction;
       dir.style.color=position.direction==='LONG' ? '#14d99a' : '#ff526e';
-      parentElement.querySelector('#position-entry').textContent=fmt(position.entry,4);
-      parentElement.querySelector('#position-stop').textContent=fmt(position.stop,4);
-      parentElement.querySelector('#position-target').textContent=fmt(position.target,4);
+      const decimals = Math.abs(position.entry) < 10 ? 5 : Math.abs(position.entry) < 100 ? 3 : 2;
+      parentElement.querySelector('#position-entry').textContent=fmt(position.entry,decimals);
+      parentElement.querySelector('#position-stop').textContent=fmt(position.stop,decimals);
+      parentElement.querySelector('#position-target').textContent=fmt(position.target,decimals);
+
       const risk=Math.max(Math.abs(position.entry-position.stop),1e-12);
       const reward=Math.abs(position.target-position.entry);
-      parentElement.querySelector('#position-rr').textContent='1 : '+(reward/risk).toFixed(2);
+      const riskPct=Math.abs(risk/position.entry)*100;
+      const rewardPct=Math.abs(reward/position.entry)*100;
+      parentElement.querySelector('#position-rr').textContent=
+        '1 : '+(reward/risk).toFixed(2)+' · Riesgo '+riskPct.toFixed(2)+'% · Beneficio '+rewardPct.toFixed(2)+'%';
     }
 
     function drawRightPriceTag(y, text, bg, opts = {}) {
@@ -1009,30 +1014,81 @@ export default async function(component) {
         ctx.restore();
       });
 
-      // Right-side scale labels like TradingView
-      drawRightPriceTag(ys, fmt(position.stop, 2), themeColors.stop, {minWidth: 86});
-      drawRightPriceTag(ye, fmt(position.entry, 2), '#a7aeb9', {textColor:'#142032', minWidth: 86});
-      drawRightPriceTag(yt, fmt(position.target, 2), themeColors.target, {minWidth: 86});
+      // Right-side labels with semantic names + exact levels.
+      const labelDecimals =
+        Math.abs(position.entry) < 10 ? 5 :
+        Math.abs(position.entry) < 100 ? 3 : 2;
 
-      // Optional tiny current marker text inside block
+      drawRightPriceTag(ys,'SL  '+fmt(position.stop,labelDecimals),themeColors.stop,{minWidth:108});
+      drawRightPriceTag(ye,'ENTRY  '+fmt(position.entry,labelDecimals),'#a7aeb9',{textColor:'#142032',minWidth:118});
+      drawRightPriceTag(yt,'TP  '+fmt(position.target,labelDecimals),themeColors.target,{minWidth:108});
+
+      // Professional risk / reward information inside the Position Tool.
       const risk = Math.max(Math.abs(position.entry - position.stop), 1e-12);
       const reward = Math.abs(position.target - position.entry);
-      const rr = (reward / risk).toFixed(2);
-      const centerY = (ye + yt) / 2;
-      const rrText = `1:${rr}`;
+      const rr = reward / risk;
+      const riskPct = Math.abs(risk / position.entry) * 100;
+      const rewardPct = Math.abs(reward / position.entry) * 100;
+
+      const priceDecimals =
+        Math.abs(position.entry) < 10 ? 5 :
+        Math.abs(position.entry) < 100 ? 3 : 2;
+
+      const rewardMidY=(ye+yt)/2;
+      const riskMidY=(ye+ys)/2;
+      const infoX=left+10;
+      const infoW=Math.max(120,Math.min(178,right-left-20));
+
+      function metricBadge(y,title,value,color) {
+        ctx.save();
+        const h=40;
+        ctx.fillStyle='rgba(4,11,23,.90)';
+        ctx.strokeStyle=color;
+        ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.roundRect(infoX,y-h/2,infoW,h,7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.textBaseline='middle';
+        ctx.fillStyle=color;
+        ctx.font='800 9px Inter,system-ui';
+        ctx.fillText(title,infoX+9,y-7);
+        ctx.fillStyle='#f3f7ff';
+        ctx.font='600 10px Inter,system-ui';
+        ctx.fillText(value,infoX+9,y+8);
+        ctx.restore();
+      }
+
+      metricBadge(
+        rewardMidY,
+        'BENEFICIO',
+        fmt(reward,priceDecimals)+' · +'+rewardPct.toFixed(2)+'%',
+        themeColors.target
+      );
+
+      metricBadge(
+        riskMidY,
+        'RIESGO',
+        fmt(risk,priceDecimals)+' · -'+riskPct.toFixed(2)+'%',
+        themeColors.stop
+      );
+
+      const rrText='R:R  1 : '+rr.toFixed(2);
       ctx.save();
-      ctx.font = '10px Inter,system-ui';
-      const rrW = Math.max(44, ctx.measureText(rrText).width + 16);
-      ctx.fillStyle = 'rgba(8,16,30,.94)';
-      ctx.strokeStyle = 'rgba(107,194,233,.65)';
-      ctx.lineWidth = 1;
+      ctx.font='800 10px Inter,system-ui';
+      const rrW=Math.max(92,ctx.measureText(rrText).width+24);
+      const rrH=28;
+      const rrX=Math.max(left+8,Math.min(right-rrW-8,left+(right-left-rrW)/2));
+      ctx.fillStyle='rgba(4,12,26,.98)';
+      ctx.strokeStyle=themeColors.entry;
+      ctx.lineWidth=1.2;
       ctx.beginPath();
-      ctx.roundRect(left + 10, centerY - 12, rrW, 24, 6);
+      ctx.roundRect(rrX,ye-rrH/2,rrW,rrH,7);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = '#eff7ff';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(rrText, left + 18, centerY);
+      ctx.fillStyle='#f5f8ff';
+      ctx.textBaseline='middle';
+      ctx.fillText(rrText,rrX+12,ye);
       ctx.restore();
     }
 
@@ -1595,7 +1651,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v12",
+    "axion_prime_chart_workspace_v13",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1609,7 +1665,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V12 con navegación nativa y Position Tool aislado."""
+    """Monta AXION REPLAY V13 con métricas profesionales de riesgo/beneficio."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
