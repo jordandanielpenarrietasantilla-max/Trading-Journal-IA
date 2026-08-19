@@ -619,7 +619,11 @@ export default async function(component) {
         vertLines: {color:themeColors.grid},
         horzLines: {color:themeColors.grid}
       },
-      rightPriceScale: {borderColor:'rgba(69,99,154,.24)'},
+      rightPriceScale: {
+        borderColor:'rgba(69,99,154,.24)',
+        autoScale:true,
+        scaleMargins:{top:.08,bottom:.08}
+      },
       timeScale: {
         borderColor:'rgba(69,99,154,.24)',
         timeVisible:true,
@@ -641,7 +645,16 @@ export default async function(component) {
     const volumeSeries = chart.addHistogramSeries({
       priceFormat:{type:'volume'},
       priceScaleId:'',
-      scaleMargins:{top:.83,bottom:0}
+      priceLineVisible:false,
+      lastValueVisible:false
+    });
+
+    // Volume must live on its own overlay price scale. If these margins are
+    // placed on the series instead of the scale, Lightweight Charts can let
+    // volume distort the instrument's right price scale.
+    chart.priceScale('').applyOptions({
+      scaleMargins:{top:.78,bottom:0},
+      borderVisible:false
     });
 
     function visibleCandles() {
@@ -653,7 +666,19 @@ export default async function(component) {
     function applyReplayData(fit = false) {
       series.setData(visibleCandles());
       volumeSeries.setData(visibleVolumes());
-      if (fit) chart.timeScale().fitContent();
+
+      // Force the instrument price scale to recalculate only from candle data.
+      try {
+        chart.priceScale('right').applyOptions({
+          autoScale:true,
+          scaleMargins:{top:.08,bottom:.08}
+        });
+      } catch (_) {}
+
+      if (fit) {
+        try { chart.timeScale().fitContent(); } catch (_) {}
+      }
+
       updateReplayUI();
       drawAll();
     }
@@ -1393,7 +1418,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v8",
+    "axion_prime_chart_workspace_v9",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1407,7 +1432,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V8 con refresco limpio de mercado y Position Tool."""
+    """Monta AXION REPLAY V9 con escalas separadas para precio y volumen."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
