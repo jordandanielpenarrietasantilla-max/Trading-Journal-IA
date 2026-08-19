@@ -84,8 +84,11 @@ HTML = r"""
       <button class="draw-btn" type="button" data-tool="magnet" title="Imán">
         <svg viewBox="0 0 24 24"><path d="M7 5v7a5 5 0 0010 0V5M7 5h4v5M17 5h-4v5"/></svg><span>Imán</span>
       </button>
-      <button class="draw-btn" type="button" data-tool="clear" title="Borrar dibujos">
-        <svg viewBox="0 0 24 24"><path d="M7 7h10M9 7V5h6v2M9 10v8M12 10v8M15 10v8M8 7l1 13h6l1-13"/></svg><span>Borrar</span>
+      <button class="draw-btn delete-selected-btn" type="button" data-tool="delete_selected" title="Eliminar seleccionado">
+        <svg viewBox="0 0 24 24"><path d="M7 7h10M9 7V5h6v2M9 10v8M12 10v8M15 10v8M8 7l1 13h6l1-13"/></svg><span>Eliminar seleccionado</span>
+      </button>
+      <button class="draw-btn" type="button" data-tool="clear" title="Borrar todo">
+        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg><span>Borrar todo</span>
       </button>
     </aside>
 
@@ -492,6 +495,12 @@ button{user-select:none}
   border-color:rgba(255,84,112,.55);
   background:rgba(91,18,38,.34);
 }
+.delete-selected-btn{color:#f0b35e}
+.delete-selected-btn.ready{
+  color:#ffd087;
+  border-color:rgba(255,197,101,.48);
+  background:rgba(91,61,18,.28);
+}
 .chart-column{min-width:0;min-height:0;display:grid;grid-template-rows:34px minmax(0,1fr)}
 .chart-meta{
   display:flex;align-items:center;justify-content:space-between;padding:0 11px;
@@ -773,6 +782,8 @@ export default async function(component) {
     let drawingStart = null;
     let drawingDraft = null;
     let drawings = [];
+    let selectedDrawingIndex = -1;
+    let armedDrawingTool = null;
     let drawingStyle = {
       color:'#47d8eb',
       lineStyle:'solid',
@@ -1617,24 +1628,145 @@ export default async function(component) {
       drawLiveTradeProgress(g);
     }
 
+    function distancePointToSegment(p,a,b) {
+      const dx=b.x-a.x;
+      const dy=b.y-a.y;
+      const len2=dx*dx+dy*dy;
+      if (len2 <= .0001) return Math.hypot(p.x-a.x,p.y-a.y);
+      let t=((p.x-a.x)*dx+(p.y-a.y)*dy)/len2;
+      t=Math.max(0,Math.min(1,t));
+      const x=a.x+t*dx;
+      const y=a.y+t*dy;
+      return Math.hypot(p.x-x,p.y-y);
+    }
+
+    function hitTestDrawing(p) {
+      const r=canvasRect();
+      for (let i=drawings.length-1;i>=0;i--) {
+        const d=drawings[i];
+        const style=d.style || drawingStyle;
+        const tolerance=Math.max(7,Number(style.lineWidth||2)+5);
+
+        if (d.type==='horizontal') {
+          const y=yFromPrice(d.price);
+          if (Math.abs(p.y-y) <= tolerance) return i;
+          continue;
+        }
+
+        if (d.type==='vertical') {
+          const x=chart.timeScale().logicalToCoordinate(Number(d.logical));
+          if (x != null && Math.abs(p.x-x) <= tolerance) return i;
+          continue;
+        }
+
+        if (d.type==='text') {
+          const a=anchorToPoint(d.a);
+          if (a && Math.abs(p.x-a.x)<=55 && Math.abs(p.y-a.y)<=18) return i;
+          continue;
+        }
+
+        const a=anchorToPoint(d.a);
+        const b=anchorToPoint(d.b);
+        if (!a || !b) continue;
+
+        if (d.type==='rectangle') {
+          const x1=Math.min(a.x,b.x),x2=Math.max(a.x,b.x);
+          const y1=Math.min(a.y,b.y),y2=Math.max(a.y,b.y);
+          const onEdge =
+            (p.x>=x1-tolerance && p.x<=x2+tolerance &&
+             (Math.abs(p.y-y1)<=tolerance || Math.abs(p.y-y2)<=tolerance)) ||
+            (p.y>=y1-tolerance && p.y<=y2+tolerance &&
+             (Math.abs(p.x-x1)<=tolerance || Math.abs(p.x-x2)<=tolerance));
+          if (onEdge) return i;
+          continue;
+        }
+
+        if (d.type==='fib') {
+          const left=Math.min(a.x,b.x),right=Math.max(a.x,b.x);
+          const top=Math.min(a.y,b.y),bottom=Math.max(a.y,b.y);
+          const levels=d.levels || [];
+          for (const lv of levels) {
+            const y=top+(bottom-top)*lv;
+            if (p.x>=left-tolerance && p.x<=right+tolerance && Math.abs(p.y-y)<=tolerance) return i;
+          }
+          continue;
+        }
+
+        if (['trend','ray','measure'].includes(d.type)) {
+          if (distancePointToSegment(p,a,b) <= tolerance) return i;
+        }
+      }
+      return -1;
+    }
+
+    function syncStyleControlsFromSelected() {
+      if (selectedDrawingIndex < 0 || !drawings[selectedDrawingIndex]) return;
+      const s=drawings[selectedDrawingIndex].style || {};
+      if (s.color) drawingColorInput.value=s.color;
+      if (s.lineStyle) drawingLineStyle.value=s.lineStyle;
+      if (s.lineWidth != null) drawingLineWidth.value=String(s.lineWidth);
+      if (s.opacity != null) drawingOpacity.value=String(Math.round(Number(s.opacity)*100));
+      drawingExtendLeft.checked=Boolean(s.extendLeft);
+      drawingExtendRight.checked=Boolean(s.extendRight);
+    }
+
+    function drawSelectionOverlay(d) {
+      if (!d) return;
+      const accent='#f0c36b';
+      ctx.save();
+      ctx.strokeStyle=accent;
+      ctx.fillStyle=accent;
+      ctx.lineWidth=1;
+      ctx.setLineDash([4,3]);
+
+      if (d.type==='horizontal') {
+        const y=yFromPrice(d.price);
+        ctx.strokeRect(4,y-5,canvasRect().width-8,10);
+      } else if (d.type==='vertical') {
+        const x=chart.timeScale().logicalToCoordinate(Number(d.logical));
+        if (x != null) ctx.strokeRect(x-5,4,10,canvasRect().height-8);
+      } else if (d.type==='text') {
+        const a=anchorToPoint(d.a);
+        if (a) ctx.strokeRect(a.x-4,a.y-18,90,24);
+      } else {
+        const a=anchorToPoint(d.a);
+        const b=anchorToPoint(d.b);
+        if (a && b) {
+          ctx.setLineDash([]);
+          [a,b].forEach(pt=>{
+            ctx.beginPath();
+            ctx.arc(pt.x,pt.y,5,0,Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle='#07101d';
+            ctx.stroke();
+          });
+        }
+      }
+      ctx.restore();
+    }
+
     function drawAll() {
       const r=canvasRect();
       ctx.clearRect(0,0,r.width,r.height);
 
       drawings.forEach(renderAnchoredDrawing);
 
+      if (selectedDrawingIndex >= 0 && drawings[selectedDrawingIndex]) {
+        drawSelectionOverlay(drawings[selectedDrawingIndex]);
+      }
+
       // While drawing, preview remains in screen coordinates. Once released,
       // it is converted to logical-time + price and becomes chart-anchored.
       if (drawingStart && drawingDraft) {
         const previewStyle=currentDrawingStyle();
-        if (activeTool==='trend'||activeTool==='ray') {
+        if (armedDrawingTool==='trend'||armedDrawingTool==='ray') {
           const s={...previewStyle};
           if (activeTool==='ray') s.extendRight=true;
           drawLine(drawingStart,drawingDraft,s);
         }
-        if (activeTool==='rectangle') drawZone(drawingStart,drawingDraft,previewStyle);
-        if (activeTool==='fib') drawFib(drawingStart,drawingDraft,fibLevels(),previewStyle);
-        if (activeTool==='measure') drawLine(
+        if (armedDrawingTool==='rectangle') drawZone(drawingStart,drawingDraft,previewStyle);
+        if (armedDrawingTool==='fib') drawFib(drawingStart,drawingDraft,fibLevels(),previewStyle);
+        if (armedDrawingTool==='measure') drawLine(
           drawingStart,drawingDraft,
           currentDrawingStyle({color:'#bdc9dc',lineStyle:'dashed'})
         );
@@ -1643,14 +1775,7 @@ export default async function(component) {
       drawPosition();
     }
 
-    function setTool(tool) {
-      activeTool=tool;
-      drawingStart=null;
-      drawingDraft=null;
-      draggingPositionHandle=null;
-      draggingWholePosition=false;
-
-      const drawingColorInput=parentElement.querySelector('#drawing-color');
+    const drawingColorInput=parentElement.querySelector('#drawing-color');
     const drawingLineStyle=parentElement.querySelector('#drawing-line-style');
     const drawingLineWidth=parentElement.querySelector('#drawing-line-width');
     const drawingOpacity=parentElement.querySelector('#drawing-opacity');
@@ -1666,6 +1791,15 @@ export default async function(component) {
         extendLeft:Boolean(drawingExtendLeft.checked),
         extendRight:Boolean(drawingExtendRight.checked)
       };
+
+      // If a drawing is selected, editing the style controls edits THAT object.
+      if (selectedDrawingIndex >= 0 && drawings[selectedDrawingIndex]) {
+        drawings[selectedDrawingIndex].style={
+          ...(drawings[selectedDrawingIndex].style || {}),
+          ...drawingStyle
+        };
+      }
+
       drawAll();
     }
 
@@ -1677,19 +1811,39 @@ export default async function(component) {
       el.onchange=syncDrawingStyleFromControls;
     });
 
-    parentElement.querySelectorAll('[data-tool]').forEach(btn => {
+    function updateDeleteSelectedButton() {
+      const btn=parentElement.querySelector('[data-tool="delete_selected"]');
+      if (!btn) return;
+      btn.classList.toggle('ready', selectedDrawingIndex >= 0);
+      btn.title = selectedDrawingIndex >= 0
+        ? 'Eliminar dibujo seleccionado'
+        : 'Selecciona primero un dibujo';
+    }
+
+    function setTool(tool) {
+      activeTool=tool;
+      drawingStart=null;
+      drawingDraft=null;
+      draggingPositionHandle=null;
+      draggingWholePosition=false;
+
+      // Only creation tools arm drawing creation.
+      const drawingTools=new Set([
+        'trend','ray','horizontal','vertical','rectangle','fib','text','measure'
+      ]);
+      armedDrawingTool = drawingTools.has(tool) ? tool : null;
+
+      parentElement.querySelectorAll('[data-tool]').forEach(btn => {
         btn.classList.toggle('active',btn.dataset.tool===tool);
       });
 
       parentElement.querySelector('#fib-panel').classList.toggle('open',tool==='fib');
       parentElement.querySelector('#position-panel').classList.toggle('open',tool==='long'||tool==='short');
 
-      const drawingTools=new Set([
-        'trend','ray','horizontal','vertical','rectangle','fib','text','measure'
-      ]);
       const stylePanel=parentElement.querySelector('#drawing-style-panel');
-      stylePanel.classList.toggle('open',drawingTools.has(tool));
+      stylePanel.classList.toggle('open',drawingTools.has(tool) || selectedDrawingIndex >= 0);
       parentElement.querySelector('#drawing-style-tool').textContent=
+        selectedDrawingIndex >= 0 ? 'OBJETO SELECCIONADO' :
         tool==='trend'?'TENDENCIA':
         tool==='ray'?'RAYO':
         tool==='horizontal'?'HORIZONTAL':
@@ -1699,35 +1853,50 @@ export default async function(component) {
         tool==='text'?'TEXTO':
         tool==='measure'?'MEDICIÓN':'DIBUJO';
 
-      const longTab = parentElement.querySelector('#position-long');
-      const shortTab = parentElement.querySelector('#position-short');
+      const longTab=parentElement.querySelector('#position-long');
+      const shortTab=parentElement.querySelector('#position-short');
       if (longTab && shortTab) {
-        longTab.classList.toggle('selected', tool === 'long');
-        shortTab.classList.toggle('selected', tool === 'short');
+        longTab.classList.toggle('selected',tool==='long');
+        shortTab.classList.toggle('selected',tool==='short');
       }
 
-      // The drawing canvas is visual only. Pointer interaction is handled on
-      // chartStage in capture mode, so Lightweight Charts keeps native pan/zoom.
       canvas.style.pointerEvents='none';
+      chartStage.style.cursor =
+        (tool==='cursor'||tool==='position_edit') ? 'default' : 'crosshair';
 
-      if (tool === 'position_edit' || tool === 'cursor') {
-        chartStage.style.cursor='default';
-      } else {
-        chartStage.style.cursor='crosshair';
-      }
+      updateDeleteSelectedButton();
     }
 
     parentElement.querySelectorAll('[data-tool]').forEach(btn => {
       btn.onclick = () => {
         const tool=btn.dataset.tool;
-        if (tool==='clear') {
-          drawings=[];
-          position=null;
-          updatePositionPanel();
-          drawAll();
-          setTool('cursor');
+
+        if (tool==='delete_selected') {
+          if (selectedDrawingIndex >= 0 && drawings[selectedDrawingIndex]) {
+            drawings.splice(selectedDrawingIndex,1);
+            selectedDrawingIndex=-1;
+            armedDrawingTool=null;
+            setTool('cursor');
+            drawAll();
+          }
           return;
         }
+
+        if (tool==='clear') {
+          drawings=[];
+          selectedDrawingIndex=-1;
+          armedDrawingTool=null;
+          position=null;
+          updatePositionPanel();
+          setTool('cursor');
+          drawAll();
+          return;
+        }
+
+        if (tool==='cursor') {
+          armedDrawingTool=null;
+        }
+
         setTool(tool);
       };
     });
@@ -1800,6 +1969,28 @@ export default async function(component) {
 
     function onStagePointerDown(e) {
       const p=pointerPoint(e);
+
+      // Cursor mode selects one existing drawing without creating anything.
+      if (activeTool==='cursor') {
+        const hit=hitTestDrawing(p);
+        if (hit >= 0) {
+          interceptPointer(e);
+          selectedDrawingIndex=hit;
+          armedDrawingTool=null;
+          syncStyleControlsFromSelected();
+          parentElement.querySelector('#drawing-style-panel').classList.add('open');
+          parentElement.querySelector('#drawing-style-tool').textContent='OBJETO SELECCIONADO';
+          updateDeleteSelectedButton();
+          drawAll();
+          return;
+        } else if (selectedDrawingIndex >= 0) {
+          selectedDrawingIndex=-1;
+          parentElement.querySelector('#drawing-style-panel').classList.remove('open');
+          updateDeleteSelectedButton();
+          drawAll();
+          // Do not intercept: chart pan/zoom remains natural.
+        }
+      }
 
       // Existing position: only intercept if the trader actually touches
       // Entry/SL/TP or the position block. Everywhere else the chart receives
@@ -1876,19 +2067,22 @@ export default async function(component) {
       }
 
       // Drawing tools intentionally intercept chart navigation while drawing.
-      if (activeTool==='horizontal') {
+      if (armedDrawingTool==='horizontal') {
         interceptPointer(e);
         drawings.push({
           type:'horizontal',
           price:priceFromY(p.y),
           style:currentDrawingStyle()
         });
-        drawAll();
+        selectedDrawingIndex=drawings.length-1;
+        armedDrawingTool=null;
         setTool('cursor');
+        drawAll();
+        updateDeleteSelectedButton();
         return;
       }
 
-      if (activeTool==='vertical') {
+      if (armedDrawingTool==='vertical') {
         interceptPointer(e);
         let logical=chart.timeScale().coordinateToLogical(p.x);
         if (logical == null) logical=currentCursor;
@@ -1897,12 +2091,15 @@ export default async function(component) {
           logical:Number(logical),
           style:currentDrawingStyle()
         });
-        drawAll();
+        selectedDrawingIndex=drawings.length-1;
+        armedDrawingTool=null;
         setTool('cursor');
+        drawAll();
+        updateDeleteSelectedButton();
         return;
       }
 
-      if (activeTool==='text') {
+      if (armedDrawingTool==='text') {
         interceptPointer(e);
         const label=window.prompt('Texto para el gráfico:','Nota');
         if (label) drawings.push({
@@ -1911,12 +2108,15 @@ export default async function(component) {
           text:label,
           style:currentDrawingStyle()
         });
-        drawAll();
+        selectedDrawingIndex=drawings.length-1;
+        armedDrawingTool=null;
         setTool('cursor');
+        drawAll();
+        updateDeleteSelectedButton();
         return;
       }
 
-      if (['trend','ray','rectangle','fib','measure'].includes(activeTool)) {
+      if (['trend','ray','rectangle','fib','measure'].includes(armedDrawingTool)) {
         interceptPointer(e);
         drawingStart=p;
         drawingDraft=p;
@@ -1999,23 +2199,36 @@ export default async function(component) {
 
       interceptPointer(e);
       const finish=pointerPoint(e);
+      const completedTool=armedDrawingTool;
+      if (!completedTool) {
+        drawingStart=null;
+        drawingDraft=null;
+        return;
+      }
+
       const d={
-        type:activeTool,
+        type:completedTool,
         a:pointToAnchor(drawingStart),
         b:pointToAnchor(finish),
         style:currentDrawingStyle()
       };
-      if (activeTool==='ray') d.style={...d.style,extendRight:true};
-      if (activeTool==='fib') d.levels=fibLevels();
+      if (completedTool==='ray') d.style={...d.style,extendRight:true};
+      if (completedTool==='fib') d.levels=fibLevels();
       drawings.push(d);
+      selectedDrawingIndex=drawings.length-1;
+      armedDrawingTool=null;
       drawingStart=null;
       drawingDraft=null;
       try { chartStage.releasePointerCapture?.(e.pointerId); } catch (_) {}
-      drawAll();
-
-      // Drawing tools are one-shot: after one object is created, return to
-      // Cursor so normal clicks/panning cannot accidentally create more lines.
+      // Drawing tools are one-shot. Creation is now disarmed BEFORE returning
+      // to Cursor, so subsequent clicks cannot create another object.
       setTool('cursor');
+      selectedDrawingIndex=drawings.length-1;
+      syncStyleControlsFromSelected();
+      parentElement.querySelector('#drawing-style-panel').classList.add('open');
+      parentElement.querySelector('#drawing-style-tool').textContent='OBJETO SELECCIONADO';
+      updateDeleteSelectedButton();
+      drawAll();
     }
 
     function onStagePointerCancel(e) {
@@ -2044,6 +2257,32 @@ export default async function(component) {
 
     // Capture lets AXION detect its tools first. If no tool is hit, we do
     // nothing and Lightweight Charts handles the same pointer event normally.
+    function onKeyDown(e) {
+      const tag=String(e.target?.tagName || '').toUpperCase();
+      if (['INPUT','SELECT','TEXTAREA'].includes(tag)) return;
+
+      if ((e.key==='Delete'||e.key==='Backspace') && selectedDrawingIndex>=0) {
+        e.preventDefault();
+        drawings.splice(selectedDrawingIndex,1);
+        selectedDrawingIndex=-1;
+        armedDrawingTool=null;
+        setTool('cursor');
+        drawAll();
+        return;
+      }
+
+      if (e.key==='Escape') {
+        armedDrawingTool=null;
+        drawingStart=null;
+        drawingDraft=null;
+        selectedDrawingIndex=-1;
+        setTool('cursor');
+        drawAll();
+      }
+    }
+
+    document.addEventListener('keydown',onKeyDown);
+
     chartStage.addEventListener('pointerdown', onStagePointerDown, true);
     chartStage.addEventListener('pointermove', onStagePointerMove, true);
     chartStage.addEventListener('pointerup', onStagePointerUp, true);
@@ -2054,6 +2293,7 @@ export default async function(component) {
       chartStage.removeEventListener('pointermove', onStagePointerMove, true);
       chartStage.removeEventListener('pointerup', onStagePointerUp, true);
       chartStage.removeEventListener('pointercancel', onStagePointerCancel, true);
+      document.removeEventListener('keydown',onKeyDown);
     });
 
     parentElement.querySelector('#execute-position').onclick = () => {
@@ -2276,7 +2516,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v16",
+    "axion_prime_chart_workspace_v17",
     html=HTML,
     css=CSS,
     js=JS,
@@ -2290,7 +2530,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V16 con herramientas one-shot y toolbar profesional."""
+    """Monta AXION REPLAY V17 con selección y borrado individual de dibujos."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
