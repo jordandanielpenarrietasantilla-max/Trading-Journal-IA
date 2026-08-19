@@ -17,6 +17,7 @@ from ui_v2.components import (
     safe_text,
 )
 from ui_v2.market_stream import render_market_stream
+from ui_v2.live_heatmap import render_live_heatmap
 from ui_v2.theme import apply_v2_theme
 
 
@@ -287,6 +288,25 @@ DASHBOARD_CSS = """
 .v2-empty-icon { color:#19e4ff; font-size:28px; }
 .v2-empty-state strong { margin-top:10px; color:#f7f9ff; font-size:12px; }
 .v2-empty-state p { max-width:350px; margin-top:7px; color:#7d89a5; font-size:8.5px; line-height:1.5; }
+
+.axion-workspace-nav {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:0 0 12px 0;
+}
+
+.axion-workspace-nav-note {
+    margin-left:auto;
+    color:#657590;
+    font-size:8px;
+    letter-spacing:.35px;
+}
+
+div[data-testid="stButton"] button[kind="secondary"] {
+    transition:all .15s ease;
+}
+
 
 @media(max-width:1100px) {
     .v2-metric-value { font-size:18px; }
@@ -691,6 +711,35 @@ def render_v2_dashboard(
 ) -> None:
     apply_v2_theme()
     st.markdown(DASHBOARD_CSS, unsafe_allow_html=True)
+
+    if "axion_workspace_mode" not in st.session_state:
+        st.session_state.axion_workspace_mode = "dashboard"
+
+    nav_left, nav_live, nav_space = st.columns([1.0, 1.55, 5.45], gap="small")
+
+    with nav_left:
+        if st.button(
+            "◈ DASHBOARD",
+            use_container_width=True,
+            key="axion_nav_dashboard",
+            type="primary" if st.session_state.axion_workspace_mode == "dashboard" else "secondary",
+        ):
+            st.session_state.axion_workspace_mode = "dashboard"
+            st.rerun()
+
+    with nav_live:
+        if st.button(
+            "⚡ MERCADO LIVE / HEATMAP",
+            use_container_width=True,
+            key="axion_nav_live_heatmap",
+            type="primary" if st.session_state.axion_workspace_mode == "live_heatmap" else "secondary",
+        ):
+            st.session_state.axion_workspace_mode = "live_heatmap"
+            st.rerun()
+
+    if st.session_state.axion_workspace_mode == "live_heatmap":
+        render_live_heatmap()
+        return
 
     data = _prepare_data(df)
     now = dt.datetime.now()
