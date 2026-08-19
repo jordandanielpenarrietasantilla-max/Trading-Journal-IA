@@ -7,16 +7,28 @@ HTML = r"""
 <div class="axion-live-shell" id="axion-live-shell">
   <header class="live-header">
     <div class="live-brand">
-      <div class="brand-mark">A</div>
+      <div class="brand-emblem">
+        <span class="brand-a">A</span>
+        <i></i>
+      </div>
       <div class="brand-copy">
         <div class="brand-name">AXION <span>PRIME</span></div>
-        <div class="brand-sub">ORDER FLOW TERMINAL</div>
+        <div class="brand-sub">MARKET INTELLIGENCE · ORDER FLOW</div>
       </div>
     </div>
 
-    <div class="instrument">
-      <strong id="instrument-name">XAU/USD</strong>
-      <span id="instrument-sub">Oro / Dólar estadounidense</span>
+    <div class="market-identity">
+      <div class="market-symbol-row">
+        <span class="market-orb">◎</span>
+        <strong id="instrument-name">XAU/USD</strong>
+        <span class="market-badge">GOLD</span>
+      </div>
+      <div class="market-desc" id="instrument-sub">Oro / Dólar estadounidense</div>
+    </div>
+
+    <div class="market-quote">
+      <div class="quote-price" id="header-price">—</div>
+      <div class="quote-change waiting" id="header-change">Esperando feed</div>
     </div>
 
     <nav class="tf-nav" id="tf-nav">
@@ -29,15 +41,26 @@ HTML = r"""
       <button data-tf="1D">D</button>
     </nav>
 
-    <div class="header-status">
-      <span class="status-dot"></span>
-      <div>
-        <b>MARKET DEPTH</b>
-        <small>PENDIENTE DE CONEXIÓN</small>
+    <div class="terminal-status">
+      <div class="status-chip">
+        <span class="status-led amber"></span>
+        <div><b>MARKET DEPTH</b><small>PENDIENTE</small></div>
+      </div>
+      <div class="status-chip session-chip">
+        <span class="status-led cyan"></span>
+        <div><b>SESIÓN</b><small id="header-session">—</small></div>
+      </div>
+      <div class="server-clock">
+        <span>SERVER</span>
+        <b id="server-clock">--:--:--</b>
       </div>
     </div>
 
-    <button class="icon-btn" id="fullscreen-btn" type="button" title="Pantalla completa">⛶</button>
+    <div class="header-actions">
+      <button class="header-action" type="button" title="Replay">↺ <span>Replay</span></button>
+      <button class="header-action" type="button" title="Backtesting">⌁ <span>Backtesting</span></button>
+      <button class="icon-btn" id="fullscreen-btn" type="button" title="Pantalla completa">⛶</button>
+    </div>
   </header>
 
   <aside class="live-sidebar">
@@ -218,45 +241,129 @@ button{user-select:none}
 
 .live-header{
   grid-column:1/3;
+  position:relative;
   display:grid;
-  grid-template-columns:250px 240px minmax(350px,1fr) auto 38px;
+  grid-template-columns:230px 210px 140px minmax(300px,1fr) auto auto;
   align-items:center;
-  gap:14px;
-  padding:0 12px 0 16px;
-  border-bottom:1px solid rgba(64,88,132,.28);
-  background:linear-gradient(180deg,#07101c,#040a13);
+  gap:12px;
+  min-height:64px;
+  padding:0 12px 0 15px;
+  border-bottom:1px solid rgba(75,105,160,.28);
+  background:
+    radial-gradient(circle at 15% 0%,rgba(52,210,235,.11),transparent 28%),
+    radial-gradient(circle at 80% 0%,rgba(112,79,255,.10),transparent 25%),
+    linear-gradient(180deg,#08111e 0%,#040a13 100%);
+  box-shadow:0 8px 28px rgba(0,0,0,.18);
+}
+.live-header:after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,#24d4ec 22%,#745cff 72%,transparent);
+  opacity:.42;
 }
 .live-brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand-mark{
-  width:34px;height:34px;display:grid;place-items:center;
+.brand-emblem{
+  position:relative;
+  width:38px;height:38px;
+  display:grid;place-items:center;
+  border:1px solid rgba(73,207,234,.48);
+  border-radius:11px;
+  background:
+    radial-gradient(circle at 30% 20%,rgba(77,225,243,.28),transparent 38%),
+    linear-gradient(145deg,#0b2130,#13133a);
+  box-shadow:0 0 24px rgba(43,207,236,.13),inset 0 0 18px rgba(80,108,255,.12);
+}
+.brand-emblem:before{
+  content:"";position:absolute;inset:4px;border:1px solid rgba(120,102,255,.26);
+  border-radius:8px;transform:rotate(45deg)
+}
+.brand-emblem i{
+  position:absolute;width:6px;height:6px;border-radius:50%;right:-2px;top:-2px;
+  background:#28e7a2;box-shadow:0 0 12px #28e7a2
+}
+.brand-a{position:relative;z-index:2;font-size:21px;font-weight:950;color:#eefaff}
+.brand-name{font-size:16px;font-weight:920;letter-spacing:.8px;color:#f5f8ff}
+.brand-name span{color:#5ee0f0}
+.brand-sub{font-size:5.8px;letter-spacing:1.7px;color:#697a95;margin-top:2px;white-space:nowrap}
+
+.market-identity{
+  min-width:0;
+  padding-left:13px;
+  border-left:1px solid rgba(80,106,151,.28)
+}
+.market-symbol-row{display:flex;align-items:center;gap:6px}
+.market-orb{color:#f6c757;font-size:14px}
+.market-symbol-row strong{font-size:14px;color:#f4f7fc;letter-spacing:.2px}
+.market-badge{
+  padding:3px 5px;border-radius:4px;
+  color:#f3c75c;background:rgba(244,190,68,.08);border:1px solid rgba(244,190,68,.23);
+  font-size:5.5px;font-weight:900;letter-spacing:.6px
+}
+.market-desc{margin-top:2px;color:#657792;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.market-quote{min-width:0}
+.quote-price{
+  font-size:19px;font-weight:920;line-height:1;color:#f4f8ff;letter-spacing:.2px
+}
+.quote-change{margin-top:4px;font-size:6.5px;font-weight:850}
+.quote-change.waiting{color:#c5a35c}
+.quote-change.positive{color:#31d99a}
+.quote-change.negative{color:#ff6078}
+
+.tf-nav{
+  display:flex;align-items:center;justify-content:center;
+  gap:1px;min-width:0;
+  padding:3px;
+  border:1px solid rgba(70,96,139,.22);
   border-radius:8px;
-  font-size:20px;font-weight:950;color:#06111a;
-  background:linear-gradient(135deg,#4cdaf0,#6464ff);
+  background:rgba(5,12,22,.58)
 }
-.brand-name{font-size:16px;font-weight:900;letter-spacing:.6px;color:#f2f6fc}
-.brand-name span{color:#61dced}
-.brand-sub{font-size:6px;letter-spacing:1.8px;color:#5e708b;margin-top:1px}
-.instrument{padding-left:14px;border-left:1px solid #1c2a40;min-width:0}
-.instrument strong{display:block;font-size:14px;color:#f3f7fd}
-.instrument span{display:block;margin-top:2px;font-size:8px;color:#6d7e99}
-.tf-nav{display:flex;align-items:center;gap:2px;overflow:hidden}
 .tf-nav button{
-  height:31px;min-width:36px;padding:0 7px;border:0;border-radius:6px;
-  color:#71819b;background:transparent;cursor:pointer;font-size:9px
+  position:relative;
+  height:29px;min-width:34px;padding:0 7px;
+  border:0;border-radius:5px;
+  color:#72819a;background:transparent;cursor:pointer;font-size:8px
 }
-.tf-nav button:hover{background:#101a29;color:#dce8f8}
-.tf-nav button.active{background:#0f2238;color:#53d8ee}
-.header-status{
-  height:34px;display:flex;align-items:center;gap:8px;
-  padding:0 10px;border:1px solid #27354a;border-radius:7px;background:#08111e
+.tf-nav button:hover{background:#111b29;color:#dfe9f7}
+.tf-nav button.active{
+  color:#66deef;background:linear-gradient(180deg,#102a40,#0c1c2e);
+  box-shadow:inset 0 0 0 1px rgba(66,201,228,.18)
 }
-.status-dot{width:7px;height:7px;border-radius:50%;background:#d7a855;box-shadow:0 0 12px rgba(215,168,85,.24)}
-.header-status b{display:block;color:#aeb9ca;font-size:7px;letter-spacing:.7px}
-.header-status small{display:block;color:#6d7a90;font-size:6px;margin-top:1px}
-.icon-btn{
-  width:34px;height:34px;border:1px solid #253850;border-radius:7px;
-  background:#081321;color:#aebcd1;cursor:pointer;font-size:15px
+.tf-nav button.active:after{
+  content:"";position:absolute;left:8px;right:8px;bottom:-4px;height:2px;border-radius:2px;
+  background:#43d8ed;box-shadow:0 0 8px rgba(67,216,237,.55)
 }
+
+.terminal-status{display:flex;align-items:center;gap:5px}
+.status-chip{
+  height:36px;display:flex;align-items:center;gap:6px;
+  padding:0 8px;border:1px solid #26364d;border-radius:7px;background:rgba(7,15,26,.84)
+}
+.status-chip b{display:block;color:#aeb9c9;font-size:6px;letter-spacing:.65px}
+.status-chip small{display:block;color:#717e93;font-size:5.5px;margin-top:1px}
+.status-led{width:6px;height:6px;border-radius:50%;flex:0 0 6px}
+.status-led.amber{background:#e3b75d;box-shadow:0 0 9px rgba(227,183,93,.55)}
+.status-led.cyan{background:#45d8ec;box-shadow:0 0 9px rgba(69,216,236,.48)}
+.server-clock{
+  height:36px;min-width:67px;padding:6px 8px;
+  border:1px solid #26364d;border-radius:7px;background:rgba(7,15,26,.84)
+}
+.server-clock span{display:block;color:#5f6e84;font-size:5px;letter-spacing:.7px}
+.server-clock b{display:block;margin-top:2px;color:#dce5f2;font-size:7px;font-variant-numeric:tabular-nums}
+
+.header-actions{display:flex;align-items:center;gap:5px}
+.header-action,.icon-btn{
+  height:34px;border:1px solid #263a54;border-radius:7px;
+  color:#9cabbe;background:linear-gradient(180deg,#0b1624,#07101c);
+  cursor:pointer
+}
+.header-action{padding:0 9px;font-size:7px}
+.header-action span{margin-left:3px}
+.header-action:hover,.icon-btn:hover{
+  color:#eef7ff;border-color:#3d617f;background:#0e1d2e
+}
+.icon-btn{width:34px;padding:0;font-size:14px}
 
 .live-sidebar{
   grid-column:1;grid-row:2;
@@ -401,8 +508,9 @@ button{user-select:none}
 .contrast-control input{width:90px}
 
 @media(max-width:1150px){
-  .live-header{grid-template-columns:210px 180px minmax(280px,1fr) 38px}
-  .header-status{display:none}
+  .live-header{grid-template-columns:210px 180px 120px minmax(260px,1fr) auto}
+  .terminal-status{display:none}
+  .header-action span{display:none}
   .module-tab:nth-child(n+4){display:none}
   .terminal-workspace{grid-template-columns:minmax(0,1fr) 160px}
   .live-metrics{grid-template-columns:repeat(3,1fr)}
@@ -440,6 +548,26 @@ export default function(component) {
     parentElement.querySelector('#instrument-sub').textContent=symbolSubtitle(symbolSelect.value);
   }
   paintHeader();
+
+  function updateServerClock(){
+    const d=new Date();
+    const hh=String(d.getHours()).padStart(2,'0');
+    const mm=String(d.getMinutes()).padStart(2,'0');
+    const ss=String(d.getSeconds()).padStart(2,'0');
+    const clock=parentElement.querySelector('#server-clock');
+    if(clock) clock.textContent=`${hh}:${mm}:${ss}`;
+
+    const hour=d.getUTCHours();
+    let session='Fuera de sesión';
+    if(hour>=21 || hour<6) session='Sídney';
+    if(hour>=0 && hour<9) session='Tokio';
+    if(hour>=7 && hour<16) session='Londres';
+    if(hour>=13 && hour<22) session='Nueva York';
+    const sessionEl=parentElement.querySelector('#header-session');
+    if(sessionEl) sessionEl.textContent=session;
+  }
+  updateServerClock();
+  const clockTimer=setInterval(updateServerClock,1000);
 
   symbolSelect.onchange=()=>{
     paintHeader();
@@ -493,12 +621,12 @@ export default function(component) {
     }catch(err){console.error('AXION Heatmap fullscreen',err)}
   };
 
-  return ()=>{};
+  return ()=>{clearInterval(clockTimer)};
 }
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v2",
+    "axion_live_heatmap_v3",
     html=HTML,
     css=CSS,
     js=JS,
@@ -514,7 +642,7 @@ def render_axion_live_heatmap(
     height: int = 920,
 ):
     """
-    Renderiza AXION LIVE / Heatmap V2.
+    Renderiza AXION LIVE / Heatmap V3.
     No genera ni simula datos de liquidez.
     """
     payload = {
