@@ -1051,6 +1051,12 @@ export default async function(component) {
     let drawings = [];
     let selectedDrawingIndex = -1;
     let armedDrawingTool = null;
+
+    // Editing state for existing drawings.
+    let drawingDragMode = null;       // 'whole' | 'a' | 'b'
+    let drawingDragStart = null;      // {x,y,logical,price}
+    let drawingDragSnapshot = null;   // immutable copy at drag start
+
     let drawingStyle = {
       color:'#47d8eb',
       lineStyle:'solid',
@@ -1971,6 +1977,99 @@ export default async function(component) {
       return -1;
     }
 
+    function cloneDrawing(d) {
+      return JSON.parse(JSON.stringify(d));
+    }
+
+    function pointerAnchorState(p) {
+      let logical=chart.timeScale().coordinateToLogical(p.x);
+      if (logical == null) logical=currentCursor;
+      return {
+        x:p.x,
+        y:p.y,
+        logical:Number(logical),
+        price:priceFromY(p.y)
+      };
+    }
+
+    function selectedDrawingHandleAt(p) {
+      if (selectedDrawingIndex < 0 || !drawings[selectedDrawingIndex]) return null;
+      const d=drawings[selectedDrawingIndex];
+      const tolerance=10;
+
+      // Horizontal/vertical/text only need whole-object dragging.
+      if (['horizontal','vertical','text'].includes(d.type)) {
+        return hitTestDrawing(p)===selectedDrawingIndex ? 'whole' : null;
+      }
+
+      const a=anchorToPoint(d.a);
+      const b=anchorToPoint(d.b);
+      if (!a || !b) return null;
+
+      if (Math.hypot(p.x-a.x,p.y-a.y) <= tolerance) return 'a';
+      if (Math.hypot(p.x-b.x,p.y-b.y) <= tolerance) return 'b';
+
+      return hitTestDrawing(p)===selectedDrawingIndex ? 'whole' : null;
+    }
+
+    function moveDrawingFromSnapshot(d,mode,p) {
+      if (!d || !drawingDragSnapshot || !drawingDragStart) return;
+
+      const now=pointerAnchorState(p);
+      const deltaLogical=now.logical-drawingDragStart.logical;
+      const deltaPrice=now.price-drawingDragStart.price;
+      const snap=drawingDragSnapshot;
+
+      if (mode==='a' && snap.a) {
+        d.a={
+          logical:now.logical,
+          price:now.price
+        };
+        return;
+      }
+
+      if (mode==='b' && snap.b) {
+        d.b={
+          logical:now.logical,
+          price:now.price
+        };
+        return;
+      }
+
+      if (mode!=='whole') return;
+
+      if (snap.type==='horizontal') {
+        d.price=Number(snap.price)+deltaPrice;
+        return;
+      }
+
+      if (snap.type==='vertical') {
+        d.logical=Number(snap.logical)+deltaLogical;
+        return;
+      }
+
+      if (snap.type==='text' && snap.a) {
+        d.a={
+          logical:Number(snap.a.logical)+deltaLogical,
+          price:Number(snap.a.price)+deltaPrice
+        };
+        return;
+      }
+
+      if (snap.a) {
+        d.a={
+          logical:Number(snap.a.logical)+deltaLogical,
+          price:Number(snap.a.price)+deltaPrice
+        };
+      }
+      if (snap.b) {
+        d.b={
+          logical:Number(snap.b.logical)+deltaLogical,
+          price:Number(snap.b.price)+deltaPrice
+        };
+      }
+    }
+
     function syncStyleControlsFromSelected() {
       if (selectedDrawingIndex < 0 || !drawings[selectedDrawingIndex]) return;
       const s=drawings[selectedDrawingIndex].style || {};
@@ -1997,13 +2096,33 @@ export default async function(component) {
 
       if (d.type==='horizontal') {
         const y=yFromPrice(d.price);
-        ctx.strokeRect(4,y-5,canvasRect().width-8,10);
+        ctx.strokeRect(4,y-6,canvasRect().width-8,12);
+
+        // Center drag handle.
+        ctx.setLineDash([]);
+        const cx=canvasRect().width*.50;
+        ctx.beginPath();
+        ctx.arc(cx,y,5,0,Math.PI*2);
+        ctx.fill();
       } else if (d.type==='vertical') {
         const x=chart.timeScale().logicalToCoordinate(Number(d.logical));
-        if (x != null) ctx.strokeRect(x-5,4,10,canvasRect().height-8);
+        if (x != null) {
+          ctx.strokeRect(x-6,4,12,canvasRect().height-8);
+          ctx.setLineDash([]);
+          const cy=canvasRect().height*.45;
+          ctx.beginPath();
+          ctx.arc(x,cy,5,0,Math.PI*2);
+          ctx.fill();
+        }
       } else if (d.type==='text') {
         const a=anchorToPoint(d.a);
-        if (a) ctx.strokeRect(a.x-4,a.y-18,90,24);
+        if (a) {
+          ctx.strokeRect(a.x-5,a.y-19,92,26);
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.arc(a.x,a.y,5,0,Math.PI*2);
+          ctx.fill();
+        }
       } else {
         const a=anchorToPoint(d.a);
         const b=anchorToPoint(d.b);
@@ -2011,9 +2130,10 @@ export default async function(component) {
           ctx.setLineDash([]);
           [a,b].forEach(pt=>{
             ctx.beginPath();
-            ctx.arc(pt.x,pt.y,5,0,Math.PI*2);
+            ctx.arc(pt.x,pt.y,6,0,Math.PI*2);
             ctx.fill();
             ctx.strokeStyle='#07101d';
+            ctx.lineWidth=2;
             ctx.stroke();
           });
         }
@@ -2308,14 +2428,30 @@ export default async function(component) {
     function onStagePointerDown(e) {
       const p=pointerPoint(e);
 
-      // Cursor mode selects one existing drawing without creating anything.
+      // Cursor mode: existing drawings are editable objects.
       if (activeTool==='cursor') {
+        // First give the currently selected object a chance to capture a handle/body drag.
+        if (selectedDrawingIndex >= 0 && drawings[selectedDrawingIndex]) {
+          const mode=selectedDrawingHandleAt(p);
+          if (mode) {
+            interceptPointer(e);
+            drawingDragMode=mode;
+            drawingDragStart=pointerAnchorState(p);
+            drawingDragSnapshot=cloneDrawing(drawings[selectedDrawingIndex]);
+            chartStage.setPointerCapture?.(e.pointerId);
+            chartStage.style.cursor=
+              mode==='whole' ? 'grabbing' : 'crosshair';
+            return;
+          }
+        }
+
         const hit=hitTestDrawing(p);
         if (hit >= 0) {
           interceptPointer(e);
           selectedDrawingIndex=hit;
           armedDrawingTool=null;
           syncStyleControlsFromSelected();
+
           const selectedPanel=parentElement.querySelector('#drawing-style-panel');
           selectedPanel.classList.add('open');
           selectedPanel.classList.toggle(
@@ -2470,6 +2606,23 @@ export default async function(component) {
     function onStagePointerMove(e) {
       const p=pointerPoint(e);
 
+      if (
+        drawingDragMode &&
+        selectedDrawingIndex >= 0 &&
+        drawings[selectedDrawingIndex]
+      ) {
+        interceptPointer(e);
+        moveDrawingFromSnapshot(
+          drawings[selectedDrawingIndex],
+          drawingDragMode,
+          p
+        );
+        chartStage.style.cursor=
+          drawingDragMode==='whole' ? 'grabbing' : 'crosshair';
+        drawAll();
+        return;
+      }
+
       if (draggingPositionHandle && position) {
         interceptPointer(e);
         position[draggingPositionHandle]=priceFromY(p.y);
@@ -2506,6 +2659,18 @@ export default async function(component) {
         return;
       }
 
+      // Hover feedback for editable drawings.
+      if (
+        activeTool==='cursor' &&
+        selectedDrawingIndex >= 0 &&
+        drawings[selectedDrawingIndex]
+      ) {
+        const mode=selectedDrawingHandleAt(p);
+        if (mode==='whole') chartStage.style.cursor='grab';
+        else if (mode==='a'||mode==='b') chartStage.style.cursor='crosshair';
+        else chartStage.style.cursor='default';
+      }
+
       // Hover feedback only. Do not block Lightweight Charts.
       if ((activeTool==='long'||activeTool==='short'||activeTool==='position_edit') && position) {
         const handle=nearestPositionHandle(p);
@@ -2516,6 +2681,17 @@ export default async function(component) {
     }
 
     function onStagePointerUp(e) {
+      if (drawingDragMode) {
+        interceptPointer(e);
+        drawingDragMode=null;
+        drawingDragStart=null;
+        drawingDragSnapshot=null;
+        try { chartStage.releasePointerCapture?.(e.pointerId); } catch (_) {}
+        chartStage.style.cursor='default';
+        drawAll();
+        return;
+      }
+
       if (draggingPositionHandle) {
         interceptPointer(e);
         draggingPositionHandle=null;
@@ -2576,9 +2752,15 @@ export default async function(component) {
 
     function onStagePointerCancel(e) {
       const wasInteracting = Boolean(
-        draggingPositionHandle || draggingWholePosition || drawingStart
+        drawingDragMode ||
+        draggingPositionHandle ||
+        draggingWholePosition ||
+        drawingStart
       );
 
+      drawingDragMode=null;
+      drawingDragStart=null;
+      drawingDragSnapshot=null;
       draggingPositionHandle=null;
       draggingWholePosition=false;
       dragStartPrice=null;
@@ -2618,6 +2800,9 @@ export default async function(component) {
         armedDrawingTool=null;
         drawingStart=null;
         drawingDraft=null;
+        drawingDragMode=null;
+        drawingDragStart=null;
+        drawingDragSnapshot=null;
         selectedDrawingIndex=-1;
         setTool('cursor');
         drawAll();
@@ -2862,7 +3047,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v21",
+    "axion_prime_chart_workspace_v22",
     html=HTML,
     css=CSS,
     js=JS,
@@ -2876,7 +3061,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V21 sin estilos forzados; configuración manual por usuario."""
+    """Monta AXION REPLAY V22 con dibujos movibles y extremos editables."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
