@@ -7,7 +7,7 @@ from components.axion_heatmap import render_axion_live_heatmap
 
 def _init_live_state() -> None:
     defaults = {
-        "live_symbol": "XAUUSD",
+        "live_symbol": "BTCUSDT",
         "live_timeframe": "15m",
         "live_heatmap_note": (
             "Terminal AXION LIVE activa · La profundidad real se habilitará al conectar Market Depth."
