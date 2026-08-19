@@ -941,8 +941,28 @@ export default async function(component) {
       const reward=Math.abs(position.target-position.entry);
       const riskPct=Math.abs(risk/position.entry)*100;
       const rewardPct=Math.abs(reward/position.entry)*100;
+      const visualState=evaluateVisualPositionState();
+      const current=visualState.current;
+      let liveSuffix='';
+
+      if (visualState.status==='PENDING') {
+        liveSuffix=' · Pendiente';
+      } else if (visualState.status==='ACTIVE' && current) {
+        const currentPrice=Number(current.close);
+        const pnlPrice=position.direction==='LONG'
+          ? currentPrice-position.entry
+          : position.entry-currentPrice;
+        liveSuffix=' · '+(pnlPrice/risk).toFixed(2)+'R actual';
+      } else if (visualState.status==='TP') {
+        liveSuffix=' · TP alcanzado';
+      } else if (visualState.status==='SL') {
+        liveSuffix=' · SL alcanzado';
+      } else if (visualState.status==='AMBIGUOUS') {
+        liveSuffix=' · Resultado intravela indeterminado';
+      }
+
       parentElement.querySelector('#position-rr').textContent=
-        '1 : '+(reward/risk).toFixed(2)+' · Riesgo '+riskPct.toFixed(2)+'% · Beneficio '+rewardPct.toFixed(2)+'%';
+        '1 : '+(reward/risk).toFixed(2)+' · Riesgo '+riskPct.toFixed(2)+'% · Beneficio '+rewardPct.toFixed(2)+'%'+liveSuffix;
     }
 
     function drawRightPriceTag(y, text, bg, opts = {}) {
@@ -962,6 +982,181 @@ export default async function(component) {
       ctx.fillText(text, x - w + padX, y);
       ctx.restore();
       return {x: x - w, w, h};
+    }
+
+    function currentReplayCandle() {
+      const visible=visibleCandles();
+      return visible.length ? visible[visible.length-1] : null;
+    }
+
+    function evaluateVisualPositionState() {
+      if (!position) return {status:'NONE'};
+
+      const startIndex=Math.max(0,Math.min(
+        Number.isFinite(position.createdCursor) ? Number(position.createdCursor) : 0,
+        currentCursor
+      ));
+
+      const revealed=candles.slice(startIndex,currentCursor+1);
+      if (!revealed.length) {
+        return {status:'PENDING',current:null,entryIndex:null};
+      }
+
+      let entryIndex=null;
+      for (let i=0;i<revealed.length;i++) {
+        const bar=revealed[i];
+        if (Number(bar.low) <= position.entry && Number(bar.high) >= position.entry) {
+          entryIndex=startIndex+i;
+          break;
+        }
+      }
+
+      const current=currentReplayCandle();
+      if (entryIndex == null) {
+        return {status:'PENDING',current,entryIndex:null};
+      }
+
+      // Only inspect candles that have already appeared after the entry was touched.
+      const afterEntry=candles.slice(entryIndex,currentCursor+1);
+      for (const bar of afterEntry) {
+        const hitStop =
+          position.direction==='LONG'
+            ? Number(bar.low) <= position.stop
+            : Number(bar.high) >= position.stop;
+
+        const hitTarget =
+          position.direction==='LONG'
+            ? Number(bar.high) >= position.target
+            : Number(bar.low) <= position.target;
+
+        if (hitStop && hitTarget) {
+          // With OHLC alone the intra-candle order is unknowable.
+          return {status:'AMBIGUOUS',current,entryIndex};
+        }
+        if (hitTarget) return {status:'TP',current,entryIndex};
+        if (hitStop) return {status:'SL',current,entryIndex};
+      }
+
+      return {status:'ACTIVE',current,entryIndex};
+    }
+
+    function drawLiveTradeProgress(g) {
+      const state=evaluateVisualPositionState();
+      if (!position || !g) return;
+
+      const current=state.current;
+      const rightEdge=Math.min(canvasRect().width-8, g.right);
+      const leftEdge=g.left;
+
+      ctx.save();
+
+      if (state.status==='PENDING') {
+        ctx.fillStyle='rgba(150,164,190,.10)';
+        ctx.strokeStyle='rgba(150,164,190,.45)';
+        ctx.setLineDash([5,4]);
+        ctx.lineWidth=1;
+        ctx.strokeRect(leftEdge,g.top,rightEdge-leftEdge,g.bottom-g.top);
+
+        const label='PENDIENTE · esperando Entry';
+        ctx.font='700 9px Inter,system-ui';
+        const w=ctx.measureText(label).width+18;
+        ctx.fillStyle='rgba(8,16,30,.94)';
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.roundRect(leftEdge+8,g.ye-34,w,22,6);
+        ctx.fill();
+        ctx.fillStyle='#a9b6cb';
+        ctx.textBaseline='middle';
+        ctx.fillText(label,leftEdge+17,g.ye-23);
+        ctx.restore();
+        return;
+      }
+
+      if (!current) {
+        ctx.restore();
+        return;
+      }
+
+      const currentPrice=Number(current.close);
+      const currentY=yFromPrice(currentPrice);
+      const favorable =
+        position.direction==='LONG'
+          ? currentPrice >= position.entry
+          : currentPrice <= position.entry;
+
+      const liveColor=favorable ? themeColors.target : themeColors.stop;
+
+      if (state.status==='ACTIVE') {
+        const bandTop=Math.min(g.ye,currentY);
+        const bandHeight=Math.max(2,Math.abs(g.ye-currentY));
+
+        ctx.globalAlpha=.18;
+        ctx.fillStyle=liveColor;
+        ctx.fillRect(leftEdge,bandTop,rightEdge-leftEdge,bandHeight);
+        ctx.globalAlpha=1;
+
+        ctx.strokeStyle=liveColor;
+        ctx.lineWidth=1.4;
+        ctx.setLineDash([4,3]);
+        ctx.beginPath();
+        ctx.moveTo(leftEdge,currentY);
+        ctx.lineTo(rightEdge,currentY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const risk=Math.max(Math.abs(position.entry-position.stop),1e-12);
+        const pnlPrice=
+          position.direction==='LONG'
+            ? currentPrice-position.entry
+            : position.entry-currentPrice;
+        const currentR=pnlPrice/risk;
+        const pnlPct=(pnlPrice/Math.abs(position.entry))*100;
+
+        const label=
+          'EN MERCADO  '+(pnlPct>=0?'+':'')+pnlPct.toFixed(2)+'%  ·  '+
+          (currentR>=0?'+':'')+currentR.toFixed(2)+'R';
+
+        ctx.font='800 9px Inter,system-ui';
+        const w=Math.max(128,ctx.measureText(label).width+18);
+        const x=Math.max(leftEdge+8,Math.min(rightEdge-w-8,leftEdge+12));
+        const y=Math.max(18,Math.min(canvasRect().height-18,currentY-18));
+
+        ctx.fillStyle='rgba(4,12,26,.96)';
+        ctx.strokeStyle=liveColor;
+        ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.roundRect(x,y-12,w,24,6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle=liveColor;
+        ctx.textBaseline='middle';
+        ctx.fillText(label,x+9,y);
+      } else {
+        const isTp=state.status==='TP';
+        const isSl=state.status==='SL';
+        const statusColor=isTp ? themeColors.target : isSl ? themeColors.stop : '#f0b85a';
+        const label=isTp
+          ? '✓ TAKE PROFIT'
+          : isSl
+            ? '✕ STOP LOSS'
+            : '⚠ RESULTADO INDETERMINADO EN LA MISMA VELA';
+
+        ctx.font='800 9px Inter,system-ui';
+        const w=Math.max(110,ctx.measureText(label).width+20);
+        ctx.fillStyle='rgba(4,12,26,.97)';
+        ctx.strokeStyle=statusColor;
+        ctx.lineWidth=1.2;
+        ctx.beginPath();
+        ctx.roundRect(leftEdge+8,g.ye-14,w,28,7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle=statusColor;
+        ctx.textBaseline='middle';
+        ctx.fillText(label,leftEdge+18,g.ye);
+      }
+
+      ctx.restore();
     }
 
     function drawPosition() {
@@ -1090,6 +1285,9 @@ export default async function(component) {
       ctx.textBaseline='middle';
       ctx.fillText(rrText,rrX+12,ye);
       ctx.restore();
+
+      // Replay-aware visual state: pending, active P&L band, TP or SL.
+      drawLiveTradeProgress(g);
     }
 
     function drawAll() {
@@ -1288,8 +1486,14 @@ export default async function(component) {
         if (endLogical == null || endLogical <= startLogical) endLogical=startLogical+20;
 
         position=activeTool==='long'
-          ? {direction:'LONG',entry,stop:entry-risk,target:entry+risk*rr,startLogical,endLogical}
-          : {direction:'SHORT',entry,stop:entry+risk,target:entry-risk*rr,startLogical,endLogical};
+          ? {
+              direction:'LONG',entry,stop:entry-risk,target:entry+risk*rr,
+              startLogical,endLogical,createdCursor:currentCursor
+            }
+          : {
+              direction:'SHORT',entry,stop:entry+risk,target:entry-risk*rr,
+              startLogical,endLogical,createdCursor:currentCursor
+            };
 
         updatePositionPanel();
         setTool('position_edit');
@@ -1651,7 +1855,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v13",
+    "axion_prime_chart_workspace_v14",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1665,7 +1869,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V13 con métricas profesionales de riesgo/beneficio."""
+    """Monta AXION REPLAY V14 con estado visual dinámico de la operación."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
