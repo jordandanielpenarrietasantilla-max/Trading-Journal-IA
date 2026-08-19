@@ -289,22 +289,46 @@ DASHBOARD_CSS = """
 .v2-empty-state strong { margin-top:10px; color:#f7f9ff; font-size:12px; }
 .v2-empty-state p { max-width:350px; margin-top:7px; color:#7d89a5; font-size:8.5px; line-height:1.5; }
 
-.axion-workspace-nav {
-    display:flex;
-    align-items:center;
-    gap:8px;
-    margin:0 0 12px 0;
+/* Compact workspace switcher */
+div[data-testid="stSegmentedControl"] {
+    margin: 0 0 12px 0;
 }
 
-.axion-workspace-nav-note {
-    margin-left:auto;
-    color:#657590;
-    font-size:8px;
-    letter-spacing:.35px;
+div[data-testid="stSegmentedControl"] > div {
+    width: fit-content;
+    padding: 4px;
+    gap: 4px;
+    border: 1px solid rgba(67, 103, 166, .26);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(7,15,29,.96), rgba(4,10,21,.96));
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
 }
 
-div[data-testid="stButton"] button[kind="secondary"] {
-    transition:all .15s ease;
+div[data-testid="stSegmentedControl"] button {
+    min-height: 34px !important;
+    padding: 0 15px !important;
+    border: 0 !important;
+    border-radius: 7px !important;
+    color: #7e8eaa !important;
+    background: transparent !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: .15px !important;
+    white-space: nowrap !important;
+}
+
+div[data-testid="stSegmentedControl"] button:hover {
+    color: #eaf5ff !important;
+    background: rgba(22,39,65,.62) !important;
+}
+
+div[data-testid="stSegmentedControl"] button[aria-pressed="true"] {
+    color: #f5fbff !important;
+    background:
+        linear-gradient(135deg, rgba(31,202,231,.92), rgba(106,79,246,.92)) !important;
+    box-shadow:
+        0 0 0 1px rgba(121,220,244,.12) inset,
+        0 5px 18px rgba(48,105,225,.20) !important;
 }
 
 
@@ -715,26 +739,28 @@ def render_v2_dashboard(
     if "axion_workspace_mode" not in st.session_state:
         st.session_state.axion_workspace_mode = "dashboard"
 
-    nav_left, nav_live, nav_space = st.columns([1.0, 1.55, 5.45], gap="small")
+    current_label = (
+        "⚡ Mercado Live / Heatmap"
+        if st.session_state.axion_workspace_mode == "live_heatmap"
+        else "◈ Dashboard"
+    )
 
-    with nav_left:
-        if st.button(
-            "◈ DASHBOARD",
-            use_container_width=True,
-            key="axion_nav_dashboard",
-            type="primary" if st.session_state.axion_workspace_mode == "dashboard" else "secondary",
-        ):
-            st.session_state.axion_workspace_mode = "dashboard"
-            st.rerun()
+    workspace_choice = st.segmented_control(
+        "Workspace",
+        options=["◈ Dashboard", "⚡ Mercado Live / Heatmap"],
+        default=current_label,
+        label_visibility="collapsed",
+        key="axion_workspace_switcher",
+    )
 
-    with nav_live:
-        if st.button(
-            "⚡ MERCADO LIVE / HEATMAP",
-            use_container_width=True,
-            key="axion_nav_live_heatmap",
-            type="primary" if st.session_state.axion_workspace_mode == "live_heatmap" else "secondary",
-        ):
-            st.session_state.axion_workspace_mode = "live_heatmap"
+    if workspace_choice:
+        next_mode = (
+            "live_heatmap"
+            if workspace_choice == "⚡ Mercado Live / Heatmap"
+            else "dashboard"
+        )
+        if next_mode != st.session_state.axion_workspace_mode:
+            st.session_state.axion_workspace_mode = next_mode
             st.rerun()
 
     if st.session_state.axion_workspace_mode == "live_heatmap":
