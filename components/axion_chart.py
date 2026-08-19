@@ -146,8 +146,8 @@ HTML = r"""
           </div>
 
           <div class="panel-note">
-            Haz clic para crear la posición. Arrastra Entry, SL o TP por separado.
-            Arrastra el centro del bloque para mover la posición completa.
+            Haz clic una vez para crear la posición. Después queda fija.
+            Arrastra Entry, SL o TP directamente; arrastra el centro para mover todo el bloque.
           </div>
         </div>
 
@@ -1053,7 +1053,10 @@ export default async function(component) {
 
     function setTool(tool) {
       activeTool=tool;
-      drawingStart=null;drawingDraft=null;draggingPositionHandle=null;
+      drawingStart=null;
+      drawingDraft=null;
+      draggingPositionHandle=null;
+      draggingWholePosition=false;
 
       parentElement.querySelectorAll('[data-tool]').forEach(btn => {
         btn.classList.toggle('active',btn.dataset.tool===tool);
@@ -1069,8 +1072,15 @@ export default async function(component) {
         shortTab.classList.toggle('selected', tool === 'short');
       }
 
-      canvas.style.pointerEvents = tool==='cursor' ? 'none' : 'auto';
-      canvas.style.cursor = tool==='cursor' ? 'default' : 'crosshair';
+      // position_edit keeps the canvas interactive without creating a new position.
+      const interactive = tool !== 'cursor';
+      canvas.style.pointerEvents = interactive ? 'auto' : 'none';
+
+      if (tool === 'position_edit') {
+        canvas.style.cursor='default';
+      } else {
+        canvas.style.cursor = tool==='cursor' ? 'default' : 'crosshair';
+      }
     }
 
     parentElement.querySelectorAll('[data-tool]').forEach(btn => {
@@ -1124,9 +1134,10 @@ export default async function(component) {
       const g=positionGeometry();
       if (!g) return null;
 
-      // Only grab a level when the pointer is close to the right edge.
-      const closeToRightEdge=Math.abs(p.x-g.right) <= 18;
-      if (!closeToRightEdge) return null;
+      // Grab Entry / SL / TP anywhere along the visible position width.
+      // This is intentionally generous so the tool feels natural, like TradingView.
+      const insideHorizontalRange = p.x >= g.left - 10 && p.x <= g.right + 20;
+      if (!insideHorizontalRange) return null;
 
       const candidates = [
         ['entry',Math.abs(p.y-g.ye)],
@@ -1134,7 +1145,7 @@ export default async function(component) {
         ['target',Math.abs(p.y-g.yt)]
       ].sort((a,b)=>a[1]-b[1]);
 
-      return candidates[0][1] <= 12 ? candidates[0][0] : null;
+      return candidates[0][1] <= 9 ? candidates[0][0] : null;
     }
 
     function pointInsidePositionBlock(p) {
@@ -1147,7 +1158,7 @@ export default async function(component) {
       e.preventDefault();
       const p=pointerPoint(e);
 
-      if ((activeTool==='long'||activeTool==='short') && position) {
+      if ((activeTool==='long'||activeTool==='short'||activeTool==='position_edit') && position) {
         const handle=nearestPositionHandle(p);
 
         // 1) Individual level dragging: Entry / SL / TP.
@@ -1177,7 +1188,12 @@ export default async function(component) {
         }
       }
 
-      // 3) Create a new position if click is outside current block.
+      // In edit mode, a click away from the position must NOT relocate it.
+      if (activeTool==='position_edit') {
+        return;
+      }
+
+      // 3) Create a new position only after the trader explicitly selects LONG/SHORT.
       if (activeTool==='long'||activeTool==='short') {
         const entry=priceFromY(p.y);
         const rr=Number(parentElement.querySelector('#rr-select').value||2);
@@ -1198,7 +1214,12 @@ export default async function(component) {
           ? {direction:'LONG',entry,stop:entry-risk,target:entry+risk*rr,startLogical,endLogical}
           : {direction:'SHORT',entry,stop:entry+risk,target:entry-risk*rr,startLogical,endLogical};
 
-        updatePositionPanel();drawAll();return;
+        // IMPORTANT: one click creates one position. Afterwards AXION switches
+        // to edit mode so random clicks cannot recreate or relocate it.
+        updatePositionPanel();
+        setTool('position_edit');
+        drawAll();
+        return;
       }
 
       if (activeTool==='horizontal') {
@@ -1243,11 +1264,11 @@ export default async function(component) {
       }
 
       // Cursor feedback while hovering an existing position.
-      if ((activeTool==='long'||activeTool==='short') && position) {
+      if ((activeTool==='long'||activeTool==='short'||activeTool==='position_edit') && position) {
         const handle=nearestPositionHandle(p);
         if (handle) canvas.style.cursor='ns-resize';
         else if (pointInsidePositionBlock(p)) canvas.style.cursor='grab';
-        else canvas.style.cursor='crosshair';
+        else canvas.style.cursor=activeTool==='position_edit' ? 'default' : 'crosshair';
       }
 
       if (!drawingStart) return;
@@ -1257,7 +1278,7 @@ export default async function(component) {
     canvas.onpointerup = e => {
       if (draggingPositionHandle) {
         draggingPositionHandle=null;
-        canvas.style.cursor='crosshair';
+        canvas.style.cursor=activeTool==='position_edit' ? 'default' : 'crosshair';
         drawAll();
         return;
       }
@@ -1268,7 +1289,7 @@ export default async function(component) {
         dragStartPosition=null;
         dragStartPoint=null;
         dragStartLogical=null;
-        canvas.style.cursor='grab';
+        canvas.style.cursor=activeTool==='position_edit' ? 'default' : 'grab';
         drawAll();
         return;
       }
@@ -1290,7 +1311,7 @@ export default async function(component) {
       dragStartLogical=null;
       drawingStart=null;
       drawingDraft=null;
-      canvas.style.cursor=activeTool==='cursor'?'default':'crosshair';
+      canvas.style.cursor=(activeTool==='cursor'||activeTool==='position_edit')?'default':'crosshair';
       drawAll();
     };
 
@@ -1502,7 +1523,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v10",
+    "axion_prime_chart_workspace_v11",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1516,7 +1537,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V10 con posiciones ancladas y controles funcionales."""
+    """Monta AXION REPLAY V11 con Position Tool de creación única y edición libre."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
