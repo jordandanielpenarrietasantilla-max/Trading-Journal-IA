@@ -324,7 +324,7 @@ export default function(component) {
   let depthBuffer=[];
   let heatHistory=[];
   const MAX_HEAT_COLS=210;
-  const LEVELS_SIDE=80;
+  const LEVELS_SIDE=180;
 
   let candles=[];
   let firstPrice=null;
@@ -557,15 +557,36 @@ export default function(component) {
       1,
       ...recent.map(c=>Math.max(Math.abs(c.h-center),Math.abs(c.l-center)))
     );
+
     const bookRange=Math.max(
       1,
       bids.length ? Math.abs(bids[Math.min(LEVELS_SIDE-1,bids.length-1)][0]-center) : 1,
       asks.length ? Math.abs(asks[Math.min(LEVELS_SIDE-1,asks.length-1)][0]-center) : 1
     );
 
-    // Blend depth and recent candle range, but prevent giant historic spikes
-    // from flattening the heatmap.
-    const halfRange=Math.max(bookRange*1.18, Math.min(recentRange, bookRange*3.2), center*.00055);
+    // Use recent true candle movement to keep the chart useful on 5m/15m/1h.
+    const trueRanges=recent.slice(1).map((c,i)=>{
+      const prev=recent[i];
+      return Math.max(
+        c.h-c.l,
+        Math.abs(c.h-prev.c),
+        Math.abs(c.l-prev.c)
+      );
+    }).filter(Number.isFinite).sort((a,b)=>a-b);
+
+    const medianTR=trueRanges.length
+      ? trueRanges[Math.floor((trueRanges.length-1)*.5)]
+      : center*.0008;
+
+    // The viewport is driven by BOTH real depth and recent volatility.
+    // This prevents the order book from making a 15m candle chart look flat.
+    const volatilityRange=Math.max(medianTR*9, center*.0022);
+    const halfRange=Math.max(
+      bookRange*1.20,
+      volatilityRange,
+      Math.min(recentRange, volatilityRange*2.25)
+    );
+
     let minP=center-halfRange;
     let maxP=center+halfRange;
 
@@ -592,12 +613,17 @@ export default function(component) {
       const q90=quantities.length?quantities[Math.floor((quantities.length-1)*.90)]||1:1;
       const q98=quantities.length?quantities[Math.floor((quantities.length-1)*.98)]||q90:q90;
 
-      const cols=Math.max(95,MAX_HEAT_COLS);
-      const cw=w/cols;
-      const offset=w-cw*heatHistory.length;
+      // Auto-fit the REAL history that exists.
+      // During the first minutes we stretch available samples across the chart,
+      // rather than leaving 80% of the canvas empty. Once enough samples exist,
+      // it naturally becomes a rolling window.
+      const visibleCols=Math.min(MAX_HEAT_COLS,heatHistory.length);
+      const cw=w/Math.max(1,visibleCols);
+      const start=Math.max(0,heatHistory.length-visibleCols);
+      const visibleHistory=heatHistory.slice(start);
 
-      heatHistory.forEach((col,i)=>{
-        const x=offset+i*cw;
+      visibleHistory.forEach((col,i)=>{
+        const x=i*cw;
 
         const drawLevel=(p,qty,isAsk)=>{
           if(p<minP||p>maxP)return;
@@ -608,7 +634,7 @@ export default function(component) {
             ? `rgba(255,196,42,${.58+.34*n90})`
             : heatColor(n90,isAsk);
 
-          const bandH=extreme?6.0*q:4.2*q;
+          const bandH=extreme?7.2*q:5.0*q;
           ctx.fillRect(x,y-bandH/2,cw+1.3*q,bandH);
         };
 
@@ -634,7 +660,7 @@ export default function(component) {
 
     // Candles sit ON TOP of the heatmap.
     if(recent.length){
-      const candleAreaW=w*.91;
+      const candleAreaW=w*.985;
       const cw=candleAreaW/recent.length;
       const body=Math.max(2.2*q,cw*.48);
       recent.forEach((c,i)=>{
@@ -692,20 +718,21 @@ export default function(component) {
     const strongBid=bidRank[0];
     const strongAsk=askRank[0];
     const secondAsk=askRank[1];
+    const enoughHeat=heatHistory.length>=8;
 
     positionTag(
       parentElement.querySelector('#buyer-zone'),
-      strongBid && strongBid[0]>=minP && strongBid[0]<=maxP ? yOf(strongBid[0])/q : null,
+      enoughHeat && strongBid && strongBid[0]>=minP && strongBid[0]<=maxP ? yOf(strongBid[0])/q : null,
       'left'
     );
     positionTag(
       parentElement.querySelector('#seller-zone'),
-      strongAsk && strongAsk[0]>=minP && strongAsk[0]<=maxP ? yOf(strongAsk[0])/q : null,
+      enoughHeat && strongAsk && strongAsk[0]>=minP && strongAsk[0]<=maxP ? yOf(strongAsk[0])/q : null,
       'left'
     );
     positionTag(
       parentElement.querySelector('#secondary-seller-zone'),
-      secondAsk && secondAsk[0]>=minP && secondAsk[0]<=maxP ? yOf(secondAsk[0])/q : null,
+      enoughHeat && secondAsk && secondAsk[0]>=minP && secondAsk[0]<=maxP ? yOf(secondAsk[0])/q : null,
       'center'
     );
 
@@ -773,7 +800,7 @@ export default function(component) {
     };
     ws.onerror=()=>setFeed('error','WebSocket Binance interrumpido','AXION intentará reconectar.');
     ws.onclose=()=>{if(!destroyed&&currentSymbol==='BTCUSDT')scheduleReconnect()}
-    heatTimer=setInterval(captureHeat,650);
+    heatTimer=setInterval(captureHeat,900);
   }
 
   function scheduleReconnect(){
@@ -811,7 +838,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v7_terminal",
+    "axion_live_heatmap_v8_autofit",
     html=HTML,
     css=CSS,
     js=JS,
