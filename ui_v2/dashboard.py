@@ -382,6 +382,53 @@ div[data-testid="stHorizontalBlock"] {
     row-gap:.55rem;
 }
 
+
+
+/* AXION stronger workspace tabs */
+div[data-testid="stSegmentedControl"] {
+    margin: 0 0 12px 0 !important;
+}
+
+div[data-testid="stSegmentedControl"] > div {
+    width: fit-content !important;
+    padding: 5px !important;
+    gap: 5px !important;
+    border: 1px solid rgba(94,130,198,.45) !important;
+    border-radius: 14px !important;
+    background: linear-gradient(180deg, rgba(7,14,30,.98), rgba(4,9,22,.98)) !important;
+    box-shadow:
+        0 0 0 1px rgba(23,38,72,.55) inset,
+        0 12px 30px rgba(0,0,0,.22) !important;
+}
+
+div[data-testid="stSegmentedControl"] button {
+    min-height: 44px !important;
+    padding: 0 20px !important;
+    border-radius: 10px !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    letter-spacing: .35px !important;
+    color: #b7c5e4 !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+}
+
+div[data-testid="stSegmentedControl"] button:hover {
+    color: #f6fbff !important;
+    background: rgba(18,34,61,.75) !important;
+    border-color: rgba(74,112,186,.28) !important;
+}
+
+div[data-testid="stSegmentedControl"] button[aria-pressed="true"] {
+    color: #ffffff !important;
+    border-color: rgba(129,229,249,.35) !important;
+    background: linear-gradient(135deg, rgba(34,210,241,.96), rgba(132,87,255,.96)) !important;
+    box-shadow:
+        0 0 0 1px rgba(255,255,255,.06) inset,
+        0 0 24px rgba(73,154,255,.24),
+        0 8px 20px rgba(80,66,230,.22) !important;
+}
+
 @media(max-width:1100px) {
     .v2-metric-value { font-size:18px; }
 }
@@ -790,14 +837,14 @@ def render_v2_dashboard(
         st.session_state.axion_workspace_mode = "dashboard"
 
     current_label = (
-        "⚡ Mercado Live / Heatmap"
+        "⚡ MERCADO LIVE / HEATMAP"
         if st.session_state.axion_workspace_mode == "live_heatmap"
-        else "◈ Dashboard"
+        else "📊 DASHBOARD"
     )
 
     workspace_choice = st.segmented_control(
         "Workspace",
-        options=["◈ Dashboard", "⚡ Mercado Live / Heatmap"],
+        options=["📊 DASHBOARD", "⚡ MERCADO LIVE / HEATMAP"],
         default=current_label,
         label_visibility="collapsed",
         key="axion_workspace_switcher",
@@ -806,7 +853,7 @@ def render_v2_dashboard(
     if workspace_choice:
         next_mode = (
             "live_heatmap"
-            if workspace_choice == "⚡ Mercado Live / Heatmap"
+            if workspace_choice == "⚡ MERCADO LIVE / HEATMAP"
             else "dashboard"
         )
         if next_mode != st.session_state.axion_workspace_mode:
