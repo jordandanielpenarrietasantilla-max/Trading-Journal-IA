@@ -84,12 +84,6 @@ HTML = r"""
         <div class="price-scale" id="price-scale">
           <span>—</span><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span>
         </div>
-
-        <div class="chart-tags">
-          <span class="tag seller" id="seller-zone">ZONA DE LIQUIDEZ VENDEDORA</span>
-          <span class="tag buyer" id="buyer-zone">ZONA DE LIQUIDEZ COMPRADORA</span>
-          <span class="tag seller" id="secondary-seller-zone">LIQUIDEZ DESTACADA</span>
-        </div>
       </div>
 
       <aside class="profile">
@@ -323,9 +317,9 @@ export default function(component) {
   let snapshotReady=false;
   let depthBuffer=[];
   let heatHistory=[];
-  const MAX_HEAT_COLS=900;        // ~15 min at 1 snapshot/sec
+  const MAX_HEAT_COLS=1200;       // up to 20 min captured at ~1 Hz
   const LEVELS_SIDE=180;
-  const STORAGE_KEY='axion_btcusdt_depth_v11';
+  const STORAGE_KEY='axion_btcusdt_depth_v14_clean';
   const STORAGE_MAX_AGE=6*60*60*1000; // keep up to 6h of REAL captured depth
   let recordingStartedAt=null;
   let lastPersistAt=0;
@@ -488,7 +482,27 @@ export default function(component) {
     }
   }
 
-  function timeframeMs(){
+  function recordedMinutes(){
+    const win=recordedWindow();
+    if(!win) return 0;
+    return Math.max(0,(win.end-win.start)/60_000);
+  }
+
+  function effectiveTf(){
+    const mins=recordedMinutes();
+
+    // Never synthesize a higher-TF candle from an incomplete recording.
+    if(currentTf==='1m') return '1m';
+    if(currentTf==='5m' && mins>=10) return '5m';
+    if(currentTf==='15m' && mins>=30) return '15m';
+    if(currentTf==='30m' && mins>=60) return '30m';
+    if(currentTf==='1H' && mins>=120) return '1H';
+    if(currentTf==='4H' && mins>=480) return '4H';
+    if(currentTf==='1D' && mins>=2880) return '1D';
+    return '1m';
+  }
+
+  function timeframeMs(tf=effectiveTf()){
     return {
       '1m':60_000,
       '5m':300_000,
@@ -497,12 +511,12 @@ export default function(component) {
       '1H':3_600_000,
       '4H':14_400_000,
       '1D':86_400_000
-    }[currentTf] || 60_000;
+    }[tf] || 60_000;
   }
 
   function flowCandlesForCurrentTf(){
     if(!flowCandles1m.length) return [];
-    const span=timeframeMs();
+    const span=timeframeMs(effectiveTf());
     const grouped=[];
 
     for(const src of flowCandles1m){
@@ -591,7 +605,7 @@ export default function(component) {
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          version:13,
+          version:14,
           symbol:'BTCUSDT',
           savedAt:now,
           history,
@@ -607,9 +621,12 @@ export default function(component) {
 
   function recordedWindow(){
     if(!heatHistory.length) return null;
+    const end=Number(heatHistory[heatHistory.length-1].t);
+    const maxWindow=10*60_000;
+    const first=Number(heatHistory[0].t);
     return {
-      start:Number(heatHistory[0].t),
-      end:Number(heatHistory[heatHistory.length-1].t)
+      start:Math.max(first,end-maxWindow),
+      end
     };
   }
 
@@ -669,7 +686,7 @@ export default function(component) {
 
     // Bookmap-like dark -> purple -> red -> orange -> yellow.
     if(n<.16){
-      return `rgba(18,23,64,${.18+n*.7})`;
+      return `rgba(18,23,64,${.12+n*.54})`;
     }
     if(n<.34){
       const a=.18+n*.85;
@@ -680,15 +697,15 @@ export default function(component) {
           : `rgba(58,37,117,${a})`;
     }
     if(n<.56){
-      return `rgba(133,42,139,${.18+n*.70})`;
+      return `rgba(133,42,139,${.14+n*.54})`;
     }
     if(n<.76){
-      return `rgba(220,59,78,${.22+n*.68})`;
+      return `rgba(220,59,78,${.17+n*.54})`;
     }
     if(n<.91){
-      return `rgba(255,112,39,${.42+n*.60})`;
+      return `rgba(255,112,39,${.30+n*.48})`;
     }
-    return `rgba(255,209,48,${.42+n*.28})`;
+    return `rgba(255,209,48,${.34+n*.24})`;
   }
 
   function normalizedBucketIntensity(value,q50,q85,q97){
@@ -768,8 +785,9 @@ export default function(component) {
       const seconds=win?Math.max(0,Math.round((win.end-win.start)/1000)):0;
       const mins=Math.floor(seconds/60);
       const secs=seconds%60;
+      const eff=effectiveTf();
       parentElement.querySelector('#footer-status').textContent=snapshotReady
-        ? `● Binance Spot · ${currentTf} · DEPTH REC ${mins}m ${String(secs).padStart(2,'0')}s`
+        ? `● Binance Spot · ${currentTf}${eff!==currentTf?` → ${eff} efectivo`:''} · DEPTH REC ${mins}m ${String(secs).padStart(2,'0')}s`
         : 'AXION · sincronizando';
     }
   }
@@ -873,7 +891,10 @@ export default function(component) {
 
     // REAL historical liquidity matrix: price × captured timestamp.
     if(heatHistory.length){
-      const visibleHistory=heatHistory.slice(-MAX_HEAT_COLS);
+      const win=recordedWindow();
+      const visibleHistory=win
+        ? heatHistory.filter(col=>Number(col.t)>=win.start && Number(col.t)<=win.end)
+        : heatHistory.slice(-MAX_HEAT_COLS);
 
       const totals=[];
       for(const col of visibleHistory){
@@ -954,87 +975,52 @@ export default function(component) {
       ctx.fillText('POC',44*q,Math.max(11*q,py-4*q));
     }
 
-    // Recorded-trade candles: same time source and same Y-axis as the heatmap.
+    // Clean terminal candles. No glow, no oversized partial HTF candles.
     if(recent.length && depthWindow){
       const t0=depthWindow.start;
       const t1=Math.max(depthWindow.end,t0+1000);
       const xOfTime=t=>((Number(t)-t0)/(t1-t0))*w;
-      const span=timeframeMs();
+      const tf=effectiveTf();
+      const span=timeframeMs(tf);
 
-      // Width reflects the actual timeframe but is capped for clean rendering.
-      const nominal=Math.max(5*q,(span/(t1-t0))*w);
-      const bodyW=Math.max(4*q,Math.min(11*q,nominal*.55));
-      const wickW=Math.max(1.2*q,Math.min(2*q,bodyW*.18));
+      // Stable, TradingView-like narrow candle width.
+      const pxPerTf=(span/(t1-t0))*w;
+      const bodyW=Math.max(3.5*q,Math.min(8*q,pxPerTf*.34));
+      const wickW=Math.max(1*q,Math.min(1.6*q,bodyW*.18));
 
       recent.forEach(c=>{
         if(![c.o,c.h,c.l,c.c].every(Number.isFinite)) return;
-
-        // If the entire candle is outside the viewport, simply skip it.
         if(c.h<minP || c.l>maxP) return;
 
-        // Place the candle at the CENTER of the portion AXION actually observed.
-        const observedStart=Math.max(
-          Number(c.firstObserved||c.t),
-          t0
-        );
-        const observedEnd=Math.min(
-          Number(c.lastObserved||c.t+span),
-          t1
-        );
+        // Only render candles whose observed trade data overlaps the visible recorder window.
+        const observedStart=Math.max(Number(c.firstObserved||c.t),t0);
+        const observedEnd=Math.min(Number(c.lastObserved||c.t+span),t1);
+        if(observedEnd<observedStart) return;
+
         const x=xOfTime((observedStart+observedEnd)/2);
         if(!Number.isFinite(x) || x<0 || x>w) return;
 
-        // Do NOT clamp OHLC values into the chart. Clamping was the source of
-        // the giant vertical rectangles in V12.
-        const yh=yOf(c.h);
-        const yl=yOf(c.l);
-        const yo=yOf(c.o);
-        const yc=yOf(c.c);
-
+        const yh=yOf(c.h),yl=yOf(c.l),yo=yOf(c.o),yc=yOf(c.c);
         const up=c.c>=c.o;
-        const fill=up?'#20d9b0':'#f05267';
-        const wick=up?'#70f0cf':'#ff8797';
+        const bodyTop=Math.min(yo,yc);
+        const bodyH=Math.max(1.8*q,Math.abs(yc-yo));
 
-        ctx.save();
+        const fill=up?'#25cfa8':'#ef5367';
+        const edge=up?'#63e5c4':'#ff8190';
 
-        // Subtle dark separation from the heatmap — no oversized glow.
-        ctx.strokeStyle='rgba(0,5,11,.95)';
-        ctx.lineWidth=wickW+1.6*q;
+        ctx.strokeStyle='rgba(2,8,15,.92)';
+        ctx.lineWidth=wickW+1.4*q;
         ctx.beginPath();ctx.moveTo(x,yh);ctx.lineTo(x,yl);ctx.stroke();
 
-        ctx.strokeStyle=wick;
+        ctx.strokeStyle=edge;
         ctx.lineWidth=wickW;
         ctx.beginPath();ctx.moveTo(x,yh);ctx.lineTo(x,yl);ctx.stroke();
 
-        const top=Math.min(yo,yc);
-        const bodyH=Math.max(2.6*q,Math.abs(yc-yo));
-
-        ctx.fillStyle='rgba(0,5,11,.96)';
-        ctx.fillRect(
-          x-bodyW/2-1*q,
-          top-1*q,
-          bodyW+2*q,
-          bodyH+2*q
-        );
+        ctx.fillStyle='rgba(2,8,15,.95)';
+        ctx.fillRect(x-bodyW/2-.7*q,bodyTop-.7*q,bodyW+1.4*q,bodyH+1.4*q);
 
         ctx.fillStyle=fill;
-        ctx.fillRect(
-          x-bodyW/2,
-          top,
-          bodyW,
-          bodyH
-        );
-
-        ctx.strokeStyle=wick;
-        ctx.lineWidth=.65*q;
-        ctx.strokeRect(
-          x-bodyW/2+.35*q,
-          top+.35*q,
-          Math.max(1*q,bodyW-.7*q),
-          Math.max(1*q,bodyH-.7*q)
-        );
-
-        ctx.restore();
+        ctx.fillRect(x-bodyW/2,bodyTop,bodyW,bodyH);
       });
     }
 
@@ -1184,7 +1170,9 @@ export default function(component) {
       setFeed(
         'connected',
         `BTC/USDT · ${currentTf}`,
-        'Velas reagrupadas desde trades reales capturados por AXION.'
+        effectiveTf()===currentTf
+          ? 'Velas construidas desde trades reales capturados por AXION.'
+          : `${currentTf} requiere más historial. Mostrando 1m efectivo temporalmente.`
       );
       drawAll();
     }
@@ -1208,7 +1196,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v13_trade_candles",
+    "axion_live_heatmap_v14_clean_terminal",
     html=HTML,
     css=CSS,
     js=JS,
