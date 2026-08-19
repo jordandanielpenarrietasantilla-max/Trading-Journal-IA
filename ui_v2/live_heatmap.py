@@ -10,7 +10,7 @@ def _init_live_state() -> None:
         "live_symbol": "XAUUSD",
         "live_timeframe": "15m",
         "live_heatmap_note": (
-            "Terminal visual V2 activa. La profundidad real del mercado todavía no está conectada."
+            "Terminal AXION LIVE activa · La profundidad real se habilitará al conectar Market Depth."
         ),
     }
     for key, value in defaults.items():
@@ -46,11 +46,11 @@ def render_live_heatmap() -> None:
         """
         <style>
           .axion-live-intro{
-            margin:0 0 12px 0;
-            padding:14px 16px;
-            border:1px solid rgba(69,108,167,.22);
-            border-radius:12px;
-            background:linear-gradient(135deg,rgba(4,13,27,.96),rgba(8,11,22,.96));
+            margin:0 0 8px 0;
+            padding:8px 12px;
+            border-left:2px solid #45d8ec;
+            border-radius:6px;
+            background:linear-gradient(90deg,rgba(5,17,30,.72),rgba(8,11,22,.25));
           }
           .axion-live-intro strong{color:#eef6ff}
           .axion-live-intro span{color:#64d8ea}
