@@ -30,6 +30,181 @@ WHITE = "#F7F9FF"
 MUTED = "#91A0BF"
 
 
+WORKSPACE_SWITCHER_HTML = r"""
+<div class="axion-workspace-switcher" id="axion-workspace-switcher">
+  <button class="workspace-btn dashboard-btn" data-mode="dashboard" type="button">
+    <span class="workspace-icon">▦</span>
+    <span class="workspace-copy">
+      <b>DASHBOARD</b>
+      <small>Performance & Journal</small>
+    </span>
+  </button>
+
+  <button class="workspace-btn live-btn" data-mode="live_heatmap" type="button">
+    <span class="workspace-live-dot"></span>
+    <span class="workspace-icon">⚡</span>
+    <span class="workspace-copy">
+      <b>MERCADO LIVE</b>
+      <small>Heatmap · Order Flow</small>
+    </span>
+    <span class="workspace-badge">LIVE</span>
+  </button>
+</div>
+"""
+
+WORKSPACE_SWITCHER_CSS = r"""
+:host{
+  display:block;
+  width:100%;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+.axion-workspace-switcher{
+  width:min(660px,100%);
+  height:58px;
+  display:grid;
+  grid-template-columns:1fr 1.35fr;
+  gap:7px;
+  padding:5px;
+  border:1px solid rgba(77,111,176,.38);
+  border-radius:13px;
+  background:
+    radial-gradient(circle at 76% 0%,rgba(113,76,255,.12),transparent 42%),
+    linear-gradient(180deg,#08111f,#050a14);
+  box-shadow:
+    0 10px 28px rgba(0,0,0,.24),
+    inset 0 0 0 1px rgba(255,255,255,.015);
+}
+.workspace-btn{
+  position:relative;
+  min-width:0;
+  height:46px;
+  border:1px solid transparent;
+  border-radius:9px;
+  background:transparent;
+  color:#8998b2;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0 13px;
+  transition:.14s ease;
+}
+.workspace-btn:hover{
+  color:#eef6ff;
+  background:#0d1929;
+  border-color:rgba(78,112,168,.34);
+}
+.workspace-btn.active{
+  color:#fff;
+  border-color:rgba(102,211,238,.44);
+  background:
+    radial-gradient(circle at 85% 30%,rgba(118,76,255,.30),transparent 40%),
+    linear-gradient(135deg,rgba(18,154,218,.98),rgba(85,74,230,.96));
+  box-shadow:
+    0 0 24px rgba(50,154,238,.20),
+    inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.workspace-icon{
+  width:27px;
+  height:27px;
+  display:grid;
+  place-items:center;
+  flex:0 0 27px;
+  border-radius:7px;
+  background:rgba(255,255,255,.055);
+  border:1px solid rgba(255,255,255,.08);
+  font-size:15px;
+}
+.workspace-copy{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:1px;
+}
+.workspace-copy b{
+  color:inherit;
+  font-size:12px;
+  line-height:1;
+  letter-spacing:.25px;
+  white-space:nowrap;
+}
+.workspace-copy small{
+  color:#687994;
+  font-size:6.5px;
+  font-weight:650;
+  letter-spacing:.5px;
+  white-space:nowrap;
+}
+.workspace-btn.active .workspace-copy small{
+  color:rgba(236,249,255,.72);
+}
+.workspace-live-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:#22e69b;
+  box-shadow:0 0 10px rgba(34,230,155,.78);
+  position:absolute;
+  left:7px;top:7px;
+}
+.workspace-badge{
+  margin-left:auto;
+  padding:4px 6px;
+  border-radius:999px;
+  color:#53efb0;
+  border:1px solid rgba(50,232,165,.28);
+  background:rgba(16,111,77,.22);
+  font-size:5.5px;
+  font-weight:900;
+  letter-spacing:.7px;
+}
+.workspace-btn.active .workspace-badge{
+  color:#effff8;
+  border-color:rgba(255,255,255,.28);
+  background:rgba(5,46,39,.24);
+}
+"""
+
+WORKSPACE_SWITCHER_JS = r"""
+export default function(component) {
+  const {parentElement,data,setTriggerValue}=component;
+  const root=parentElement.querySelector('#axion-workspace-switcher');
+  if(!root) return;
+
+  const mode=String(data?.mode || 'dashboard');
+
+  parentElement.querySelectorAll('[data-mode]').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.mode===mode);
+    btn.onclick=()=>{
+      if(btn.dataset.mode!==mode){
+        setTriggerValue('mode',btn.dataset.mode);
+      }
+    };
+  });
+
+  return ()=>{};
+}
+"""
+
+_workspace_switcher_component = st.components.v2.component(
+    "axion_workspace_switcher_v1",
+    html=WORKSPACE_SWITCHER_HTML,
+    css=WORKSPACE_SWITCHER_CSS,
+    js=WORKSPACE_SWITCHER_JS,
+    isolate_styles=True,
+)
+
+
+def _render_workspace_switcher(current_mode: str):
+    return _workspace_switcher_component(
+        data={"mode": current_mode},
+        default=None,
+        key="axion_workspace_switcher_component",
+        width="stretch",
+        height=66,
+    )
+
+
 DASHBOARD_CSS = """
 <style>
 .block-container {
@@ -290,50 +465,6 @@ DASHBOARD_CSS = """
 .v2-empty-state strong { margin-top:10px; color:#f7f9ff; font-size:12px; }
 .v2-empty-state p { max-width:350px; margin-top:7px; color:#7d89a5; font-size:8.5px; line-height:1.5; }
 
-/* Compact workspace switcher */
-div[data-testid="stSegmentedControl"] {
-    margin: 0 0 12px 0;
-}
-
-div[data-testid="stSegmentedControl"] > div {
-    width: fit-content;
-    padding: 4px;
-    gap: 4px;
-    border: 1px solid rgba(67, 103, 166, .26);
-    border-radius: 10px;
-    background: linear-gradient(180deg, rgba(7,15,29,.96), rgba(4,10,21,.96));
-    box-shadow: 0 8px 24px rgba(0,0,0,.18);
-}
-
-div[data-testid="stSegmentedControl"] button {
-    min-height: 34px !important;
-    padding: 0 15px !important;
-    border: 0 !important;
-    border-radius: 7px !important;
-    color: #7e8eaa !important;
-    background: transparent !important;
-    font-size: 10px !important;
-    font-weight: 800 !important;
-    letter-spacing: .15px !important;
-    white-space: nowrap !important;
-}
-
-div[data-testid="stSegmentedControl"] button:hover {
-    color: #eaf5ff !important;
-    background: rgba(22,39,65,.62) !important;
-}
-
-div[data-testid="stSegmentedControl"] button[aria-pressed="true"] {
-    color: #f5fbff !important;
-    background:
-        linear-gradient(135deg, rgba(31,202,231,.92), rgba(106,79,246,.92)) !important;
-    box-shadow:
-        0 0 0 1px rgba(121,220,244,.12) inset,
-        0 5px 18px rgba(48,105,225,.20) !important;
-}
-
-
-
 /* AXION compact command header */
 .v2-section-header {
     min-height:118px !important;
@@ -383,51 +514,6 @@ div[data-testid="stHorizontalBlock"] {
 }
 
 
-
-/* AXION stronger workspace tabs */
-div[data-testid="stSegmentedControl"] {
-    margin: 0 0 12px 0 !important;
-}
-
-div[data-testid="stSegmentedControl"] > div {
-    width: fit-content !important;
-    padding: 5px !important;
-    gap: 5px !important;
-    border: 1px solid rgba(94,130,198,.45) !important;
-    border-radius: 14px !important;
-    background: linear-gradient(180deg, rgba(7,14,30,.98), rgba(4,9,22,.98)) !important;
-    box-shadow:
-        0 0 0 1px rgba(23,38,72,.55) inset,
-        0 12px 30px rgba(0,0,0,.22) !important;
-}
-
-div[data-testid="stSegmentedControl"] button {
-    min-height: 44px !important;
-    padding: 0 20px !important;
-    border-radius: 10px !important;
-    font-size: 15px !important;
-    font-weight: 900 !important;
-    letter-spacing: .35px !important;
-    color: #b7c5e4 !important;
-    background: transparent !important;
-    border: 1px solid transparent !important;
-}
-
-div[data-testid="stSegmentedControl"] button:hover {
-    color: #f6fbff !important;
-    background: rgba(18,34,61,.75) !important;
-    border-color: rgba(74,112,186,.28) !important;
-}
-
-div[data-testid="stSegmentedControl"] button[aria-pressed="true"] {
-    color: #ffffff !important;
-    border-color: rgba(129,229,249,.35) !important;
-    background: linear-gradient(135deg, rgba(34,210,241,.96), rgba(132,87,255,.96)) !important;
-    box-shadow:
-        0 0 0 1px rgba(255,255,255,.06) inset,
-        0 0 24px rgba(73,154,255,.24),
-        0 8px 20px rgba(80,66,230,.22) !important;
-}
 
 @media(max-width:1100px) {
     .v2-metric-value { font-size:18px; }
@@ -836,28 +922,14 @@ def render_v2_dashboard(
     if "axion_workspace_mode" not in st.session_state:
         st.session_state.axion_workspace_mode = "dashboard"
 
-    current_label = (
-        "⚡ MERCADO LIVE / HEATMAP"
-        if st.session_state.axion_workspace_mode == "live_heatmap"
-        else "📊 DASHBOARD"
+    workspace_result = _render_workspace_switcher(
+        st.session_state.axion_workspace_mode
     )
 
-    workspace_choice = st.segmented_control(
-        "Workspace",
-        options=["📊 DASHBOARD", "⚡ MERCADO LIVE / HEATMAP"],
-        default=current_label,
-        label_visibility="collapsed",
-        key="axion_workspace_switcher",
-    )
-
-    if workspace_choice:
-        next_mode = (
-            "live_heatmap"
-            if workspace_choice == "⚡ MERCADO LIVE / HEATMAP"
-            else "dashboard"
-        )
-        if next_mode != st.session_state.axion_workspace_mode:
-            st.session_state.axion_workspace_mode = next_mode
+    requested_mode = getattr(workspace_result, "mode", None) if workspace_result else None
+    if requested_mode in {"dashboard", "live_heatmap"}:
+        if requested_mode != st.session_state.axion_workspace_mode:
+            st.session_state.axion_workspace_mode = requested_mode
             st.rerun()
 
     if st.session_state.axion_workspace_mode == "live_heatmap":
