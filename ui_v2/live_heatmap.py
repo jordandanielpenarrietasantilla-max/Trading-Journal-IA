@@ -607,15 +607,15 @@ export default function(component) {
           : `rgba(58,37,117,${a})`;
     }
     if(n<.56){
-      return `rgba(133,42,139,${.22+n*.85})`;
+      return `rgba(133,42,139,${.18+n*.70})`;
     }
     if(n<.76){
-      return `rgba(220,59,78,${.28+n*.82})`;
+      return `rgba(220,59,78,${.22+n*.68})`;
     }
     if(n<.91){
       return `rgba(255,112,39,${.42+n*.60})`;
     }
-    return `rgba(255,209,48,${.62+n*.36})`;
+    return `rgba(255,209,48,${.50+n*.32})`;
   }
 
   function normalizedBucketIntensity(value,q50,q85,q97){
@@ -713,7 +713,7 @@ export default function(component) {
     resizeCanvas(mainCanvas);resizeCanvas(profileCanvas);
     const w=mainCanvas.width,h=mainCanvas.height,q=dpr();
     ctx.clearRect(0,0,w,h);
-    ctx.fillStyle='#030711';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#02060d';ctx.fillRect(0,0,w,h);
 
     const mid=midPrice();
     if(mid==null && !candles.length)return;
@@ -785,8 +785,8 @@ export default function(component) {
       if(Number.isFinite(c.h)) maxP=Math.max(maxP,c.h);
     });
 
-    const rawRange=Math.max(maxP-minP,center*.0015);
-    const pad=rawRange*.10;
+    const rawRange=Math.max(maxP-minP,center*.0012);
+    const pad=rawRange*.055;
 
     minP-=pad;
     maxP+=pad;
@@ -795,7 +795,7 @@ export default function(component) {
 
     // grid
     ctx.strokeStyle='rgba(43,62,94,.24)';
-    ctx.lineWidth=1*q;
+    ctx.lineWidth=1.15*q;
     for(let i=1;i<9;i++){
       const y=h*i/9;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
     }
@@ -851,8 +851,8 @@ export default function(component) {
           ctx.fillRect(
             x,
             y-bucketPixelH*.50,
-            cw,
-            Math.max(2.4*q,bucketPixelH*.98)
+            cw+1.8*q,
+            Math.max(2.4*q,bucketPixelH*1.04)
           );
         }
       });
@@ -887,25 +887,38 @@ export default function(component) {
     }
 
     // Candles share EXACTLY the same Y-axis as the heatmap.
-    // Candles completely outside the live viewport are skipped rather than
-    // stretched into giant vertical bars.
+    // V12: high-contrast candle layer designed to remain readable above
+    // intense liquidity bands.
     if(recent.length){
       const window=recordedWindow();
       const t0=window ? window.start : recent[0].t;
       const t1=window ? Math.max(window.end,t0+1000) : Math.max(recent[recent.length-1].t,t0+1000);
       const xOfTime=t=>((Number(t)-t0)/(t1-t0))*w;
-      const nominalWidth=Math.max(4*q,w/Math.max(30,recent.length));
-      const body=Math.max(2.0*q,nominalWidth*.48);
+
+      const intervalMs={
+        '1m':60_000,
+        '5m':300_000,
+        '15m':900_000,
+        '30m':1_800_000,
+        '1H':3_600_000,
+        '4H':14_400_000,
+        '1D':86_400_000
+      }[currentTf] || 60_000;
+
+      // Candle width is linked to time spacing, not merely candle count.
+      const pxPerInterval=Math.max(
+        5*q,
+        (intervalMs/(t1-t0))*w
+      );
+      const body=Math.max(4.2*q,Math.min(12*q,pxPerInterval*.62));
+      const wickWidth=Math.max(1.5*q,Math.min(2.6*q,body*.18));
 
       recent.forEach((c,i)=>{
         if(![c.o,c.h,c.l,c.c].every(Number.isFinite)) return;
-
-        // Entire candle outside viewport -> do not distort the chart.
         if(c.h<minP || c.l>maxP) return;
 
         const x=Math.max(0,Math.min(w,xOfTime(c.t)));
 
-        // Clip values to viewport for partially visible candles.
         const clippedH=Math.min(maxP,Math.max(minP,c.h));
         const clippedL=Math.min(maxP,Math.max(minP,c.l));
         const clippedO=Math.min(maxP,Math.max(minP,c.o));
@@ -917,29 +930,68 @@ export default function(component) {
         const yl=yOf(clippedL);
 
         const up=c.c>=c.o;
-        const color=up
-          ? 'rgba(48,224,185,.97)'
-          : 'rgba(246,82,102,.97)';
+        const bodyTop=Math.min(yo,yc);
+        const bodyH=Math.max(3*q,Math.abs(yc-yo));
 
-        ctx.strokeStyle=color;
-        ctx.fillStyle=color;
-        ctx.lineWidth=1*q;
+        const fill=up ? '#25e0b7' : '#ff5570';
+        const edge=up ? '#9ff8df' : '#ffc1cb';
+        const shadow=up ? 'rgba(20,238,186,.48)' : 'rgba(255,73,101,.48)';
 
+        // Dark halo behind each candle to separate it from heatmap bands.
+        ctx.save();
+        ctx.shadowColor=shadow;
+        ctx.shadowBlur=6*q;
+
+        ctx.strokeStyle='rgba(1,6,13,.88)';
+        ctx.lineWidth=(wickWidth+2.2*q);
         ctx.beginPath();
         ctx.moveTo(x,yh);
         ctx.lineTo(x,yl);
         ctx.stroke();
 
-        const top=Math.min(yo,yc);
-        const bodyH=Math.max(1.4*q,Math.abs(yc-yo));
-        ctx.fillRect(x-body/2,top,body,bodyH);
+        ctx.strokeStyle=edge;
+        ctx.lineWidth=wickWidth;
+        ctx.beginPath();
+        ctx.moveTo(x,yh);
+        ctx.lineTo(x,yl);
+        ctx.stroke();
+
+        // Outer dark border around candle body.
+        ctx.fillStyle='rgba(1,6,13,.94)';
+        ctx.fillRect(
+          x-body/2-1.2*q,
+          bodyTop-1.2*q,
+          body+2.4*q,
+          bodyH+2.4*q
+        );
+
+        // Bright body.
+        ctx.fillStyle=fill;
+        ctx.fillRect(
+          x-body/2,
+          bodyTop,
+          body,
+          bodyH
+        );
+
+        // Fine highlight edge.
+        ctx.strokeStyle=edge;
+        ctx.lineWidth=.8*q;
+        ctx.strokeRect(
+          x-body/2+.4*q,
+          bodyTop+.4*q,
+          Math.max(1*q,body-.8*q),
+          Math.max(1*q,bodyH-.8*q)
+        );
+
+        ctx.restore();
       });
     }
 
     // current mid
     if(mid!=null){
       const y=yOf(mid);
-      ctx.strokeStyle='rgba(232,243,252,.82)';
+      ctx.strokeStyle='rgba(246,250,255,.94)';
       ctx.lineWidth=1*q;
       ctx.setLineDash([4*q,4*q]);
       ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
@@ -1008,7 +1060,7 @@ export default function(component) {
     for(const [p,v] of bins){
       const buy=tradedBuyByBin.get(p)||0,sell=tradedSellByBin.get(p)||0,total=Math.max(v,1e-9),width=(v/maxV)*w*.82,y=yOf(p),bh=Math.max(2*q,h/90);
       const left=w-width-3*q;
-      pctx.fillStyle=`rgba(116,79,205,${.28+.58*(v/maxV)})`;pctx.fillRect(left,y-bh/2,width,bh);
+      pctx.fillStyle=`rgba(116,79,205,${.34+.62*(v/maxV)})`;pctx.fillRect(left,y-bh/2,width,bh);
       if(buy>sell){pctx.fillStyle='rgba(44,207,172,.72)';pctx.fillRect(w-width*(buy/total),y-bh/2,width*(buy/total),bh)}
       else{pctx.fillStyle='rgba(230,98,55,.66)';pctx.fillRect(w-width*(sell/total),y-bh/2,width*(sell/total),bh)}
     }
@@ -1107,7 +1159,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v11_1_fixed",
+    "axion_live_heatmap_v12_candles",
     html=HTML,
     css=CSS,
     js=JS,
