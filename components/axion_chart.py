@@ -380,7 +380,7 @@ button{user-select:none}
 .ohlc{color:#7f91ad;font-size:9px}
 .chart-stage{min-height:0;position:relative;background:#020711}
 #chart-host{position:absolute;inset:0 0 54px 0}
-#drawing-layer{position:absolute;inset:0 0 54px 0;width:100%;height:calc(100% - 54px);pointer-events:none;touch-action:none;z-index:4}
+#drawing-layer{position:absolute;inset:0 0 54px 0;width:100%;height:calc(100% - 54px);pointer-events:none;z-index:4}
 .replay-dock{
   position:absolute;left:0;right:0;bottom:0;height:54px;
   background:rgba(4,10,20,.96);border-top:1px solid rgba(80,118,186,.22);
@@ -634,7 +634,18 @@ export default async function(component) {
         secondsVisible:false,
         rightOffset:5
       },
-      crosshair: {mode:LWC.CrosshairMode.Normal}
+      crosshair: {mode:LWC.CrosshairMode.Normal},
+      handleScroll: {
+        mouseWheel:true,
+        pressedMouseMove:true,
+        horzTouchDrag:true,
+        vertTouchDrag:true
+      },
+      handleScale: {
+        axisPressedMouseMove:true,
+        mouseWheel:true,
+        pinch:true
+      }
     });
 
     const series = chart.addCandlestickSeries({
@@ -1072,14 +1083,14 @@ export default async function(component) {
         shortTab.classList.toggle('selected', tool === 'short');
       }
 
-      // position_edit keeps the canvas interactive without creating a new position.
-      const interactive = tool !== 'cursor';
-      canvas.style.pointerEvents = interactive ? 'auto' : 'none';
+      // The drawing canvas is visual only. Pointer interaction is handled on
+      // chartStage in capture mode, so Lightweight Charts keeps native pan/zoom.
+      canvas.style.pointerEvents='none';
 
-      if (tool === 'position_edit') {
-        canvas.style.cursor='default';
+      if (tool === 'position_edit' || tool === 'cursor') {
+        chartStage.style.cursor='default';
       } else {
-        canvas.style.cursor = tool==='cursor' ? 'default' : 'crosshair';
+        chartStage.style.cursor='crosshair';
       }
     }
 
@@ -1154,23 +1165,30 @@ export default async function(component) {
       return p.x >= g.left && p.x <= g.right && p.y >= g.top && p.y <= g.bottom;
     }
 
-    canvas.onpointerdown = e => {
+    function interceptPointer(e) {
       e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function onStagePointerDown(e) {
       const p=pointerPoint(e);
 
+      // Existing position: only intercept if the trader actually touches
+      // Entry/SL/TP or the position block. Everywhere else the chart receives
+      // the event normally for pan/zoom/crosshair.
       if ((activeTool==='long'||activeTool==='short'||activeTool==='position_edit') && position) {
         const handle=nearestPositionHandle(p);
 
-        // 1) Individual level dragging: Entry / SL / TP.
         if (handle) {
+          interceptPointer(e);
           draggingPositionHandle=handle;
-          canvas.setPointerCapture?.(e.pointerId);
-          canvas.style.cursor='ns-resize';
+          chartStage.setPointerCapture?.(e.pointerId);
+          chartStage.style.cursor='ns-resize';
           return;
         }
 
-        // 2) Drag whole position block freely.
         if (pointInsidePositionBlock(p)) {
+          interceptPointer(e);
           draggingWholePosition=true;
           dragStartPrice=priceFromY(p.y);
           dragStartPoint={x:p.x,y:p.y};
@@ -1182,23 +1200,26 @@ export default async function(component) {
             startLogical:Number(position.startLogical),
             endLogical:Number(position.endLogical)
           };
-          canvas.setPointerCapture?.(e.pointerId);
-          canvas.style.cursor='grabbing';
+          chartStage.setPointerCapture?.(e.pointerId);
+          chartStage.style.cursor='grabbing';
           return;
         }
       }
 
-      // In edit mode, a click away from the position must NOT relocate it.
+      // Once a position is created, clicking elsewhere must behave like a
+      // normal chart click/drag. Do not preventDefault here.
       if (activeTool==='position_edit') {
         return;
       }
 
-      // 3) Create a new position only after the trader explicitly selects LONG/SHORT.
+      // LONG/SHORT creation: exactly one click is intercepted, then AXION
+      // switches immediately to position_edit.
       if (activeTool==='long'||activeTool==='short') {
+        interceptPointer(e);
+
         const entry=priceFromY(p.y);
         const rr=Number(parentElement.querySelector('#rr-select').value||2);
 
-        // Risk setting on the right panel is now functional.
         const riskText=String(parentElement.querySelector('#risk-template').value || '1.0%');
         const riskPct=Math.max(0.0001, Number.parseFloat(riskText) / 100);
         const risk=Math.max(Math.abs(entry)*riskPct,1e-8);
@@ -1214,37 +1235,50 @@ export default async function(component) {
           ? {direction:'LONG',entry,stop:entry-risk,target:entry+risk*rr,startLogical,endLogical}
           : {direction:'SHORT',entry,stop:entry+risk,target:entry-risk*rr,startLogical,endLogical};
 
-        // IMPORTANT: one click creates one position. Afterwards AXION switches
-        // to edit mode so random clicks cannot recreate or relocate it.
         updatePositionPanel();
         setTool('position_edit');
         drawAll();
         return;
       }
 
+      // Drawing tools intentionally intercept chart navigation while drawing.
       if (activeTool==='horizontal') {
-        drawings.push({type:'horizontal',a:p});drawAll();return;
+        interceptPointer(e);
+        drawings.push({type:'horizontal',a:p});
+        drawAll();
+        return;
       }
-      if (activeTool==='text') {
-        const text=window.prompt('Texto para el gráfico:','Nota');
-        if (text) drawings.push({type:'text',a:p,text});
-        drawAll();return;
-      }
-      if (['trend','rectangle','fib','measure'].includes(activeTool)) {
-        drawingStart=p;drawingDraft=p;
-        canvas.setPointerCapture?.(e.pointerId);
-      }
-    };
 
-    canvas.onpointermove = e => {
+      if (activeTool==='text') {
+        interceptPointer(e);
+        const label=window.prompt('Texto para el gráfico:','Nota');
+        if (label) drawings.push({type:'text',a:p,text:label});
+        drawAll();
+        return;
+      }
+
+      if (['trend','rectangle','fib','measure'].includes(activeTool)) {
+        interceptPointer(e);
+        drawingStart=p;
+        drawingDraft=p;
+        chartStage.setPointerCapture?.(e.pointerId);
+      }
+    }
+
+    function onStagePointerMove(e) {
       const p=pointerPoint(e);
 
       if (draggingPositionHandle && position) {
+        interceptPointer(e);
         position[draggingPositionHandle]=priceFromY(p.y);
-        updatePositionPanel();drawAll();return;
+        updatePositionPanel();
+        drawAll();
+        return;
       }
 
       if (draggingWholePosition && position && dragStartPosition && dragStartPoint) {
+        interceptPointer(e);
+
         const currentPriceAtPointer=priceFromY(p.y);
         const deltaPrice=currentPriceAtPointer-dragStartPrice;
         const currentLogical=chart.timeScale().coordinateToLogical(p.x);
@@ -1263,46 +1297,63 @@ export default async function(component) {
         return;
       }
 
-      // Cursor feedback while hovering an existing position.
-      if ((activeTool==='long'||activeTool==='short'||activeTool==='position_edit') && position) {
-        const handle=nearestPositionHandle(p);
-        if (handle) canvas.style.cursor='ns-resize';
-        else if (pointInsidePositionBlock(p)) canvas.style.cursor='grab';
-        else canvas.style.cursor=activeTool==='position_edit' ? 'default' : 'crosshair';
+      if (drawingStart) {
+        interceptPointer(e);
+        drawingDraft=p;
+        drawAll();
+        return;
       }
 
-      if (!drawingStart) return;
-      drawingDraft=p;drawAll();
-    };
+      // Hover feedback only. Do not block Lightweight Charts.
+      if ((activeTool==='long'||activeTool==='short'||activeTool==='position_edit') && position) {
+        const handle=nearestPositionHandle(p);
+        if (handle) chartStage.style.cursor='ns-resize';
+        else if (pointInsidePositionBlock(p)) chartStage.style.cursor='grab';
+        else chartStage.style.cursor=activeTool==='position_edit' ? 'default' : 'crosshair';
+      }
+    }
 
-    canvas.onpointerup = e => {
+    function onStagePointerUp(e) {
       if (draggingPositionHandle) {
+        interceptPointer(e);
         draggingPositionHandle=null;
-        canvas.style.cursor=activeTool==='position_edit' ? 'default' : 'crosshair';
+        try { chartStage.releasePointerCapture?.(e.pointerId); } catch (_) {}
+        chartStage.style.cursor=activeTool==='position_edit' ? 'default' : 'crosshair';
         drawAll();
         return;
       }
 
       if (draggingWholePosition) {
+        interceptPointer(e);
         draggingWholePosition=false;
         dragStartPrice=null;
         dragStartPosition=null;
         dragStartPoint=null;
         dragStartLogical=null;
-        canvas.style.cursor=activeTool==='position_edit' ? 'default' : 'grab';
+        try { chartStage.releasePointerCapture?.(e.pointerId); } catch (_) {}
+        chartStage.style.cursor=activeTool==='position_edit' ? 'default' : 'grab';
         drawAll();
         return;
       }
 
       if (!drawingStart) return;
-      const end=pointerPoint(e);
-      const d={type:activeTool,a:drawingStart,b:end};
+
+      interceptPointer(e);
+      const finish=pointerPoint(e);
+      const d={type:activeTool,a:drawingStart,b:finish};
       if (activeTool==='fib') d.levels=fibLevels();
       drawings.push(d);
-      drawingStart=null;drawingDraft=null;drawAll();
-    };
+      drawingStart=null;
+      drawingDraft=null;
+      try { chartStage.releasePointerCapture?.(e.pointerId); } catch (_) {}
+      drawAll();
+    }
 
-    canvas.onpointercancel = () => {
+    function onStagePointerCancel(e) {
+      const wasInteracting = Boolean(
+        draggingPositionHandle || draggingWholePosition || drawingStart
+      );
+
       draggingPositionHandle=null;
       draggingWholePosition=false;
       dragStartPrice=null;
@@ -1311,9 +1362,30 @@ export default async function(component) {
       dragStartLogical=null;
       drawingStart=null;
       drawingDraft=null;
-      canvas.style.cursor=(activeTool==='cursor'||activeTool==='position_edit')?'default':'crosshair';
+
+      if (wasInteracting) {
+        interceptPointer(e);
+      }
+
+      chartStage.style.cursor=(activeTool==='cursor'||activeTool==='position_edit')
+        ? 'default'
+        : 'crosshair';
       drawAll();
-    };
+    }
+
+    // Capture lets AXION detect its tools first. If no tool is hit, we do
+    // nothing and Lightweight Charts handles the same pointer event normally.
+    chartStage.addEventListener('pointerdown', onStagePointerDown, true);
+    chartStage.addEventListener('pointermove', onStagePointerMove, true);
+    chartStage.addEventListener('pointerup', onStagePointerUp, true);
+    chartStage.addEventListener('pointercancel', onStagePointerCancel, true);
+
+    cleanupFns.push(() => {
+      chartStage.removeEventListener('pointerdown', onStagePointerDown, true);
+      chartStage.removeEventListener('pointermove', onStagePointerMove, true);
+      chartStage.removeEventListener('pointerup', onStagePointerUp, true);
+      chartStage.removeEventListener('pointercancel', onStagePointerCancel, true);
+    });
 
     parentElement.querySelector('#execute-position').onclick = () => {
       if (!position) return;
@@ -1523,7 +1595,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v11",
+    "axion_prime_chart_workspace_v12",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1537,7 +1609,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V11 con Position Tool de creación única y edición libre."""
+    """Monta AXION REPLAY V12 con navegación nativa y Position Tool aislado."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
