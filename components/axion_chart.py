@@ -246,6 +246,7 @@ HTML = r"""
 
         <button id="reset-colors" class="secondary-action" type="button">Restablecer colores</button>
         <button id="save-workspace" class="secondary-action" type="button">Guardar workspace</button>
+        <div id="workspace-save-status" class="workspace-save-status">Los cambios se aplican al instante.</div>
       </section>
     </aside>
   </section>
@@ -418,6 +419,8 @@ button{user-select:none}
 }
 .primary-action{border:0;background:linear-gradient(90deg,#21cde5,#7657ff);color:white}
 .secondary-action{border:1px solid rgba(67,209,228,.28);background:#08182c;color:#64d8e7}
+.workspace-save-status{font-size:7px;color:#617390;text-align:center;margin-top:7px;min-height:11px}
+.settings-panel.settings-focus{box-shadow:0 0 0 1px rgba(77,220,239,.45),0 0 28px rgba(77,220,239,.12)}
 .field-label{display:block;font-size:8px;color:#7486a4;margin-top:8px}
 .field-label input,.field-label select{
   width:100%;margin-top:4px;border:1px solid rgba(80,118,186,.25);border-radius:7px;
@@ -602,6 +605,7 @@ export default async function(component) {
     let dragStartPrice = null;
     let dragStartPosition = null;
     let dragStartPoint = null;
+    let dragStartLogical = null;
 
     const chartHost = parentElement.querySelector('#chart-host');
     const canvas = parentElement.querySelector('#drawing-layer');
@@ -782,6 +786,21 @@ export default async function(component) {
     };
     document.addEventListener('fullscreenchange', onFullscreen);
     cleanupFns.push(() => document.removeEventListener('fullscreenchange', onFullscreen));
+
+    // Volume toggle is a real chart control.
+    const volumeToggle = parentElement.querySelector('#volume-toggle');
+    volumeToggle.checked = true;
+    volumeToggle.onchange = () => {
+      volumeSeries.applyOptions({visible:volumeToggle.checked});
+    };
+
+    // Settings button brings the user directly to Personalización.
+    const settingsPanel = parentElement.querySelector('#workspace-settings');
+    parentElement.querySelector('#settings-btn').onclick = () => {
+      settingsPanel.classList.add('settings-focus');
+      settingsPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
+      setTimeout(()=>settingsPanel.classList.remove('settings-focus'),900);
+    };
 
     // Replay controls entirely in chart frontend.
     function stepTo(nextCursor, fit = false) {
@@ -1077,22 +1096,24 @@ export default async function(component) {
       if (!position) return null;
       const r=canvasRect();
 
-      const defaultWidth=Math.max(130,Math.min(240,r.width*0.22));
-      const width=Number(position.widthPx || defaultWidth);
+      let left = chart.timeScale().logicalToCoordinate(Number(position.startLogical));
+      let right = chart.timeScale().logicalToCoordinate(Number(position.endLogical));
 
-      let left=Number.isFinite(position.leftPx)
-        ? Number(position.leftPx)
-        : Math.max(120,r.width*0.62);
+      // Fallback for a position created before V10 or a transient chart state.
+      if (left == null || right == null) {
+        const fallbackWidth=Math.max(130,Math.min(240,r.width*0.22));
+        left=Number.isFinite(position.leftPx) ? Number(position.leftPx) : Math.max(120,r.width*.62);
+        right=left+(Number(position.widthPx)||fallbackWidth);
+      }
 
-      left=Math.max(8,Math.min(left,r.width-width-94));
-      const right=left+width;
+      if (right < left) [left,right]=[right,left];
 
       const ye=yFromPrice(position.entry);
       const ys=yFromPrice(position.stop);
       const yt=yFromPrice(position.target);
 
       return {
-        left,right,width,ye,ys,yt,
+        left,right,width:right-left,ye,ys,yt,
         top:Math.min(ys,yt),
         bottom:Math.max(ys,yt)
       };
@@ -1142,12 +1163,13 @@ export default async function(component) {
           draggingWholePosition=true;
           dragStartPrice=priceFromY(p.y);
           dragStartPoint={x:p.x,y:p.y};
+          dragStartLogical=chart.timeScale().coordinateToLogical(p.x);
           dragStartPosition={
             entry:position.entry,
             stop:position.stop,
             target:position.target,
-            leftPx:Number(position.leftPx || positionGeometry().left),
-            widthPx:Number(position.widthPx || positionGeometry().width)
+            startLogical:Number(position.startLogical),
+            endLogical:Number(position.endLogical)
           };
           canvas.setPointerCapture?.(e.pointerId);
           canvas.style.cursor='grabbing';
@@ -1159,14 +1181,22 @@ export default async function(component) {
       if (activeTool==='long'||activeTool==='short') {
         const entry=priceFromY(p.y);
         const rr=Number(parentElement.querySelector('#rr-select').value||2);
-        const risk=Math.max(Math.abs(entry)*0.005,1e-8);
-        const r=canvasRect();
-        const widthPx=Math.max(130,Math.min(240,r.width*0.22));
-        const leftPx=Math.max(8,Math.min(p.x-widthPx*0.18,r.width-widthPx-94));
+
+        // Risk setting on the right panel is now functional.
+        const riskText=String(parentElement.querySelector('#risk-template').value || '1.0%');
+        const riskPct=Math.max(0.0001, Number.parseFloat(riskText) / 100);
+        const risk=Math.max(Math.abs(entry)*riskPct,1e-8);
+
+        let startLogical=chart.timeScale().coordinateToLogical(p.x);
+        if (startLogical == null) startLogical=Math.max(0,currentCursor-10);
+
+        const desiredEndX=Math.min(canvasRect().width-95,p.x+Math.max(150,canvasRect().width*.20));
+        let endLogical=chart.timeScale().coordinateToLogical(desiredEndX);
+        if (endLogical == null || endLogical <= startLogical) endLogical=startLogical+20;
 
         position=activeTool==='long'
-          ? {direction:'LONG',entry,stop:entry-risk,target:entry+risk*rr,leftPx,widthPx}
-          : {direction:'SHORT',entry,stop:entry+risk,target:entry-risk*rr,leftPx,widthPx};
+          ? {direction:'LONG',entry,stop:entry-risk,target:entry+risk*rr,startLogical,endLogical}
+          : {direction:'SHORT',entry,stop:entry+risk,target:entry-risk*rr,startLogical,endLogical};
 
         updatePositionPanel();drawAll();return;
       }
@@ -1196,16 +1226,16 @@ export default async function(component) {
       if (draggingWholePosition && position && dragStartPosition && dragStartPoint) {
         const currentPriceAtPointer=priceFromY(p.y);
         const deltaPrice=currentPriceAtPointer-dragStartPrice;
-        const deltaX=p.x-dragStartPoint.x;
-        const r=canvasRect();
+        const currentLogical=chart.timeScale().coordinateToLogical(p.x);
+        const deltaLogical=(currentLogical != null && dragStartLogical != null)
+          ? currentLogical-dragStartLogical
+          : 0;
 
         position.entry=dragStartPosition.entry+deltaPrice;
         position.stop=dragStartPosition.stop+deltaPrice;
         position.target=dragStartPosition.target+deltaPrice;
-
-        const maxLeft=Math.max(8,r.width-dragStartPosition.widthPx-94);
-        position.leftPx=Math.max(8,Math.min(dragStartPosition.leftPx+deltaX,maxLeft));
-        position.widthPx=dragStartPosition.widthPx;
+        position.startLogical=dragStartPosition.startLogical+deltaLogical;
+        position.endLogical=dragStartPosition.endLogical+deltaLogical;
 
         updatePositionPanel();
         drawAll();
@@ -1237,6 +1267,7 @@ export default async function(component) {
         dragStartPrice=null;
         dragStartPosition=null;
         dragStartPoint=null;
+        dragStartLogical=null;
         canvas.style.cursor='grab';
         drawAll();
         return;
@@ -1256,6 +1287,7 @@ export default async function(component) {
       dragStartPrice=null;
       dragStartPosition=null;
       dragStartPoint=null;
+      dragStartLogical=null;
       drawingStart=null;
       drawingDraft=null;
       canvas.style.cursor=activeTool==='cursor'?'default':'crosshair';
@@ -1355,21 +1387,73 @@ export default async function(component) {
 
     syncColorInputs();
 
+    function applyFibTemplate(name) {
+      const selected = name === 'ICT / OTE'
+        ? new Set(['0','0.5','0.618','0.705','0.786','1'])
+        : name === 'AXION PRIME'
+          ? new Set(['0','0.236','0.382','0.5','0.618','0.705','0.786','1'])
+          : null;
+
+      if (!selected) return;
+      parentElement.querySelectorAll('[data-fib-level]').forEach(el => {
+        el.checked=selected.has(String(el.dataset.fibLevel));
+      });
+      drawAll();
+    }
+
+    const fibTemplateSelect=parentElement.querySelector('#fib-template');
+    fibTemplateSelect.onchange=() => {
+      applyFibTemplate(fibTemplateSelect.value);
+      const status=parentElement.querySelector('#workspace-save-status');
+      status.textContent=fibTemplateSelect.value==='Personalizada'
+        ? 'Selecciona manualmente los niveles en Fibonacci.'
+        : `Plantilla ${fibTemplateSelect.value} aplicada.`;
+    };
+
+    const riskTemplateSelect=parentElement.querySelector('#risk-template');
+    riskTemplateSelect.onchange=() => {
+      parentElement.querySelector('#workspace-save-status').textContent=
+        `Riesgo inicial de nuevas posiciones: ${riskTemplateSelect.value}.`;
+    };
+
     // Workspace personalization is persistent frontend state.
     const workspaceName=parentElement.querySelector('#workspace-name');
     parentElement.querySelector('#save-workspace').onclick = () => {
-      setStateValue('workspace', {
+      const workspacePayload={
         name:workspaceName.value || 'Workspace Trader',
         fib_template:parentElement.querySelector('#fib-template').value,
         risk_template:parentElement.querySelector('#risk-template').value,
         colors:{...themeColors}
-      });
+      };
+      setStateValue('workspace', workspacePayload);
+      try {
+        localStorage.setItem('axion_prime_workspace', JSON.stringify(workspacePayload));
+      } catch (_) {}
+      const status=parentElement.querySelector('#workspace-save-status');
+      status.textContent='✓ Workspace guardado';
+      setTimeout(()=>status.textContent='Los cambios se aplican al instante.',1400);
     };
 
-    const currentWorkspace=data.workspace || {};
+    let savedWorkspace={};
+    try {
+      savedWorkspace=JSON.parse(localStorage.getItem('axion_prime_workspace') || '{}') || {};
+    } catch (_) {}
+
+    const currentWorkspace={
+      ...(data.workspace || {}),
+      ...savedWorkspace,
+      colors:{...((data.workspace || {}).colors || {}),...(savedWorkspace.colors || {})}
+    };
+
     if (currentWorkspace.name) workspaceName.value=currentWorkspace.name;
-    if (currentWorkspace.fib_template) parentElement.querySelector('#fib-template').value=currentWorkspace.fib_template;
-    if (currentWorkspace.risk_template) parentElement.querySelector('#risk-template').value=currentWorkspace.risk_template;
+    if (currentWorkspace.fib_template) fibTemplateSelect.value=currentWorkspace.fib_template;
+    if (currentWorkspace.risk_template) riskTemplateSelect.value=currentWorkspace.risk_template;
+    if (currentWorkspace.colors) {
+      themeColors={...themeColors,...currentWorkspace.colors};
+      syncColorInputs();
+      applyTheme();
+    }
+    applyFibTemplate(fibTemplateSelect.value);
 
     function resizeCanvas() {
       const rect=canvas.getBoundingClientRect();
@@ -1418,7 +1502,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v9",
+    "axion_prime_chart_workspace_v10",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1432,7 +1516,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V9 con escalas separadas para precio y volumen."""
+    """Monta AXION REPLAY V10 con posiciones ancladas y controles funcionales."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
