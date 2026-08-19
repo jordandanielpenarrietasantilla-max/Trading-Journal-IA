@@ -48,9 +48,10 @@ HTML = r"""
 
   <section class="terminal-body">
     <aside class="drawing-toolbar" id="drawing-toolbar">
-      <button class="draw-btn active" type="button" data-tool="cursor" title="Cursor">
+      <button class="draw-btn active cursor-tool" type="button" data-tool="cursor" title="Cursor / Selección">
         <svg viewBox="0 0 24 24"><path d="M5 3l12 8-6 2-3 6z"/></svg><span>Cursor</span>
       </button>
+      <div class="tool-separator"></div>
       <button class="draw-btn" type="button" data-tool="trend" title="Línea de tendencia">
         <svg viewBox="0 0 24 24"><path d="M5 18L19 6"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/></svg><span>Tendencia</span>
       </button>
@@ -63,7 +64,8 @@ HTML = r"""
       <button class="draw-btn" type="button" data-tool="vertical" title="Línea vertical">
         <svg viewBox="0 0 24 24"><path d="M12 4v16"/></svg><span>Vertical</span>
       </button>
-      <button class="draw-btn" type="button" data-tool="rectangle" title="Rectángulo">
+      <div class="tool-separator"></div>
+      <button class="draw-btn" type="button" data-tool="rectangle" title="Zona / Rectángulo">
         <svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12"/></svg><span>Zona</span>
       </button>
       <button class="draw-btn" type="button" data-tool="fib" title="Fibonacci">
@@ -72,18 +74,29 @@ HTML = r"""
       <button class="draw-btn" type="button" data-tool="text" title="Texto">
         <svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M8 19h8"/></svg><span>Texto</span>
       </button>
-      <button class="draw-btn long-btn" type="button" data-tool="long" title="Posición larga">
-        <svg viewBox="0 0 24 24"><path d="M12 20V5M7 10l5-5 5 5"/></svg><span>Long</span>
+      <div class="tool-separator"></div>
+      <button class="draw-btn long-btn position-tool-btn" type="button" data-tool="long" title="Posición Long">
+        <svg viewBox="0 0 24 24">
+          <rect x="5" y="5" width="14" height="6" rx="1"/>
+          <rect x="5" y="13" width="14" height="6" rx="1"/>
+          <path d="M12 13V7M9 10l3-3 3 3"/>
+        </svg><span>Posición Long</span>
       </button>
       <button class="draw-btn short-btn" type="button" data-tool="short" title="Posición corta">
-        <svg viewBox="0 0 24 24"><path d="M12 4v15M7 14l5 5 5-5"/></svg><span>Short</span>
+        <svg viewBox="0 0 24 24">
+          <rect x="5" y="5" width="14" height="6" rx="1"/>
+          <rect x="5" y="13" width="14" height="6" rx="1"/>
+          <path d="M12 11v6M9 14l3 3 3-3"/>
+        </svg><span>Posición Short</span>
       </button>
-      <button class="draw-btn" type="button" data-tool="measure" title="Medición">
+      <div class="tool-separator"></div>
+      <button class="draw-btn" type="button" data-tool="measure" title="Regla / Medición">
         <svg viewBox="0 0 24 24"><path d="M5 18L18 5M6 14l4 4M10 10l4 4M14 6l4 4"/></svg><span>Medir</span>
       </button>
       <button class="draw-btn" type="button" data-tool="magnet" title="Imán">
         <svg viewBox="0 0 24 24"><path d="M7 5v7a5 5 0 0010 0V5M7 5h4v5M17 5h-4v5"/></svg><span>Imán</span>
       </button>
+      <div class="tool-separator"></div>
       <button class="draw-btn delete-selected-btn" type="button" data-tool="delete_selected" title="Eliminar seleccionado">
         <svg viewBox="0 0 24 24"><path d="M7 7h10M9 7V5h6v2M9 10v8M12 10v8M15 10v8M8 7l1 13h6l1-13"/></svg><span>Eliminar seleccionado</span>
       </button>
@@ -136,9 +149,13 @@ HTML = r"""
                 <option value="4">4 px</option>
               </select>
             </label>
-            <label class="opacity-control" title="Opacidad">
-              <span>Opacidad</span>
+            <label class="opacity-control" title="Opacidad de la línea">
+              <span>Opac. línea</span>
               <input type="range" id="drawing-opacity" min="20" max="100" value="90">
+            </label>
+            <label class="opacity-control zone-fill-control" title="Opacidad del relleno">
+              <span>Relleno</span>
+              <input type="range" id="drawing-fill-opacity" min="0" max="60" value="12">
             </label>
             <label class="mini-check" title="Extender a la izquierda">
               <input type="checkbox" id="drawing-extend-left">
@@ -402,99 +419,116 @@ button{user-select:none}
 .terminal-body{
   min-height:0;
   display:grid;
-  grid-template-columns:58px minmax(0,1fr) 255px;
+  grid-template-columns:54px minmax(0,1fr) 255px;
 }
 .drawing-toolbar{
   min-height:0;
-  background:linear-gradient(180deg,#050b16 0%,#030914 100%);
-  border-right:1px solid rgba(80,118,186,.18);
-  padding:8px 6px;
+  background:#0a0a0b;
+  border-right:1px solid rgba(255,255,255,.08);
+  padding:7px 5px 10px;
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:5px;
-  overflow:auto;
+  gap:3px;
+  overflow-y:auto;
+  overflow-x:visible;
   scrollbar-width:none;
+  position:relative;
+  z-index:20;
 }
 .drawing-toolbar::-webkit-scrollbar{display:none}
+
+.tool-separator{
+  width:31px;
+  height:1px;
+  flex:0 0 1px;
+  background:rgba(255,255,255,.11);
+  margin:4px 0;
+}
+
 .draw-btn{
   position:relative;
-  width:46px;
-  height:42px;
-  min-height:42px;
+  width:42px;
+  height:40px;
+  min-height:40px;
   border:1px solid transparent;
   background:transparent;
-  color:#6f82a3;
-  border-radius:10px;
+  color:#c1c5cd;
+  border-radius:7px;
   cursor:pointer;
   padding:0;
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:background .14s ease,color .14s ease,border-color .14s ease,transform .14s ease,box-shadow .14s ease;
+  transition:background .12s ease,color .12s ease,border-color .12s ease;
 }
 .draw-btn svg{
-  width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.65;
-  stroke-linecap:round;stroke-linejoin:round;
+  width:21px;
+  height:21px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.55;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 .draw-btn span{
-  position:absolute;
-  left:54px;
-  top:50%;
-  transform:translateY(-50%) translateX(-4px);
+  position:fixed;
   opacity:0;
   pointer-events:none;
   white-space:nowrap;
-  padding:6px 8px;
-  border:1px solid rgba(72,105,157,.30);
-  border-radius:7px;
-  background:rgba(4,11,23,.98);
-  color:#dce8fb;
-  font-size:8px;
-  font-weight:700;
-  letter-spacing:.15px;
-  box-shadow:0 10px 28px rgba(0,0,0,.34);
-  transition:opacity .12s ease,transform .12s ease;
-  z-index:40;
+  padding:6px 9px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;
+  background:#1d1d1f;
+  color:#f4f4f5;
+  font-size:11px;
+  font-weight:550;
+  box-shadow:0 8px 24px rgba(0,0,0,.38);
+  transform:translate(47px,0);
+  z-index:999;
 }
 .draw-btn:hover{
-  background:#09182b;
-  color:#dbe8ff;
-  border-color:rgba(72,105,157,.24);
-  transform:translateY(-1px);
+  background:#232326;
+  color:#ffffff;
 }
-.draw-btn:hover span{
-  opacity:1;
-  transform:translateY(-50%) translateX(0);
-}
+.draw-btn:hover span{opacity:1}
+
 .draw-btn.active{
-  background:linear-gradient(180deg,rgba(32,153,190,.24),rgba(11,58,84,.38));
-  color:#55dff1;
-  border-color:rgba(65,207,230,.60);
-  box-shadow:0 0 0 1px rgba(54,198,223,.08) inset,0 0 18px rgba(38,192,221,.10);
+  background:#2d2d30;
+  color:#ffffff;
+  border-color:rgba(255,255,255,.08);
+  box-shadow:none;
 }
 .draw-btn.active:before{
   content:"";
   position:absolute;
-  left:-6px;
-  width:3px;
-  height:20px;
-  border-radius:0 4px 4px 0;
-  background:#42dced;
-  box-shadow:0 0 10px rgba(66,220,237,.7);
+  left:-5px;
+  width:2px;
+  height:24px;
+  border-radius:0 3px 3px 0;
+  background:#39c7e9;
 }
-.long-btn{color:#18d99d}
-.short-btn{color:#ff5874}
+.cursor-tool.active{
+  background:#323236;
+}
+.long-btn{color:#25c98d}
+.short-btn{color:#ff526f}
 .long-btn.active{
-  color:#2cf0b2;
-  border-color:rgba(44,240,178,.55);
-  background:rgba(10,77,57,.35);
+  background:rgba(19,117,81,.30);
+  color:#39e5a6;
+  border-color:rgba(57,229,166,.22);
 }
+.long-btn.active:before{background:#39e5a6}
 .short-btn.active{
-  color:#ff6b83;
-  border-color:rgba(255,84,112,.55);
-  background:rgba(91,18,38,.34);
+  background:rgba(130,27,49,.32);
+  color:#ff667f;
+  border-color:rgba(255,102,127,.22);
 }
+.short-btn.active:before{background:#ff667f}
+.position-tool-btn svg rect{
+  opacity:.58;
+}
+
 .delete-selected-btn{color:#f0b35e}
 .delete-selected-btn.ready{
   color:#ffd087;
@@ -572,52 +606,83 @@ button{user-select:none}
 .floating-tool-panel.open{display:block}
 .drawing-style-panel{
   position:absolute;
-  top:9px;
+  top:8px;
   left:10px;
-  z-index:12;
+  z-index:30;
   display:none;
-  min-width:520px;
+  min-width:0;
   max-width:calc(100% - 20px);
-  padding:8px 10px;
-  border:1px solid rgba(73,119,186,.28);
-  border-radius:9px;
-  background:rgba(4,11,23,.96);
-  box-shadow:0 12px 34px rgba(0,0,0,.34);
+  padding:7px 9px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:7px;
+  background:rgba(26,26,28,.97);
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
   backdrop-filter:blur(10px);
 }
 .drawing-style-panel.open{display:block}
 .drawing-style-title{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:14px;margin-bottom:7px;font-size:7px;font-weight:800;
-  letter-spacing:.8px;color:#687c9d
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:6px;
+  font-size:7px;
+  font-weight:800;
+  letter-spacing:.8px;
+  color:#8f949d
 }
-#drawing-style-tool{color:#54d8ea}
-.drawing-style-controls{display:flex;align-items:end;gap:7px;flex-wrap:wrap}
+#drawing-style-tool{color:#d8dbe0}
+.drawing-style-controls{
+  display:flex;
+  align-items:end;
+  gap:6px;
+  flex-wrap:wrap
+}
 .drawing-style-controls label{
-  display:flex;flex-direction:column;gap:3px;font-size:7px;color:#7789a7
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  font-size:7px;
+  color:#8f949d
 }
 .drawing-style-controls input[type=color]{
-  width:38px;height:27px;border:1px solid #314660;border-radius:5px;
-  padding:2px;background:#06101d;cursor:pointer
+  width:34px;
+  height:26px;
+  border:1px solid #45464a;
+  border-radius:5px;
+  padding:2px;
+  background:#111214;
+  cursor:pointer
 }
 .drawing-style-controls select{
-  height:28px;border:1px solid #263a55;border-radius:5px;
-  background:#06101d;color:#dbe7fa;padding:0 7px;font-size:8px
+  height:27px;
+  border:1px solid #3c3d42;
+  border-radius:5px;
+  background:#111214;
+  color:#eef0f3;
+  padding:0 7px;
+  font-size:8px
 }
-.drawing-style-controls input[type=range]{width:82px}
+.drawing-style-controls input[type=range]{width:72px}
 .drawing-style-controls .mini-check{
-  flex-direction:row;align-items:center;height:28px;padding:0 6px;
-  border:1px solid #263a55;border-radius:5px;background:#06101d
+  flex-direction:row;
+  align-items:center;
+  height:27px;
+  padding:0 6px;
+  border:1px solid #3c3d42;
+  border-radius:5px;
+  background:#111214
 }
-.drawing-style-controls .mini-check input{accent-color:#42d5e8}
+.drawing-style-controls .mini-check input{accent-color:#46cae7}
 .drawing-style-hint{
   margin-top:6px;
-  padding-top:6px;
-  border-top:1px solid rgba(76,104,151,.14);
-  color:#526783;
+  padding-top:5px;
+  border-top:1px solid rgba(255,255,255,.07);
+  color:#777c86;
   font-size:7px;
-  letter-spacing:.15px;
 }
+.zone-fill-control{display:none!important}
+.drawing-style-panel.zone-mode .zone-fill-control{display:flex!important}
 .floating-title{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:800;color:#e6eefb}
 .floating-title button{border:0;background:transparent;color:#7e8daa;font-size:18px;cursor:pointer}
 .fib-levels{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
@@ -789,6 +854,7 @@ export default async function(component) {
       lineStyle:'solid',
       lineWidth:2,
       opacity:.90,
+      fillOpacity:.12,
       extendLeft:false,
       extendRight:false
     };
@@ -1162,7 +1228,10 @@ export default async function(component) {
       const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);
       const w=Math.abs(a.x-b.x),h=Math.abs(a.y-b.y);
       ctx.save();
-      ctx.fillStyle=hexToRgba(style.color,Math.min(.24,(style.opacity ?? .9)*.18));
+      ctx.fillStyle=hexToRgba(
+        style.color,
+        Math.max(0,Math.min(.60,Number(style.fillOpacity ?? .12)))
+      );
       ctx.strokeStyle=hexToRgba(style.color,style.opacity ?? .9);
       ctx.lineWidth=Number(style.lineWidth || 1);
       ctx.setLineDash(dashForStyle(style.lineStyle,style.lineWidth));
@@ -1706,6 +1775,7 @@ export default async function(component) {
       if (s.lineStyle) drawingLineStyle.value=s.lineStyle;
       if (s.lineWidth != null) drawingLineWidth.value=String(s.lineWidth);
       if (s.opacity != null) drawingOpacity.value=String(Math.round(Number(s.opacity)*100));
+      if (s.fillOpacity != null) drawingFillOpacity.value=String(Math.round(Number(s.fillOpacity)*100));
       drawingExtendLeft.checked=Boolean(s.extendLeft);
       drawingExtendRight.checked=Boolean(s.extendRight);
     }
@@ -1779,6 +1849,7 @@ export default async function(component) {
     const drawingLineStyle=parentElement.querySelector('#drawing-line-style');
     const drawingLineWidth=parentElement.querySelector('#drawing-line-width');
     const drawingOpacity=parentElement.querySelector('#drawing-opacity');
+    const drawingFillOpacity=parentElement.querySelector('#drawing-fill-opacity');
     const drawingExtendLeft=parentElement.querySelector('#drawing-extend-left');
     const drawingExtendRight=parentElement.querySelector('#drawing-extend-right');
 
@@ -1788,6 +1859,7 @@ export default async function(component) {
         lineStyle:drawingLineStyle.value,
         lineWidth:Number(drawingLineWidth.value||2),
         opacity:Number(drawingOpacity.value||90)/100,
+        fillOpacity:Number(drawingFillOpacity.value||12)/100,
         extendLeft:Boolean(drawingExtendLeft.checked),
         extendRight:Boolean(drawingExtendRight.checked)
       };
@@ -1805,7 +1877,7 @@ export default async function(component) {
 
     [
       drawingColorInput,drawingLineStyle,drawingLineWidth,drawingOpacity,
-      drawingExtendLeft,drawingExtendRight
+      drawingFillOpacity,drawingExtendLeft,drawingExtendRight
     ].forEach(el => {
       el.oninput=syncDrawingStyleFromControls;
       el.onchange=syncDrawingStyleFromControls;
@@ -1842,6 +1914,21 @@ export default async function(component) {
 
       const stylePanel=parentElement.querySelector('#drawing-style-panel');
       stylePanel.classList.toggle('open',drawingTools.has(tool) || selectedDrawingIndex >= 0);
+
+      const selectedType = selectedDrawingIndex >= 0 && drawings[selectedDrawingIndex]
+        ? drawings[selectedDrawingIndex].type
+        : null;
+      stylePanel.classList.toggle(
+        'zone-mode',
+        tool==='rectangle' || selectedType==='rectangle'
+      );
+      if (tool==='rectangle' && selectedDrawingIndex < 0) {
+        // Zones start subtle: thin outline + light fill, like professional charting tools.
+        drawingLineWidth.value='1';
+        drawingFillOpacity.value='12';
+        syncDrawingStyleFromControls();
+      }
+
       parentElement.querySelector('#drawing-style-tool').textContent=
         selectedDrawingIndex >= 0 ? 'OBJETO SELECCIONADO' :
         tool==='trend'?'TENDENCIA':
@@ -1978,7 +2065,12 @@ export default async function(component) {
           selectedDrawingIndex=hit;
           armedDrawingTool=null;
           syncStyleControlsFromSelected();
-          parentElement.querySelector('#drawing-style-panel').classList.add('open');
+          const selectedPanel=parentElement.querySelector('#drawing-style-panel');
+          selectedPanel.classList.add('open');
+          selectedPanel.classList.toggle(
+            'zone-mode',
+            drawings[hit]?.type==='rectangle'
+          );
           parentElement.querySelector('#drawing-style-tool').textContent='OBJETO SELECCIONADO';
           updateDeleteSelectedButton();
           drawAll();
@@ -2463,6 +2555,7 @@ export default async function(component) {
       drawingLineStyle.value=drawingStyle.lineStyle;
       drawingLineWidth.value=String(drawingStyle.lineWidth);
       drawingOpacity.value=String(Math.round(Number(drawingStyle.opacity)*100));
+      drawingFillOpacity.value=String(Math.round(Number(drawingStyle.fillOpacity ?? .12)*100));
       drawingExtendLeft.checked=Boolean(drawingStyle.extendLeft);
       drawingExtendRight.checked=Boolean(drawingStyle.extendRight);
     }
@@ -2516,7 +2609,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v17",
+    "axion_prime_chart_workspace_v18",
     html=HTML,
     css=CSS,
     js=JS,
@@ -2530,7 +2623,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V17 con selección y borrado individual de dibujos."""
+    """Monta AXION REPLAY V18 con toolbar estilo terminal y zonas configurables."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
