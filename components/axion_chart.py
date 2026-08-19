@@ -146,6 +146,7 @@ HTML = r"""
               <span>Ext. →</span>
             </label>
           </div>
+          <div class="drawing-style-hint">Una creación por selección · al terminar vuelve a Cursor</div>
         </div>
 
         <div class="floating-tool-panel" id="fib-panel">
@@ -398,22 +399,99 @@ button{user-select:none}
 .terminal-body{
   min-height:0;
   display:grid;
-  grid-template-columns:64px minmax(0,1fr) 255px;
+  grid-template-columns:58px minmax(0,1fr) 255px;
 }
 .drawing-toolbar{
-  min-height:0;background:#050b16;border-right:1px solid rgba(80,118,186,.22);
-  padding:7px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;overflow:auto
+  min-height:0;
+  background:linear-gradient(180deg,#050b16 0%,#030914 100%);
+  border-right:1px solid rgba(80,118,186,.18);
+  padding:8px 6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  overflow:auto;
+  scrollbar-width:none;
 }
+.drawing-toolbar::-webkit-scrollbar{display:none}
 .draw-btn{
-  width:50px;min-height:49px;border:1px solid transparent;background:transparent;color:#7185a7;
-  border-radius:9px;cursor:pointer;padding:5px 2px;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:3px
+  position:relative;
+  width:46px;
+  height:42px;
+  min-height:42px;
+  border:1px solid transparent;
+  background:transparent;
+  color:#6f82a3;
+  border-radius:10px;
+  cursor:pointer;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background .14s ease,color .14s ease,border-color .14s ease,transform .14s ease,box-shadow .14s ease;
 }
-.draw-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.draw-btn span{font-size:7px}
-.draw-btn:hover{background:#07162b;color:#d8e6ff}
-.draw-btn.active{background:#092239;color:#48dbed;border-color:#176277}
-.long-btn{color:#14d998}.short-btn{color:#ff4968}
+.draw-btn svg{
+  width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.65;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+.draw-btn span{
+  position:absolute;
+  left:54px;
+  top:50%;
+  transform:translateY(-50%) translateX(-4px);
+  opacity:0;
+  pointer-events:none;
+  white-space:nowrap;
+  padding:6px 8px;
+  border:1px solid rgba(72,105,157,.30);
+  border-radius:7px;
+  background:rgba(4,11,23,.98);
+  color:#dce8fb;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.15px;
+  box-shadow:0 10px 28px rgba(0,0,0,.34);
+  transition:opacity .12s ease,transform .12s ease;
+  z-index:40;
+}
+.draw-btn:hover{
+  background:#09182b;
+  color:#dbe8ff;
+  border-color:rgba(72,105,157,.24);
+  transform:translateY(-1px);
+}
+.draw-btn:hover span{
+  opacity:1;
+  transform:translateY(-50%) translateX(0);
+}
+.draw-btn.active{
+  background:linear-gradient(180deg,rgba(32,153,190,.24),rgba(11,58,84,.38));
+  color:#55dff1;
+  border-color:rgba(65,207,230,.60);
+  box-shadow:0 0 0 1px rgba(54,198,223,.08) inset,0 0 18px rgba(38,192,221,.10);
+}
+.draw-btn.active:before{
+  content:"";
+  position:absolute;
+  left:-6px;
+  width:3px;
+  height:20px;
+  border-radius:0 4px 4px 0;
+  background:#42dced;
+  box-shadow:0 0 10px rgba(66,220,237,.7);
+}
+.long-btn{color:#18d99d}
+.short-btn{color:#ff5874}
+.long-btn.active{
+  color:#2cf0b2;
+  border-color:rgba(44,240,178,.55);
+  background:rgba(10,77,57,.35);
+}
+.short-btn.active{
+  color:#ff6b83;
+  border-color:rgba(255,84,112,.55);
+  background:rgba(91,18,38,.34);
+}
 .chart-column{min-width:0;min-height:0;display:grid;grid-template-rows:34px minmax(0,1fr)}
 .chart-meta{
   display:flex;align-items:center;justify-content:space-between;padding:0 11px;
@@ -523,6 +601,14 @@ button{user-select:none}
   border:1px solid #263a55;border-radius:5px;background:#06101d
 }
 .drawing-style-controls .mini-check input{accent-color:#42d5e8}
+.drawing-style-hint{
+  margin-top:6px;
+  padding-top:6px;
+  border-top:1px solid rgba(76,104,151,.14);
+  color:#526783;
+  font-size:7px;
+  letter-spacing:.15px;
+}
 .floating-title{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:800;color:#e6eefb}
 .floating-title button{border:0;background:transparent;color:#7e8daa;font-size:18px;cursor:pointer}
 .fib-levels{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
@@ -1635,7 +1721,12 @@ export default async function(component) {
       btn.onclick = () => {
         const tool=btn.dataset.tool;
         if (tool==='clear') {
-          drawings=[];position=null;updatePositionPanel();drawAll();return;
+          drawings=[];
+          position=null;
+          updatePositionPanel();
+          drawAll();
+          setTool('cursor');
+          return;
         }
         setTool(tool);
       };
@@ -1793,6 +1884,7 @@ export default async function(component) {
           style:currentDrawingStyle()
         });
         drawAll();
+        setTool('cursor');
         return;
       }
 
@@ -1806,6 +1898,7 @@ export default async function(component) {
           style:currentDrawingStyle()
         });
         drawAll();
+        setTool('cursor');
         return;
       }
 
@@ -1819,6 +1912,7 @@ export default async function(component) {
           style:currentDrawingStyle()
         });
         drawAll();
+        setTool('cursor');
         return;
       }
 
@@ -1918,6 +2012,10 @@ export default async function(component) {
       drawingDraft=null;
       try { chartStage.releasePointerCapture?.(e.pointerId); } catch (_) {}
       drawAll();
+
+      // Drawing tools are one-shot: after one object is created, return to
+      // Cursor so normal clicks/panning cannot accidentally create more lines.
+      setTool('cursor');
     }
 
     function onStagePointerCancel(e) {
@@ -2178,7 +2276,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v15",
+    "axion_prime_chart_workspace_v16",
     html=HTML,
     css=CSS,
     js=JS,
@@ -2192,7 +2290,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V15 con dibujos anclados y estilos profesionales."""
+    """Monta AXION REPLAY V16 con herramientas one-shot y toolbar profesional."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
