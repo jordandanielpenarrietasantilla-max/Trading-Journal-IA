@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import streamlit as st
 
-
 HTML = r"""
 <div class="axion-orderflow" id="axion-orderflow">
   <header class="of-header">
@@ -705,7 +704,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v6_mockup",
+    "axion_live_heatmap_v6_fix_selfcontained",
     html=HTML,
     css=CSS,
     js=JS,
@@ -727,3 +726,41 @@ def render_axion_live_heatmap(
         width="stretch",
         height=height,
     )
+
+
+
+def _init_live_state() -> None:
+    defaults = {
+        "live_symbol": "BTCUSDT",
+        "live_timeframe": "1m",
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+def _handle_result(result) -> None:
+    if result is None:
+        return
+
+    symbol = getattr(result, "symbol", None)
+    if symbol and symbol != st.session_state.live_symbol:
+        st.session_state.live_symbol = symbol
+        st.rerun()
+
+    timeframe = getattr(result, "timeframe", None)
+    if timeframe and timeframe != st.session_state.live_timeframe:
+        st.session_state.live_timeframe = timeframe
+        st.rerun()
+
+
+def render_live_heatmap() -> None:
+    _init_live_state()
+
+    result = render_axion_live_heatmap(
+        symbol=st.session_state.live_symbol,
+        timeframe=st.session_state.live_timeframe,
+        key="axion_live_heatmap_workspace",
+        height=920,
+    )
+    _handle_result(result)
