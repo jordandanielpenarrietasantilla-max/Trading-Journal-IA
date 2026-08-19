@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -331,6 +332,55 @@ div[data-testid="stSegmentedControl"] button[aria-pressed="true"] {
         0 5px 18px rgba(48,105,225,.20) !important;
 }
 
+
+
+/* AXION compact command header */
+.v2-section-header {
+    min-height:118px !important;
+    padding:15px 20px !important;
+    margin-bottom:11px !important;
+    border-radius:14px !important;
+}
+
+.v2-section-header h1,
+.v2-section-header h2 {
+    margin:0 !important;
+    font-size:clamp(28px,3vw,46px) !important;
+    line-height:1.02 !important;
+    letter-spacing:-1.7px !important;
+}
+
+.v2-section-header p {
+    margin:6px 0 0 !important;
+    font-size:10px !important;
+}
+
+.v2-section-status {
+    padding:7px 11px !important;
+    font-size:6.4px !important;
+}
+
+div[data-testid="stSegmentedControl"] {
+    margin:0 0 8px 0 !important;
+}
+
+div[data-testid="stSegmentedControl"] > div {
+    padding:3px !important;
+    gap:2px !important;
+    border-radius:8px !important;
+}
+
+div[data-testid="stSegmentedControl"] button {
+    min-height:30px !important;
+    padding:0 12px !important;
+    border-radius:6px !important;
+    font-size:9px !important;
+}
+
+/* Pull controls closer to the hero */
+div[data-testid="stHorizontalBlock"] {
+    row-gap:.55rem;
+}
 
 @media(max-width:1100px) {
     .v2-metric-value { font-size:18px; }
@@ -768,11 +818,27 @@ def render_v2_dashboard(
         return
 
     data = _prepare_data(df)
-    now = dt.datetime.now()
+
+    # Chile-local clock for the greeting and dashboard status.
+    try:
+        now = dt.datetime.now(ZoneInfo("America/Santiago"))
+    except Exception:
+        now = dt.datetime.now().astimezone()
+
+    hour = now.hour
+    if 5 <= hour < 12:
+        greeting = "Buenos días"
+        greeting_icon = "☀️"
+    elif 12 <= hour < 20:
+        greeting = "Buenas tardes"
+        greeting_icon = "🌤️"
+    else:
+        greeting = "Buenas noches"
+        greeting_icon = "🌙"
 
     render_section_header(
         eyebrow="AXION PRIME · PERFORMANCE COMMAND OS X10",
-        title=f"¡Buenos días, {trader_name}! 👋",
+        title=f"¡{greeting}, {trader_name}! {greeting_icon}",
         description="Disciplina hoy, libertad mañana. Tu desempeño vive en los datos.",
         status=f"{now.strftime('%d %b %Y').upper()} · {now.strftime('%I:%M %p')} · MERCADOS ACTIVOS",
     )
