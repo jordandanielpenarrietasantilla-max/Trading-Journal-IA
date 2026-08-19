@@ -48,61 +48,130 @@ HTML = r"""
 
   <section class="terminal-body">
     <aside class="drawing-toolbar" id="drawing-toolbar">
-      <button class="draw-btn active cursor-tool" type="button" data-tool="cursor" title="Cursor / Selección">
-        <svg viewBox="0 0 24 24"><path d="M5 3l12 8-6 2-3 6z"/></svg><span>Cursor</span>
-      </button>
+      <div class="tool-group">
+        <button class="draw-btn active cursor-tool" type="button" data-tool="cursor" title="Cursor / Selección">
+          <svg viewBox="0 0 24 24"><path d="M5 3l12 8-6 2-3 6z"/></svg>
+          <span>Cursor</span>
+        </button>
+      </div>
+
       <div class="tool-separator"></div>
-      <button class="draw-btn" type="button" data-tool="trend" title="Línea de tendencia">
-        <svg viewBox="0 0 24 24"><path d="M5 18L19 6"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/></svg><span>Tendencia</span>
-      </button>
-      <button class="draw-btn" type="button" data-tool="ray" title="Rayo">
-        <svg viewBox="0 0 24 24"><path d="M5 18L18 7"/><path d="M14 7h4v4"/><circle cx="5" cy="18" r="2"/></svg><span>Rayo</span>
-      </button>
-      <button class="draw-btn" type="button" data-tool="horizontal" title="Línea horizontal">
-        <svg viewBox="0 0 24 24"><path d="M4 12h16"/></svg><span>Horizontal</span>
-      </button>
-      <button class="draw-btn" type="button" data-tool="vertical" title="Línea vertical">
-        <svg viewBox="0 0 24 24"><path d="M12 4v16"/></svg><span>Vertical</span>
-      </button>
+
+      <div class="tool-group">
+        <button class="draw-btn" type="button" data-tool="trend" title="Línea de tendencia">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 18L19 6"/>
+            <circle cx="5" cy="18" r="2.1"/>
+            <circle cx="19" cy="6" r="2.1"/>
+          </svg>
+          <span>Línea de tendencia</span>
+        </button>
+        <button class="draw-btn" type="button" data-tool="ray" title="Rayo">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 18L18 7"/>
+            <circle cx="5" cy="18" r="2.1"/>
+            <path d="M14 7h4v4"/>
+          </svg>
+          <span>Rayo</span>
+        </button>
+        <button class="draw-btn" type="button" data-tool="horizontal" title="Línea horizontal">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 8h16M4 16h16"/>
+            <circle cx="7" cy="8" r="1.6"/>
+          </svg>
+          <span>Horizontal</span>
+        </button>
+        <button class="draw-btn" type="button" data-tool="vertical" title="Línea vertical">
+          <svg viewBox="0 0 24 24">
+            <path d="M8 4v16M16 4v16"/>
+            <circle cx="8" cy="8" r="1.6"/>
+          </svg>
+          <span>Vertical</span>
+        </button>
+      </div>
+
       <div class="tool-separator"></div>
-      <button class="draw-btn" type="button" data-tool="rectangle" title="Zona / Rectángulo">
-        <svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12"/></svg><span>Zona</span>
-      </button>
-      <button class="draw-btn" type="button" data-tool="fib" title="Fibonacci">
-        <svg viewBox="0 0 24 24"><path d="M5 6h14M5 10h10M5 14h14M5 18h8"/></svg><span>Fibonacci</span>
-      </button>
-      <button class="draw-btn" type="button" data-tool="text" title="Texto">
-        <svg viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M8 19h8"/></svg><span>Texto</span>
-      </button>
+
+      <div class="tool-group">
+        <button class="draw-btn" type="button" data-tool="rectangle" title="Zona / Rectángulo">
+          <svg viewBox="0 0 24 24">
+            <rect x="4.5" y="5.5" width="15" height="13" rx="1"/>
+            <circle cx="5" cy="6" r="1.4"/>
+            <circle cx="19" cy="18" r="1.4"/>
+          </svg>
+          <span>Zona / Rectángulo</span>
+        </button>
+        <button class="draw-btn" type="button" data-tool="fib" title="Retroceso de Fibonacci">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 5h16M4 9h12M4 13h16M4 17h10M4 21h16"/>
+          </svg>
+          <span>Fibonacci</span>
+        </button>
+        <button class="draw-btn" type="button" data-tool="text" title="Texto">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 5h14M12 5v14M8 19h8"/>
+          </svg>
+          <span>Texto</span>
+        </button>
+      </div>
+
       <div class="tool-separator"></div>
-      <button class="draw-btn long-btn position-tool-btn" type="button" data-tool="long" title="Posición Long">
-        <svg viewBox="0 0 24 24">
-          <rect x="5" y="5" width="14" height="6" rx="1"/>
-          <rect x="5" y="13" width="14" height="6" rx="1"/>
-          <path d="M12 13V7M9 10l3-3 3 3"/>
-        </svg><span>Posición Long</span>
-      </button>
-      <button class="draw-btn short-btn" type="button" data-tool="short" title="Posición corta">
-        <svg viewBox="0 0 24 24">
-          <rect x="5" y="5" width="14" height="6" rx="1"/>
-          <rect x="5" y="13" width="14" height="6" rx="1"/>
-          <path d="M12 11v6M9 14l3 3 3-3"/>
-        </svg><span>Posición Short</span>
-      </button>
+
+      <div class="tool-group position-tool-group">
+        <button class="draw-btn long-btn position-tool-btn" type="button" data-tool="long" title="Posición Long">
+          <svg viewBox="0 0 24 24">
+            <rect x="4.5" y="4.5" width="15" height="6" rx="1"/>
+            <rect x="4.5" y="13.5" width="15" height="6" rx="1"/>
+            <path d="M12 13.5V7.5"/>
+            <path d="M9.5 10l2.5-2.5 2.5 2.5"/>
+          </svg>
+          <span>Posición Long</span>
+          <i class="tool-dot tool-dot-long"></i>
+        </button>
+        <button class="draw-btn short-btn position-tool-btn" type="button" data-tool="short" title="Posición Short">
+          <svg viewBox="0 0 24 24">
+            <rect x="4.5" y="4.5" width="15" height="6" rx="1"/>
+            <rect x="4.5" y="13.5" width="15" height="6" rx="1"/>
+            <path d="M12 10.5v6"/>
+            <path d="M9.5 14l2.5 2.5 2.5-2.5"/>
+          </svg>
+          <span>Posición Short</span>
+          <i class="tool-dot tool-dot-short"></i>
+        </button>
+      </div>
+
       <div class="tool-separator"></div>
-      <button class="draw-btn" type="button" data-tool="measure" title="Regla / Medición">
-        <svg viewBox="0 0 24 24"><path d="M5 18L18 5M6 14l4 4M10 10l4 4M14 6l4 4"/></svg><span>Medir</span>
-      </button>
-      <button class="draw-btn" type="button" data-tool="magnet" title="Imán">
-        <svg viewBox="0 0 24 24"><path d="M7 5v7a5 5 0 0010 0V5M7 5h4v5M17 5h-4v5"/></svg><span>Imán</span>
-      </button>
-      <div class="tool-separator"></div>
-      <button class="draw-btn delete-selected-btn" type="button" data-tool="delete_selected" title="Eliminar seleccionado">
-        <svg viewBox="0 0 24 24"><path d="M7 7h10M9 7V5h6v2M9 10v8M12 10v8M15 10v8M8 7l1 13h6l1-13"/></svg><span>Eliminar seleccionado</span>
-      </button>
-      <button class="draw-btn" type="button" data-tool="clear" title="Borrar todo">
-        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg><span>Borrar todo</span>
-      </button>
+
+      <div class="tool-group">
+        <button class="draw-btn" type="button" data-tool="measure" title="Regla / Medición">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 18L18 5"/>
+            <path d="M7 14l3 3M10 11l3 3M13 8l3 3"/>
+          </svg>
+          <span>Medición</span>
+        </button>
+        <button class="draw-btn" type="button" data-tool="magnet" title="Imán">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 5v7a5 5 0 0010 0V5M7 5h4v5M17 5h-4v5"/>
+          </svg>
+          <span>Imán</span>
+        </button>
+      </div>
+
+      <div class="toolbar-spacer"></div>
+
+      <div class="tool-group">
+        <button class="draw-btn delete-selected-btn" type="button" data-tool="delete_selected" title="Eliminar seleccionado">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 7h10M9 7V5h6v2M9 10v8M12 10v8M15 10v8M8 7l1 13h6l1-13"/>
+          </svg>
+          <span>Eliminar seleccionado</span>
+        </button>
+        <button class="draw-btn clear-all-btn" type="button" data-tool="clear" title="Borrar todo">
+          <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg>
+          <span>Borrar todo</span>
+        </button>
+      </div>
     </aside>
 
     <main class="chart-column">
@@ -123,50 +192,42 @@ HTML = r"""
         <canvas id="drawing-layer"></canvas>
 
         <div class="drawing-style-panel" id="drawing-style-panel">
-          <div class="drawing-style-title">
-            <span>ESTILO DE DIBUJO</span>
-            <span id="drawing-style-tool">TENDENCIA</span>
-          </div>
-          <div class="drawing-style-controls">
-            <label title="Color">
-              <span>Color</span>
-              <input type="color" id="drawing-color" value="#47d8eb">
-            </label>
-            <label title="Estilo de línea">
-              <span>Línea</span>
-              <select id="drawing-line-style">
-                <option value="solid">Sólida</option>
-                <option value="dashed">Guiones</option>
-                <option value="dotted">Puntos</option>
-              </select>
-            </label>
-            <label title="Grosor">
-              <span>Grosor</span>
-              <select id="drawing-line-width">
-                <option value="1">1 px</option>
-                <option value="2" selected>2 px</option>
-                <option value="3">3 px</option>
-                <option value="4">4 px</option>
-              </select>
-            </label>
-            <label class="opacity-control" title="Opacidad de la línea">
-              <span>Opac. línea</span>
-              <input type="range" id="drawing-opacity" min="20" max="100" value="90">
-            </label>
-            <label class="opacity-control zone-fill-control" title="Opacidad del relleno">
-              <span>Relleno</span>
-              <input type="range" id="drawing-fill-opacity" min="0" max="60" value="12">
-            </label>
-            <label class="mini-check" title="Extender a la izquierda">
-              <input type="checkbox" id="drawing-extend-left">
-              <span>← Ext.</span>
-            </label>
-            <label class="mini-check" title="Extender a la derecha">
-              <input type="checkbox" id="drawing-extend-right">
-              <span>Ext. →</span>
-            </label>
-          </div>
-          <div class="drawing-style-hint">Una creación por selección · al terminar vuelve a Cursor</div>
+          <div class="context-tool-name" id="drawing-style-tool">TENDENCIA</div>
+
+          <label class="context-color" title="Color">
+            <input type="color" id="drawing-color" value="#47d8eb">
+          </label>
+
+          <select id="drawing-line-style" class="context-select" title="Estilo de línea">
+            <option value="solid">━ Sólida</option>
+            <option value="dashed">┅ Guiones</option>
+            <option value="dotted">·· Puntos</option>
+          </select>
+
+          <select id="drawing-line-width" class="context-select context-width" title="Grosor">
+            <option value="1">1 px</option>
+            <option value="2" selected>2 px</option>
+            <option value="3">3 px</option>
+            <option value="4">4 px</option>
+          </select>
+
+          <label class="context-range" title="Opacidad de línea">
+            <span>◐</span>
+            <input type="range" id="drawing-opacity" min="20" max="100" value="90">
+          </label>
+
+          <label class="context-range zone-fill-control" title="Opacidad del relleno">
+            <span>▧</span>
+            <input type="range" id="drawing-fill-opacity" min="0" max="60" value="12">
+          </label>
+
+          <button class="context-toggle" id="drawing-extend-left-btn" type="button" title="Extender izquierda">←</button>
+          <button class="context-toggle" id="drawing-extend-right-btn" type="button" title="Extender derecha">→</button>
+
+          <input type="checkbox" id="drawing-extend-left" hidden>
+          <input type="checkbox" id="drawing-extend-right" hidden>
+
+          <button class="context-delete" id="context-delete-selected" type="button" title="Eliminar objeto">⌫</button>
         </div>
 
         <div class="floating-tool-panel" id="fib-panel">
@@ -419,122 +480,222 @@ button{user-select:none}
 .terminal-body{
   min-height:0;
   display:grid;
-  grid-template-columns:54px minmax(0,1fr) 255px;
+  grid-template-columns:50px minmax(0,1fr) 255px;
 }
 .drawing-toolbar{
   min-height:0;
-  background:#0a0a0b;
-  border-right:1px solid rgba(255,255,255,.08);
-  padding:7px 5px 10px;
+  width:50px;
+  background:#101011;
+  border-right:1px solid #2b2b2d;
+  padding:7px 4px 8px;
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:3px;
   overflow-y:auto;
   overflow-x:visible;
   scrollbar-width:none;
   position:relative;
-  z-index:20;
+  z-index:25;
 }
 .drawing-toolbar::-webkit-scrollbar{display:none}
 
+.tool-group{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1px;
+}
+.toolbar-spacer{flex:1 1 auto;min-height:10px}
 .tool-separator{
-  width:31px;
+  width:34px;
   height:1px;
+  background:#2c2c2e;
+  margin:5px 0;
   flex:0 0 1px;
-  background:rgba(255,255,255,.11);
-  margin:4px 0;
 }
 
 .draw-btn{
   position:relative;
-  width:42px;
+  width:40px;
   height:40px;
   min-height:40px;
-  border:1px solid transparent;
+  border:0;
   background:transparent;
-  color:#c1c5cd;
-  border-radius:7px;
-  cursor:pointer;
+  color:#b8bbc2;
+  border-radius:6px;
   padding:0;
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:background .12s ease,color .12s ease,border-color .12s ease;
+  cursor:pointer;
+  transition:background .10s ease,color .10s ease;
 }
 .draw-btn svg{
-  width:21px;
-  height:21px;
+  width:22px;
+  height:22px;
   fill:none;
   stroke:currentColor;
-  stroke-width:1.55;
+  stroke-width:1.45;
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-.draw-btn span{
-  position:fixed;
-  opacity:0;
-  pointer-events:none;
-  white-space:nowrap;
-  padding:6px 9px;
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:6px;
-  background:#1d1d1f;
-  color:#f4f4f5;
-  font-size:11px;
-  font-weight:550;
-  box-shadow:0 8px 24px rgba(0,0,0,.38);
-  transform:translate(47px,0);
-  z-index:999;
-}
 .draw-btn:hover{
-  background:#232326;
+  background:#29292c;
   color:#ffffff;
 }
-.draw-btn:hover span{opacity:1}
-
 .draw-btn.active{
-  background:#2d2d30;
+  background:#303034;
   color:#ffffff;
-  border-color:rgba(255,255,255,.08);
-  box-shadow:none;
 }
-.draw-btn.active:before{
+.draw-btn.active::after{
   content:"";
   position:absolute;
-  left:-5px;
+  left:-4px;
+  top:8px;
   width:2px;
   height:24px;
-  border-radius:0 3px 3px 0;
-  background:#39c7e9;
-}
-.cursor-tool.active{
-  background:#323236;
-}
-.long-btn{color:#25c98d}
-.short-btn{color:#ff526f}
-.long-btn.active{
-  background:rgba(19,117,81,.30);
-  color:#39e5a6;
-  border-color:rgba(57,229,166,.22);
-}
-.long-btn.active:before{background:#39e5a6}
-.short-btn.active{
-  background:rgba(130,27,49,.32);
-  color:#ff667f;
-  border-color:rgba(255,102,127,.22);
-}
-.short-btn.active:before{background:#ff667f}
-.position-tool-btn svg rect{
-  opacity:.58;
+  border-radius:2px;
+  background:#4abbd7;
 }
 
-.delete-selected-btn{color:#f0b35e}
-.delete-selected-btn.ready{
-  color:#ffd087;
-  border-color:rgba(255,197,101,.48);
-  background:rgba(91,61,18,.28);
+.draw-btn span{
+  position:absolute;
+  left:47px;
+  top:50%;
+  transform:translateY(-50%);
+  display:none;
+  white-space:nowrap;
+  padding:6px 8px;
+  color:#f3f3f4;
+  background:#252527;
+  border:1px solid #3a3a3d;
+  border-radius:5px;
+  font-size:10px;
+  font-weight:600;
+  box-shadow:0 8px 18px rgba(0,0,0,.30);
+  z-index:100;
 }
+.draw-btn:hover span{display:block}
+
+.position-tool-btn{position:relative}
+.long-btn{color:#23c98d}
+.short-btn{color:#f05a73}
+.long-btn.active{background:rgba(19,118,82,.28);color:#38e1a4}
+.short-btn.active{background:rgba(131,30,50,.30);color:#ff6a82}
+.long-btn.active::after{background:#38e1a4}
+.short-btn.active::after{background:#ff6a82}
+
+.tool-dot{
+  position:absolute;
+  width:5px;
+  height:5px;
+  right:5px;
+  bottom:5px;
+  border-radius:50%;
+}
+.tool-dot-long{background:#27cf94}
+.tool-dot-short{background:#f55f78}
+
+.delete-selected-btn{color:#d1d2d5}
+.delete-selected-btn.ready{color:#ffd27a;background:#2b251a}
+.clear-all-btn{color:#bfc1c6}
+.clear-all-btn:hover{color:#ff6b78;background:#321a1e}
+
+/* Floating object/property toolbar */
+.drawing-style-panel{
+  position:absolute;
+  top:8px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:45;
+  display:none;
+  height:38px;
+  align-items:center;
+  gap:5px;
+  padding:4px 6px;
+  border:1px solid #3a3a3d;
+  border-radius:7px;
+  background:#1d1d1f;
+  box-shadow:0 8px 24px rgba(0,0,0,.32);
+}
+.drawing-style-panel.open{display:flex}
+
+.context-tool-name{
+  height:28px;
+  display:flex;
+  align-items:center;
+  padding:0 8px;
+  color:#d3d4d8;
+  font-size:9px;
+  font-weight:700;
+  border-right:1px solid #38383b;
+  min-width:72px;
+}
+.context-color{
+  width:28px;
+  height:28px;
+  border-radius:5px;
+  overflow:hidden;
+  border:1px solid #46464a;
+  background:#111;
+  cursor:pointer;
+}
+.context-color input{
+  width:36px;
+  height:36px;
+  padding:0;
+  border:0;
+  margin:-4px;
+  cursor:pointer;
+}
+.context-select{
+  height:28px;
+  color:#ededee;
+  background:#262628;
+  border:1px solid #424246;
+  border-radius:5px;
+  padding:0 6px;
+  font-size:9px;
+  outline:none;
+}
+.context-width{width:58px}
+.context-range{
+  height:28px;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  padding:0 6px;
+  background:#262628;
+  border:1px solid #424246;
+  border-radius:5px;
+  color:#bfc2c8;
+}
+.context-range input[type=range]{width:62px}
+.context-toggle,
+.context-delete{
+  width:28px;
+  height:28px;
+  border:1px solid #424246;
+  border-radius:5px;
+  background:#262628;
+  color:#cfd1d6;
+  cursor:pointer;
+}
+.context-toggle:hover{background:#333336;color:#fff}
+.context-toggle.on{
+  background:#173947;
+  color:#62d9ef;
+  border-color:#2f788d;
+}
+.context-delete:hover{
+  background:#3a1e24;
+  color:#ff7386;
+  border-color:#713441;
+}
+.zone-fill-control{display:none}
+.drawing-style-panel.zone-mode .zone-fill-control{display:flex}
+
 .chart-column{min-width:0;min-height:0;display:grid;grid-template-rows:34px minmax(0,1fr)}
 .chart-meta{
   display:flex;align-items:center;justify-content:space-between;padding:0 11px;
@@ -1166,6 +1327,7 @@ export default async function(component) {
         lineStyle:drawingStyle.lineStyle,
         lineWidth:drawingStyle.lineWidth,
         opacity:drawingStyle.opacity,
+        fillOpacity:drawingStyle.fillOpacity,
         extendLeft:drawingStyle.extendLeft,
         extendRight:drawingStyle.extendRight,
         ...overrides
@@ -1778,6 +1940,8 @@ export default async function(component) {
       if (s.fillOpacity != null) drawingFillOpacity.value=String(Math.round(Number(s.fillOpacity)*100));
       drawingExtendLeft.checked=Boolean(s.extendLeft);
       drawingExtendRight.checked=Boolean(s.extendRight);
+      drawingExtendLeftBtn.classList.toggle('on',drawingExtendLeft.checked);
+      drawingExtendRightBtn.classList.toggle('on',drawingExtendRight.checked);
     }
 
     function drawSelectionOverlay(d) {
@@ -1852,6 +2016,9 @@ export default async function(component) {
     const drawingFillOpacity=parentElement.querySelector('#drawing-fill-opacity');
     const drawingExtendLeft=parentElement.querySelector('#drawing-extend-left');
     const drawingExtendRight=parentElement.querySelector('#drawing-extend-right');
+    const drawingExtendLeftBtn=parentElement.querySelector('#drawing-extend-left-btn');
+    const drawingExtendRightBtn=parentElement.querySelector('#drawing-extend-right-btn');
+    const contextDeleteSelected=parentElement.querySelector('#context-delete-selected');
 
     function syncDrawingStyleFromControls() {
       drawingStyle={
@@ -1872,8 +2039,29 @@ export default async function(component) {
         };
       }
 
+      drawingExtendLeftBtn.classList.toggle('on',drawingExtendLeft.checked);
+      drawingExtendRightBtn.classList.toggle('on',drawingExtendRight.checked);
       drawAll();
     }
+
+    drawingExtendLeftBtn.onclick=() => {
+      drawingExtendLeft.checked=!drawingExtendLeft.checked;
+      syncDrawingStyleFromControls();
+    };
+    drawingExtendRightBtn.onclick=() => {
+      drawingExtendRight.checked=!drawingExtendRight.checked;
+      syncDrawingStyleFromControls();
+    };
+
+    contextDeleteSelected.onclick=() => {
+      if (selectedDrawingIndex >= 0 && drawings[selectedDrawingIndex]) {
+        drawings.splice(selectedDrawingIndex,1);
+        selectedDrawingIndex=-1;
+        armedDrawingTool=null;
+        setTool('cursor');
+        drawAll();
+      }
+    };
 
     [
       drawingColorInput,drawingLineStyle,drawingLineWidth,drawingOpacity,
@@ -1923,9 +2111,10 @@ export default async function(component) {
         tool==='rectangle' || selectedType==='rectangle'
       );
       if (tool==='rectangle' && selectedDrawingIndex < 0) {
-        // Zones start subtle: thin outline + light fill, like professional charting tools.
+        // Professional default for zones: fine border and subtle fill.
         drawingLineWidth.value='1';
-        drawingFillOpacity.value='12';
+        drawingFillOpacity.value='10';
+        drawingOpacity.value='85';
         syncDrawingStyleFromControls();
       }
 
@@ -2558,6 +2747,8 @@ export default async function(component) {
       drawingFillOpacity.value=String(Math.round(Number(drawingStyle.fillOpacity ?? .12)*100));
       drawingExtendLeft.checked=Boolean(drawingStyle.extendLeft);
       drawingExtendRight.checked=Boolean(drawingStyle.extendRight);
+      drawingExtendLeftBtn.classList.toggle('on',drawingExtendLeft.checked);
+      drawingExtendRightBtn.classList.toggle('on',drawingExtendRight.checked);
     }
 
     applyFibTemplate(fibTemplateSelect.value);
@@ -2609,7 +2800,7 @@ export default async function(component) {
 
 
 _axion_chart_component = st.components.v2.component(
-    "axion_prime_chart_workspace_v18",
+    "axion_prime_chart_workspace_v19",
     html=HTML,
     css=CSS,
     js=JS,
@@ -2623,7 +2814,7 @@ def render_axion_chart(
     key: str = "axion_chart_workspace",
     height: int = 820,
 ):
-    """Monta AXION REPLAY V18 con toolbar estilo terminal y zonas configurables."""
+    """Monta AXION REPLAY V19 con toolbar profesional y propiedades contextuales."""
     workspace = data.get("workspace") or {
         "name": "Workspace Trader",
         "fib_template": "AXION PRIME",
