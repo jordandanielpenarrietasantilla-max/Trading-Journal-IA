@@ -9,7 +9,7 @@ HTML = r"""
       <div class="brand-logo">A</div>
       <div>
         <div class="brand-title">AXION <span>PRIME</span></div>
-        <div class="brand-sub">LIQUIDITY MATRIX · ORDER FLOW</div>
+        <div class="brand-sub">RECORDED MARKET DEPTH · ORDER FLOW</div>
       </div>
     </div>
 
@@ -323,8 +323,12 @@ export default function(component) {
   let snapshotReady=false;
   let depthBuffer=[];
   let heatHistory=[];
-  const MAX_HEAT_COLS=210;
+  const MAX_HEAT_COLS=900;        // ~15 min at 1 snapshot/sec
   const LEVELS_SIDE=180;
+  const STORAGE_KEY='axion_btcusdt_depth_v11';
+  const STORAGE_MAX_AGE=6*60*60*1000; // keep up to 6h of REAL captured depth
+  let recordingStartedAt=null;
+  let lastPersistAt=0;
 
   let candles=[];
   let firstPrice=null;
@@ -435,24 +439,10 @@ export default function(component) {
     return currentTf;
   }
 
-  function viewportPct(){
-    // Microstructure viewport centered on live price.
-    // Wider timeframes get a wider window, but depth remains readable.
-    const map={
-      '1m':0.0030,
-      '5m':0.0045,
-      '15m':0.0065,
-      '30m':0.0080,
-      '1H':0.0110,
-      '4H':0.0175,
-      '1D':0.0280,
-    };
-    return map[currentTf] || 0.0065;
-  }
 
   async function fetchCandles(){
     const interval=binanceInterval();
-    const res=await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=160`,{cache:'no-store'});
+    const res=await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=500`,{cache:'no-store'});
     if(!res.ok)throw new Error('Klines HTTP '+res.status);
     const rows=await res.json();
     candles=rows.map(r=>({t:Number(r[0]),o:Number(r[1]),h:Number(r[2]),l:Number(r[3]),c:Number(r[4]),v:Number(r[5])}));
@@ -493,7 +483,61 @@ export default function(component) {
   function updateKline(k){
     const c={t:Number(k.t),o:Number(k.o),h:Number(k.h),l:Number(k.l),c:Number(k.c),v:Number(k.v)};
     const i=candles.findIndex(x=>x.t===c.t);
-    if(i>=0)candles[i]=c;else{candles.push(c);if(candles.length>180)candles.shift()}
+    if(i>=0)candles[i]=c;else{candles.push(c);if(candles.length>600)candles.shift()}
+  }
+
+  function loadRecordedDepth(){
+    try{
+      const raw=localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      const payload=JSON.parse(raw);
+      if(!payload || !Array.isArray(payload.history)) return;
+
+      const cutoff=Date.now()-STORAGE_MAX_AGE;
+      heatHistory=payload.history
+        .filter(col=>Number(col?.t)>=cutoff && Array.isArray(col?.buckets))
+        .slice(-MAX_HEAT_COLS);
+
+      if(heatHistory.length){
+        recordingStartedAt=heatHistory[0].t;
+      }
+    }catch(err){
+      console.warn('AXION depth restore',err);
+    }
+  }
+
+  function persistRecordedDepth(force=false){
+    if(currentSymbol!=='BTCUSDT' || !heatHistory.length) return;
+    const now=Date.now();
+    if(!force && now-lastPersistAt<5000) return;
+    lastPersistAt=now;
+
+    try{
+      const cutoff=now-STORAGE_MAX_AGE;
+      const history=heatHistory
+        .filter(col=>Number(col?.t)>=cutoff)
+        .slice(-MAX_HEAT_COLS);
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          version:11,
+          symbol:'BTCUSDT',
+          savedAt:now,
+          history
+        })
+      );
+    }catch(err){
+      console.warn('AXION depth persist',err);
+    }
+  }
+
+  function recordedWindow(){
+    if(!heatHistory.length) return null;
+    return {
+      start:Number(heatHistory[0].t),
+      end:Number(heatHistory[heatHistory.length-1].t)
+    };
   }
 
   function bucketStepFor(price){
@@ -608,6 +652,10 @@ export default function(component) {
     });
 
     if(heatHistory.length>MAX_HEAT_COLS)heatHistory.shift();
+    if(recordingStartedAt==null && heatHistory.length){
+      recordingStartedAt=heatHistory[0].t;
+    }
+    persistRecordedDepth();
     updateStats();
     drawAll();
   }
@@ -642,7 +690,15 @@ export default function(component) {
     const bins=[...tradedVolumeByBin.entries()].sort((a,b)=>b[1]-a[1]);
     parentElement.querySelector('#poc-value').textContent=bins.length?fmt(bins[0][0],2):'—';
     if(bids.length&&asks.length)parentElement.querySelector('#spread-value').textContent=fmt(asks[0][0]-bids[0][0],2);
-    parentElement.querySelector('#footer-status').textContent=snapshotReady?`● Binance Spot · ${currentTf} · Microstructure ±${(viewportPct()*100).toFixed(2)}%`:'AXION · sincronizando';
+    {
+      const win=recordedWindow();
+      const seconds=win?Math.max(0,Math.round((win.end-win.start)/1000)):0;
+      const mins=Math.floor(seconds/60);
+      const secs=seconds%60;
+      parentElement.querySelector('#footer-status').textContent=snapshotReady
+        ? `● Binance Spot · ${currentTf} · DEPTH REC ${mins}m ${String(secs).padStart(2,'0')}s`
+        : 'AXION · sincronizando';
+    }
   }
 
   function heatColor(norm,ask){
@@ -663,37 +719,45 @@ export default function(component) {
     if(mid==null && !candles.length)return;
 
     /*
-      AXION microstructure viewport:
-      The Y-axis is anchored to the CURRENT live market price, not to the
-      complete candle-history range. This keeps genuine market depth readable
-      and prevents a historical candle from compressing the heatmap.
+      FINAL ORDER-FLOW VIEWPORT:
+      Use the actual price range traversed while depth was recorded.
+      We no longer try to fit older candles that have no corresponding
+      historical market-depth matrix.
     */
-    const recent=candles.slice(-72);
-    const {bids,asks}=sortedBook();
-
     const center=mid ?? (recent.length ? recent[recent.length-1].c : null);
     if(center==null || !Number.isFinite(center)) return;
 
-    const pct=viewportPct();
-    let halfRange=center*pct;
+    let depthSamples=[];
+    for(const col of heatHistory){
+      if(!Array.isArray(col.buckets)) continue;
+      for(const row of col.buckets){
+        if(Number.isFinite(row.p)) depthSamples.push(row.p);
+      }
+      if(Number.isFinite(col.mid)) depthSamples.push(col.mid);
+    }
 
-    // Ensure enough real book depth is visible if the requested percentage
-    // is narrower than the actual current depth range.
-    const bidEdge=bids.length
-      ? bids[Math.min(LEVELS_SIDE-1,bids.length-1)][0]
-      : center;
-    const askEdge=asks.length
-      ? asks[Math.min(LEVELS_SIDE-1,asks.length-1)][0]
-      : center;
-    const bookHalf=Math.max(
-      Math.abs(center-bidEdge),
-      Math.abs(askEdge-center)
-    );
+    // Current book is included so viewport follows the live market immediately.
+    bids.slice(0,LEVELS_SIDE).forEach(x=>depthSamples.push(x[0]));
+    asks.slice(0,LEVELS_SIDE).forEach(x=>depthSamples.push(x[0]));
 
-    halfRange=Math.max(halfRange,bookHalf*1.08,center*.0015);
+    if(!depthSamples.length){
+      depthSamples=[center*(1-.002),center*(1+.002)];
+    }
 
-    let minP=center-halfRange;
-    let maxP=center+halfRange;
+    let minP=Math.min(...depthSamples);
+    let maxP=Math.max(...depthSamples);
+
+    // Include ONLY synchronized candles.
+    recent.forEach(c=>{
+      if(Number.isFinite(c.l)) minP=Math.min(minP,c.l);
+      if(Number.isFinite(c.h)) maxP=Math.max(maxP,c.h);
+    });
+
+    const rawRange=Math.max(maxP-minP,center*.0015);
+    const pad=rawRange*.10;
+
+    minP-=pad;
+    maxP+=pad;
 
     const yOf=p=>h-((p-minP)/(maxP-minP))*h;
 
@@ -707,12 +771,10 @@ export default function(component) {
       const x=w*i/14;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();
     }
 
-    // Bucketed historical liquidity matrix: price × time.
+    // REAL historical liquidity matrix: price × captured timestamp.
     if(heatHistory.length){
-      const visibleCols=Math.min(MAX_HEAT_COLS,heatHistory.length);
-      const visibleHistory=heatHistory.slice(-visibleCols);
+      const visibleHistory=heatHistory.slice(-MAX_HEAT_COLS);
 
-      // Build robust intensity distribution from BUCKET totals, not raw ticks.
       const totals=[];
       for(const col of visibleHistory){
         for(const row of col.buckets){
@@ -727,14 +789,22 @@ export default function(component) {
       const q85=percentile(totals,.85)||q50;
       const q97=percentile(totals,.97)||q85;
 
-      const cw=w/Math.max(1,visibleCols);
+      const t0=Number(visibleHistory[0].t);
+      const t1=Math.max(t0+1000,Number(visibleHistory[visibleHistory.length-1].t));
+      const xOfTime=t=>((Number(t)-t0)/(t1-t0))*w;
 
-      // Draw each true captured time-slice across the available time axis.
       visibleHistory.forEach((col,i)=>{
-        const x=i*cw;
+        const x=xOfTime(col.t);
+        const nextT=i<visibleHistory.length-1
+          ? Number(visibleHistory[i+1].t)
+          : Number(col.t)+1000;
+
+        const nextX=xOfTime(Math.min(nextT,t1));
+        const cw=Math.max(1.5*q,nextX-x+1*q);
+
         const step=col.step||bucketStepFor(col.mid);
         const bucketPixelH=Math.max(
-          2.2*q,
+          2.3*q,
           Math.abs(yOf(center)-yOf(center+step))
         );
 
@@ -749,27 +819,11 @@ export default function(component) {
           ctx.fillRect(
             x,
             y-bucketPixelH*.50,
-            cw+1.2*q,
+            cw,
             Math.max(2.4*q,bucketPixelH*.98)
           );
         }
       });
-
-      // Very subtle persistence glow on latest real liquidity levels.
-      const latest=visibleHistory[visibleHistory.length-1];
-      if(latest){
-        for(const row of latest.buckets){
-          if(row.p<minP || row.p>maxP || row.total<q85) continue;
-          const y=yOf(row.p);
-          const norm=normalizedBucketIntensity(row.total,q50,q85,q97);
-          const grad=ctx.createLinearGradient(w*.72,0,w,0);
-          grad.addColorStop(0,'rgba(255,120,40,0)');
-          grad.addColorStop(1,heatPalette(norm,(row.bid-row.ask)/Math.max(row.total,1e-9)));
-          ctx.fillStyle=grad;
-          const ph=Math.max(3*q,Math.abs(yOf(center)-yOf(center+(latest.step||1)))*1.05);
-          ctx.fillRect(w*.72,y-ph*.5,w*.28,ph);
-        }
-      }
     }
 
     // VWAP
@@ -804,9 +858,12 @@ export default function(component) {
     // Candles completely outside the live viewport are skipped rather than
     // stretched into giant vertical bars.
     if(recent.length){
-      const candleAreaW=w*.985;
-      const cw=candleAreaW/recent.length;
-      const body=Math.max(2.0*q,cw*.50);
+      const window=recordedWindow();
+      const t0=window ? window.start : recent[0].t;
+      const t1=window ? Math.max(window.end,t0+1000) : Math.max(recent[recent.length-1].t,t0+1000);
+      const xOfTime=t=>((Number(t)-t0)/(t1-t0))*w;
+      const nominalWidth=Math.max(4*q,w/Math.max(30,recent.length));
+      const body=Math.max(2.0*q,nominalWidth*.48);
 
       recent.forEach((c,i)=>{
         if(![c.o,c.h,c.l,c.c].every(Number.isFinite)) return;
@@ -814,7 +871,7 @@ export default function(component) {
         // Entire candle outside viewport -> do not distort the chart.
         if(c.h<minP || c.l>maxP) return;
 
-        const x=i*cw+cw*.5;
+        const x=Math.max(0,Math.min(w,xOfTime(c.t)));
 
         // Clip values to viewport for partially visible candles.
         const clippedH=Math.min(maxP,Math.max(minP,c.h));
@@ -978,7 +1035,7 @@ export default function(component) {
     if(ws){try{ws.onclose=null;ws.close()}catch(_){}ws=null}
     if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
     if(heatTimer){clearInterval(heatTimer);heatTimer=null}
-    book={bids:new Map(),asks:new Map(),lastUpdateId:0};snapshotReady=false;depthBuffer=[];heatHistory=[];
+    book={bids:new Map(),asks:new Map(),lastUpdateId:0};snapshotReady=false;depthBuffer=[];
     candles=[];resetTradeStats();firstPrice=null
   }
 
@@ -1009,14 +1066,16 @@ export default function(component) {
   updateIdentity();tfButtons.forEach(b=>b.classList.toggle('active',b.dataset.tf===currentTf));
   sessionInfo();clockTimer=setInterval(sessionInfo,1000);
   if(typeof ResizeObserver!=='undefined'){resizeObserver=new ResizeObserver(resizeAll);resizeObserver.observe(parentElement.querySelector('.chart-shell'))}
-  resizeAll();connect();
+  loadRecordedDepth();
+  resizeAll();
+  connect();
 
-  return()=>{destroyed=true;cleanupFeed();if(clockTimer)clearInterval(clockTimer);resizeObserver?.disconnect()}
+  return()=>{destroyed=true;persistRecordedDepth(true);cleanupFeed();if(clockTimer)clearInterval(clockTimer);resizeObserver?.disconnect()}
 }
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v10_microstructure_view",
+    "axion_live_heatmap_v11_recorded_orderflow",
     html=HTML,
     css=CSS,
     js=JS,
