@@ -42,42 +42,10 @@ def _handle_result(result) -> None:
 def render_live_heatmap() -> None:
     _init_live_state()
 
-    st.markdown(
-        """
-        <style>
-          .axion-live-intro{
-            margin:0 0 8px 0;
-            padding:8px 12px;
-            border-left:2px solid #45d8ec;
-            border-radius:6px;
-            background:linear-gradient(90deg,rgba(5,17,30,.72),rgba(8,11,22,.25));
-          }
-          .axion-live-intro strong{color:#eef6ff}
-          .axion-live-intro span{color:#64d8ea}
-          .axion-live-intro p{
-            margin:5px 0 0 0;color:#7f91ac;font-size:12px
-          }
-        </style>
-        <div class="axion-live-intro">
-          <strong>AXION LIVE · <span>HEATMAP ORDER FLOW</span></strong>
-          <p>
-            Módulo preparado para datos de profundidad reales.
-            AXION no mostrará liquidez sintética ni inventada.
-          </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     result = render_axion_live_heatmap(
         symbol=st.session_state.live_symbol,
         timeframe=st.session_state.live_timeframe,
         key="axion_live_heatmap_workspace",
-        height=920,
+        height=860,
     )
     _handle_result(result)
-
-    st.caption(
-        "Fase 1 · Interfaz del Heatmap. "
-        "Siguiente paso: conectar una fuente real de order book / market depth."
-    )
