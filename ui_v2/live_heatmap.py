@@ -9,7 +9,7 @@ HTML = r"""
       <div class="brand-logo">A</div>
       <div>
         <div class="brand-title">AXION <span>PRIME</span></div>
-        <div class="brand-sub">ORDER FLOW TERMINAL</div>
+        <div class="brand-sub">LIQUIDITY MATRIX · ORDER FLOW</div>
       </div>
     </div>
 
@@ -53,7 +53,7 @@ HTML = r"""
   <main class="of-main">
     <section class="modebar">
       <div class="mode-tabs">
-        <button class="mode active" type="button">Heatmap Order Flow</button>
+        <button class="mode active" type="button">Heatmap Liquidity Matrix</button>
         <button class="mode" type="button">Volumen</button>
         <button class="mode" type="button">VWAP</button>
         <button class="mode" type="button">Zonas de Liquidez</button>
@@ -474,12 +474,120 @@ export default function(component) {
     if(i>=0)candles[i]=c;else{candles.push(c);if(candles.length>180)candles.shift()}
   }
 
+  function bucketStepFor(price){
+    if(!Number.isFinite(price) || price<=0) return 1;
+    if(price>=50000) return 5;     // BTC around current range
+    if(price>=10000) return 2;
+    if(price>=1000) return .5;
+    if(price>=100) return .1;
+    return .01;
+  }
+
+  function bucketPrice(price,step){
+    return Math.round(price/step)*step;
+  }
+
+  function aggregateBookToBuckets(){
+    const {bids,asks}=sortedBook();
+    const mid=midPrice();
+    if(mid==null) return {mid:null,step:1,buckets:[]};
+
+    const step=bucketStepFor(mid);
+    const map=new Map();
+
+    const add=(side,levels)=>{
+      for(const [price,qty] of levels.slice(0,LEVELS_SIDE)){
+        if(!Number.isFinite(price)||!Number.isFinite(qty)||qty<=0) continue;
+        const p=bucketPrice(price,step);
+        let row=map.get(p);
+        if(!row){
+          row={p,bid:0,ask:0,total:0};
+          map.set(p,row);
+        }
+        row[side]+=qty;
+        row.total+=qty;
+      }
+    };
+
+    add('bid',bids);
+    add('ask',asks);
+
+    return {
+      mid,
+      step,
+      buckets:[...map.values()].sort((a,b)=>a.p-b.p)
+    };
+  }
+
+  function percentile(sorted,p){
+    if(!sorted.length) return 0;
+    const idx=Math.max(0,Math.min(sorted.length-1,Math.floor((sorted.length-1)*p)));
+    return sorted[idx];
+  }
+
+  function heatPalette(norm,sideBias=0){
+    const n=Math.max(0,Math.min(1,norm));
+
+    // Bookmap-like dark -> purple -> red -> orange -> yellow.
+    if(n<.16){
+      return `rgba(18,23,64,${.18+n*.7})`;
+    }
+    if(n<.34){
+      const a=.18+n*.85;
+      return sideBias<0
+        ? `rgba(29,82,128,${a})`
+        : sideBias>0
+          ? `rgba(75,35,118,${a})`
+          : `rgba(58,37,117,${a})`;
+    }
+    if(n<.56){
+      return `rgba(133,42,139,${.22+n*.85})`;
+    }
+    if(n<.76){
+      return `rgba(220,59,78,${.28+n*.82})`;
+    }
+    if(n<.91){
+      return `rgba(255,112,39,${.42+n*.60})`;
+    }
+    return `rgba(255,209,48,${.62+n*.36})`;
+  }
+
+  function normalizedBucketIntensity(value,q50,q85,q97){
+    if(!(value>0)) return 0;
+
+    // Log transform stops one whale order from flattening everything else.
+    const lv=Math.log1p(value);
+    const l50=Math.log1p(Math.max(q50,1e-9));
+    const l85=Math.log1p(Math.max(q85,q50,1e-9));
+    const l97=Math.log1p(Math.max(q97,q85,1e-9));
+
+    if(lv<=l50){
+      return .08 + .28*(lv/Math.max(l50,1e-9));
+    }
+    if(lv<=l85){
+      return .36 + .28*((lv-l50)/Math.max(l85-l50,1e-9));
+    }
+    if(lv<=l97){
+      return .64 + .24*((lv-l85)/Math.max(l97-l85,1e-9));
+    }
+    return Math.min(1,.88 + .12*((lv-l97)/Math.max(l97*.18,1e-9)));
+  }
+
   function captureHeat(){
     if(!snapshotReady)return;
-    const {bids,asks}=sortedBook();const mid=midPrice();if(mid==null)return;
-    heatHistory.push({mid,bids:bids.slice(0,LEVELS_SIDE),asks:asks.slice(0,LEVELS_SIDE),t:Date.now()});
+    const snap=aggregateBookToBuckets();
+    if(snap.mid==null || !snap.buckets.length)return;
+
+    heatHistory.push({
+      t:Date.now(),
+      mid:snap.mid,
+      step:snap.step,
+      buckets:snap.buckets
+    });
+
     if(heatHistory.length>MAX_HEAT_COLS)heatHistory.shift();
-    updateStats();drawAll();
+    updateStats();
+    drawAll();
   }
 
   function updateStats(){
@@ -547,6 +655,11 @@ export default function(component) {
     bids.slice(0,LEVELS_SIDE).forEach(x=>localSamples.push(x[0]));
     asks.slice(0,LEVELS_SIDE).forEach(x=>localSamples.push(x[0]));
 
+    if(heatHistory.length){
+      const latestHeat=heatHistory[heatHistory.length-1];
+      latestHeat.buckets.forEach(row=>localSamples.push(row.p));
+    }
+
     if(!localSamples.length)return;
 
     let rawMin=Math.min(...localSamples),rawMax=Math.max(...localSamples);
@@ -602,45 +715,69 @@ export default function(component) {
       const x=w*i/14;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();
     }
 
-    // rolling order-book heatmap
+    // Bucketed historical liquidity matrix: price × time.
     if(heatHistory.length){
-      const quantities=[];
-      for(const col of heatHistory){
-        col.bids.forEach(x=>quantities.push(x[1]));
-        col.asks.forEach(x=>quantities.push(x[1]));
-      }
-      quantities.sort((a,b)=>a-b);
-      const q90=quantities.length?quantities[Math.floor((quantities.length-1)*.90)]||1:1;
-      const q98=quantities.length?quantities[Math.floor((quantities.length-1)*.98)]||q90:q90;
-
-      // Auto-fit the REAL history that exists.
-      // During the first minutes we stretch available samples across the chart,
-      // rather than leaving 80% of the canvas empty. Once enough samples exist,
-      // it naturally becomes a rolling window.
       const visibleCols=Math.min(MAX_HEAT_COLS,heatHistory.length);
-      const cw=w/Math.max(1,visibleCols);
-      const start=Math.max(0,heatHistory.length-visibleCols);
-      const visibleHistory=heatHistory.slice(start);
+      const visibleHistory=heatHistory.slice(-visibleCols);
 
+      // Build robust intensity distribution from BUCKET totals, not raw ticks.
+      const totals=[];
+      for(const col of visibleHistory){
+        for(const row of col.buckets){
+          if(row.p>=minP && row.p<=maxP && row.total>0){
+            totals.push(row.total);
+          }
+        }
+      }
+      totals.sort((a,b)=>a-b);
+
+      const q50=percentile(totals,.50)||1;
+      const q85=percentile(totals,.85)||q50;
+      const q97=percentile(totals,.97)||q85;
+
+      const cw=w/Math.max(1,visibleCols);
+
+      // Draw each true captured time-slice across the available time axis.
       visibleHistory.forEach((col,i)=>{
         const x=i*cw;
+        const step=col.step||bucketStepFor(col.mid);
+        const bucketPixelH=Math.max(
+          2.2*q,
+          Math.abs(yOf(center)-yOf(center+step))
+        );
 
-        const drawLevel=(p,qty,isAsk)=>{
-          if(p<minP||p>maxP)return;
-          const y=yOf(p);
-          const n90=Math.min(1,qty/Math.max(q90,1e-9));
-          const extreme=qty>=q98;
-          ctx.fillStyle=extreme
-            ? `rgba(255,196,42,${.58+.34*n90})`
-            : heatColor(n90,isAsk);
+        for(const row of col.buckets){
+          if(row.p<minP || row.p>maxP || row.total<=0) continue;
 
-          const bandH=extreme?7.2*q:5.0*q;
-          ctx.fillRect(x,y-bandH/2,cw+1.3*q,bandH);
-        };
+          const y=yOf(row.p);
+          const norm=normalizedBucketIntensity(row.total,q50,q85,q97);
+          const bias=(row.bid-row.ask)/Math.max(row.total,1e-9);
 
-        col.bids.forEach(([p,qty])=>drawLevel(p,qty,false));
-        col.asks.forEach(([p,qty])=>drawLevel(p,qty,true));
+          ctx.fillStyle=heatPalette(norm,bias);
+          ctx.fillRect(
+            x,
+            y-bucketPixelH*.50,
+            cw+1.2*q,
+            Math.max(2*q,bucketPixelH*.94)
+          );
+        }
       });
+
+      // Very subtle persistence glow on latest real liquidity levels.
+      const latest=visibleHistory[visibleHistory.length-1];
+      if(latest){
+        for(const row of latest.buckets){
+          if(row.p<minP || row.p>maxP || row.total<q85) continue;
+          const y=yOf(row.p);
+          const norm=normalizedBucketIntensity(row.total,q50,q85,q97);
+          const grad=ctx.createLinearGradient(w*.72,0,w,0);
+          grad.addColorStop(0,'rgba(255,120,40,0)');
+          grad.addColorStop(1,heatPalette(norm,(row.bid-row.ask)/Math.max(row.total,1e-9)));
+          ctx.fillStyle=grad;
+          const ph=Math.max(3*q,Math.abs(yOf(center)-yOf(center+(latest.step||1)))*1.05);
+          ctx.fillRect(w*.72,y-ph*.5,w*.28,ph);
+        }
+      }
     }
 
     // VWAP
@@ -656,6 +793,19 @@ export default function(component) {
         ctx.fillStyle='#f0ad3d';ctx.font=`${7*q}px Inter`;
         ctx.fillText('VWAP',8*q,Math.max(11*q,y-4*q));
       }
+    }
+
+    // POC from actual recent traded volume.
+    const pocRow=[...tradedVolumeByBin.entries()].sort((a,b)=>b[1]-a[1])[0];
+    if(pocRow && pocRow[0]>=minP && pocRow[0]<=maxP){
+      const py=yOf(pocRow[0]);
+      ctx.strokeStyle='rgba(246,177,48,.95)';
+      ctx.lineWidth=1.1*q;
+      ctx.setLineDash([8*q,5*q]);
+      ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(w,py);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#f2b33c';ctx.font=`${7*q}px Inter`;
+      ctx.fillText('POC',44*q,Math.max(11*q,py-4*q));
     }
 
     // Candles sit ON TOP of the heatmap.
@@ -711,28 +861,33 @@ export default function(component) {
       el.textContent=fmt(p,2);
     });
 
-    // Real liquidity labels from current book.
-    const bidRank=bids.slice(0,LEVELS_SIDE).sort((a,b)=>b[1]-a[1]);
-    const askRank=asks.slice(0,LEVELS_SIDE).sort((a,b)=>b[1]-a[1]);
+    // Labels use aggregated REAL liquidity buckets.
+    const bucketNow=aggregateBookToBuckets();
+    const bidBuckets=bucketNow.buckets
+      .filter(r=>r.bid>0 && r.p<center)
+      .sort((a,b)=>b.bid-a.bid);
+    const askBuckets=bucketNow.buckets
+      .filter(r=>r.ask>0 && r.p>center)
+      .sort((a,b)=>b.ask-a.ask);
 
-    const strongBid=bidRank[0];
-    const strongAsk=askRank[0];
-    const secondAsk=askRank[1];
+    const strongBid=bidBuckets[0];
+    const strongAsk=askBuckets[0];
+    const secondAsk=askBuckets[1];
     const enoughHeat=heatHistory.length>=8;
 
     positionTag(
       parentElement.querySelector('#buyer-zone'),
-      enoughHeat && strongBid && strongBid[0]>=minP && strongBid[0]<=maxP ? yOf(strongBid[0])/q : null,
+      enoughHeat && strongBid && strongBid.p>=minP && strongBid.p<=maxP ? yOf(strongBid.p)/q : null,
       'left'
     );
     positionTag(
       parentElement.querySelector('#seller-zone'),
-      enoughHeat && strongAsk && strongAsk[0]>=minP && strongAsk[0]<=maxP ? yOf(strongAsk[0])/q : null,
+      enoughHeat && strongAsk && strongAsk.p>=minP && strongAsk.p<=maxP ? yOf(strongAsk.p)/q : null,
       'left'
     );
     positionTag(
       parentElement.querySelector('#secondary-seller-zone'),
-      enoughHeat && secondAsk && secondAsk[0]>=minP && secondAsk[0]<=maxP ? yOf(secondAsk[0])/q : null,
+      enoughHeat && secondAsk && secondAsk.p>=minP && secondAsk.p<=maxP ? yOf(secondAsk.p)/q : null,
       'center'
     );
 
@@ -800,7 +955,7 @@ export default function(component) {
     };
     ws.onerror=()=>setFeed('error','WebSocket Binance interrumpido','AXION intentará reconectar.');
     ws.onclose=()=>{if(!destroyed&&currentSymbol==='BTCUSDT')scheduleReconnect()}
-    heatTimer=setInterval(captureHeat,900);
+    heatTimer=setInterval(captureHeat,1000);
   }
 
   function scheduleReconnect(){
@@ -838,7 +993,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v8_autofit",
+    "axion_live_heatmap_v9_bucket_matrix",
     html=HTML,
     css=CSS,
     js=JS,
