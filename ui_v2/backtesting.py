@@ -25,6 +25,12 @@ def _init_state() -> None:
         "bt_trade": None,
         "bt_trade_result": None,
         "bt_error": None,
+        "bt_workspace": {
+            "name": "Workspace Trader",
+            "fib_template": "AXION PRIME",
+            "risk_template": "1.0%",
+            "colors": {},
+        },
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -83,6 +89,10 @@ def _volumes(frame: pd.DataFrame) -> list[dict]:
 
 
 def _handle_component_events(result) -> None:
+    workspace = getattr(result, "workspace", None)
+    if isinstance(workspace, dict):
+        st.session_state.bt_workspace = workspace
+
     # Timeframe lives inside the chart.
     if getattr(result, "timeframe", None):
         new_tf = str(result.timeframe)
@@ -311,11 +321,7 @@ def render_backtesting_lab() -> None:
         "volumes": _volumes(frame),
         "cursor": min(st.session_state.bt_cursor, len(frame) - 1),
         "context_cursor": min(80, len(frame) - 1),
-        "workspace": {
-            "name": "Workspace Trader",
-            "fib_template": "AXION PRIME",
-            "risk_template": "1.0%",
-        },
+        "workspace": st.session_state.bt_workspace,
     }
 
     result = render_axion_chart(
