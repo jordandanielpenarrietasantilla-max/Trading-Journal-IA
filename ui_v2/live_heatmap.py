@@ -10,7 +10,7 @@ def _init_live_state() -> None:
         "live_symbol": "XAUUSD",
         "live_timeframe": "15m",
         "live_heatmap_note": (
-            "La interfaz está lista. La profundidad real del mercado todavía no está conectada."
+            "Terminal visual V2 activa. La profundidad real del mercado todavía no está conectada."
         ),
     }
     for key, value in defaults.items():
