@@ -718,6 +718,38 @@ export default function(component) {
     const mid=midPrice();
     if(mid==null && !candles.length)return;
 
+    // Prepare the current book and the candle slice that actually overlaps
+    // the REAL depth-history window. These variables must exist before the
+    // viewport is calculated.
+    const {bids,asks}=sortedBook();
+
+    const depthWindow=recordedWindow();
+    let recent=[];
+
+    if(depthWindow){
+      const intervalMs={
+        '1m':60_000,
+        '5m':300_000,
+        '15m':900_000,
+        '30m':1_800_000,
+        '1H':3_600_000,
+        '4H':14_400_000,
+        '1D':86_400_000
+      }[currentTf] || 60_000;
+
+      recent=candles.filter(c=>
+        Number.isFinite(c.t) &&
+        c.t + intervalMs >= depthWindow.start &&
+        c.t <= depthWindow.end + intervalMs
+      );
+    }
+
+    // At startup, before enough depth history exists, show only the current
+    // live candle. Never inject older unmatched candles into the order-flow view.
+    if(!recent.length && candles.length){
+      recent=[candles[candles.length-1]];
+    }
+
     /*
       FINAL ORDER-FLOW VIEWPORT:
       Use the actual price range traversed while depth was recorded.
@@ -1000,7 +1032,7 @@ export default function(component) {
       setFeed('connected',`BTC/USDT · ${currentTf} conectado`,'Depth + trades + candles en un solo eje');
       updateStats();drawAll()
     }).catch(err=>{
-      console.error(err);setFeed('error','No se pudo sincronizar Binance',String(err?.message||err))
+      console.error('AXION feed error',err);setFeed('error','No se pudo sincronizar Binance',String(err?.message||err))
     });
 
     const interval=binanceInterval();
@@ -1014,7 +1046,7 @@ export default function(component) {
         if(!snapshotReady){depthBuffer.push(evt);if(depthBuffer.length>5000)depthBuffer.shift();return}
         const expected=book.lastUpdateId+1,U=Number(evt.U),u=Number(evt.u);
         if(u<expected)return;
-        if(U>expected){snapshotReady=false;heatHistory=[];fetchSnapshot().catch(()=>scheduleReconnect());return}
+        if(U>expected){snapshotReady=false;fetchSnapshot().catch(()=>scheduleReconnect());return}
         applyDepth(evt)
       }else if(evt.e==='aggTrade'){
         ingestTrade(evt,true)
@@ -1075,7 +1107,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v11_recorded_orderflow",
+    "axion_live_heatmap_v11_1_fixed",
     html=HTML,
     css=CSS,
     js=JS,
