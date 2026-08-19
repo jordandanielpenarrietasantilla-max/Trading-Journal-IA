@@ -229,7 +229,7 @@ button{user-select:none}
   min-height:720px;
   display:grid;
   grid-template-columns:64px minmax(0,1fr);
-  grid-template-rows:64px minmax(0,1fr);
+  grid-template-rows:58px minmax(0,1fr);
   overflow:hidden;
   color:#dce6f7;
   background:#030812;
@@ -243,10 +243,10 @@ button{user-select:none}
   grid-column:1/3;
   position:relative;
   display:grid;
-  grid-template-columns:230px 210px 140px minmax(300px,1fr) auto auto;
+  grid-template-columns:210px 190px 118px minmax(290px,1fr) auto auto;
   align-items:center;
   gap:12px;
-  min-height:64px;
+  min-height:58px;
   padding:0 12px 0 15px;
   border-bottom:1px solid rgba(75,105,160,.28);
   background:
@@ -265,7 +265,7 @@ button{user-select:none}
 .live-brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand-emblem{
   position:relative;
-  width:38px;height:38px;
+  width:34px;height:34px;
   display:grid;place-items:center;
   border:1px solid rgba(73,207,234,.48);
   border-radius:11px;
@@ -282,8 +282,8 @@ button{user-select:none}
   position:absolute;width:6px;height:6px;border-radius:50%;right:-2px;top:-2px;
   background:#28e7a2;box-shadow:0 0 12px #28e7a2
 }
-.brand-a{position:relative;z-index:2;font-size:21px;font-weight:950;color:#eefaff}
-.brand-name{font-size:16px;font-weight:920;letter-spacing:.8px;color:#f5f8ff}
+.brand-a{position:relative;z-index:2;font-size:19px;font-weight:950;color:#eefaff}
+.brand-name{font-size:15px;font-weight:920;letter-spacing:.8px;color:#f5f8ff}
 .brand-name span{color:#5ee0f0}
 .brand-sub{font-size:5.8px;letter-spacing:1.7px;color:#697a95;margin-top:2px;white-space:nowrap}
 
@@ -294,7 +294,7 @@ button{user-select:none}
 }
 .market-symbol-row{display:flex;align-items:center;gap:6px}
 .market-orb{color:#f6c757;font-size:14px}
-.market-symbol-row strong{font-size:14px;color:#f4f7fc;letter-spacing:.2px}
+.market-symbol-row strong{font-size:13px;color:#f4f7fc;letter-spacing:.2px}
 .market-badge{
   padding:3px 5px;border-radius:4px;
   color:#f3c75c;background:rgba(244,190,68,.08);border:1px solid rgba(244,190,68,.23);
@@ -304,7 +304,7 @@ button{user-select:none}
 
 .market-quote{min-width:0}
 .quote-price{
-  font-size:19px;font-weight:920;line-height:1;color:#f4f8ff;letter-spacing:.2px
+  font-size:17px;font-weight:920;line-height:1;color:#f4f8ff;letter-spacing:.2px
 }
 .quote-change{margin-top:4px;font-size:6.5px;font-weight:850}
 .quote-change.waiting{color:#c5a35c}
@@ -337,7 +337,7 @@ button{user-select:none}
 
 .terminal-status{display:flex;align-items:center;gap:5px}
 .status-chip{
-  height:36px;display:flex;align-items:center;gap:6px;
+  height:32px;display:flex;align-items:center;gap:6px;
   padding:0 8px;border:1px solid #26364d;border-radius:7px;background:rgba(7,15,26,.84)
 }
 .status-chip b{display:block;color:#aeb9c9;font-size:6px;letter-spacing:.65px}
@@ -346,7 +346,7 @@ button{user-select:none}
 .status-led.amber{background:#e3b75d;box-shadow:0 0 9px rgba(227,183,93,.55)}
 .status-led.cyan{background:#45d8ec;box-shadow:0 0 9px rgba(69,216,236,.48)}
 .server-clock{
-  height:36px;min-width:67px;padding:6px 8px;
+  height:32px;min-width:67px;padding:6px 8px;
   border:1px solid #26364d;border-radius:7px;background:rgba(7,15,26,.84)
 }
 .server-clock span{display:block;color:#5f6e84;font-size:5px;letter-spacing:.7px}
@@ -354,7 +354,7 @@ button{user-select:none}
 
 .header-actions{display:flex;align-items:center;gap:5px}
 .header-action,.icon-btn{
-  height:34px;border:1px solid #263a54;border-radius:7px;
+  height:32px;border:1px solid #263a54;border-radius:7px;
   color:#9cabbe;background:linear-gradient(180deg,#0b1624,#07101c);
   cursor:pointer
 }
@@ -376,14 +376,14 @@ button{user-select:none}
   gap:2px;border:0;border-radius:7px;background:transparent;color:#6e7c94;cursor:pointer
 }
 .side-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.45;stroke-linecap:round;stroke-linejoin:round}
-.side-btn span{font-size:6px}
+.side-btn span{font-size:6.5px}
 .side-btn:hover{background:#111a28;color:#dce6f5}
 .side-btn.active{color:#55d7eb;background:#0b1c2c;box-shadow:inset 2px 0 #45d7ef}
 .side-spacer{flex:1}
 
 .live-main{
   grid-column:2;grid-row:2;min-width:0;min-height:0;
-  display:grid;grid-template-rows:48px minmax(0,1fr) 162px
+  display:grid;grid-template-rows:44px minmax(0,1fr) 138px
 }
 .module-tabs{
   min-width:0;display:flex;align-items:center;gap:8px;
@@ -392,25 +392,25 @@ button{user-select:none}
 .tab-group{display:flex;align-items:center;gap:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
 .tab-group::-webkit-scrollbar{display:none}
 .module-tab{
-  height:30px;padding:0 11px;border:1px solid transparent;border-radius:5px;
+  height:28px;padding:0 10px;border:1px solid transparent;border-radius:5px;
   color:#738198;background:transparent;cursor:pointer;font-size:8px;white-space:nowrap
 }
 .module-tab:hover{background:#0d1725;color:#d9e4f4}
 .module-tab.active{background:#10213a;border-color:#255d8a;color:#59d9ec}
 .toolbar-right{margin-left:auto;display:flex;align-items:center;gap:7px}
 .toolbar-right select{
-  height:30px;border:1px solid #24364f;border-radius:6px;background:#08111e;color:#c8d4e5;
+  height:28px;border:1px solid #24364f;border-radius:6px;background:#08111e;color:#c8d4e5;
   padding:0 8px;font-size:8px
 }
 .slider-control{
-  height:30px;display:flex;align-items:center;gap:7px;padding:0 8px;
+  height:28px;display:flex;align-items:center;gap:7px;padding:0 8px;
   border:1px solid #24364f;border-radius:6px;color:#718099;font-size:7px
 }
 .slider-control input{width:90px}
 
 .terminal-workspace{
   min-height:0;min-width:0;
-  display:grid;grid-template-columns:minmax(0,1fr) 190px;
+  display:grid;grid-template-columns:minmax(0,1fr) 230px;
   background:#030812
 }
 .chart-area{position:relative;min-width:0;min-height:0;border-right:1px solid rgba(65,90,132,.24)}
@@ -418,9 +418,9 @@ button{user-select:none}
   position:absolute;top:0;left:0;right:0;height:34px;z-index:4;
   display:flex;align-items:center;justify-content:space-between;padding:0 10px;
   border-bottom:1px solid rgba(65,90,132,.15);background:rgba(3,8,18,.88);
-  color:#64738a;font-size:7px
+  color:#73839b;font-size:8px
 }
-.chart-head strong{font-size:11px;color:#eef4fc}
+.chart-head strong{font-size:12px;color:#eef4fc}
 .chart-head span{color:#7888a1}
 .heatmap-canvas{position:absolute;inset:34px 0 22px 0;overflow:hidden;background:#030711}
 .grid{
@@ -436,14 +436,14 @@ button{user-select:none}
 }
 .feed-warning{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:min(500px,72%);padding:23px 26px;text-align:center;
+  width:min(430px,62%);padding:18px 22px;text-align:center;
   border:1px solid rgba(78,106,154,.30);border-radius:12px;
   background:rgba(5,12,22,.88);backdrop-filter:blur(8px);
   box-shadow:0 18px 45px rgba(0,0,0,.28)
 }
 .warning-eyebrow{font-size:7px;font-weight:900;letter-spacing:1.4px;color:#54d8ec}
-.feed-warning strong{display:block;margin-top:7px;font-size:14px;color:#eef4fc}
-.feed-warning p{margin:8px auto 0;max-width:400px;color:#718098;font-size:8px;line-height:1.55}
+.feed-warning strong{display:block;margin-top:6px;font-size:13px;color:#eef4fc}
+.feed-warning p{margin:7px auto 0;max-width:360px;color:#718098;font-size:7.5px;line-height:1.5}
 .warning-badges{display:flex;justify-content:center;gap:6px;margin-top:12px}
 .warning-badges span{
   padding:5px 7px;border:1px solid #34445e;border-radius:999px;
@@ -460,7 +460,7 @@ button{user-select:none}
   display:flex;align-items:center;justify-content:space-between;padding:0 10px;
   border-bottom:1px solid rgba(65,90,132,.18)
 }
-.profile-head strong{font-size:8px;color:#dfe7f3}
+.profile-head strong{font-size:9px;color:#dfe7f3}
 .profile-head span{font-size:5px;color:#65748a;letter-spacing:.7px}
 .profile-empty{position:relative;min-height:0}
 .profile-axis{
@@ -512,7 +512,7 @@ button{user-select:none}
   .terminal-status{display:none}
   .header-action span{display:none}
   .module-tab:nth-child(n+4){display:none}
-  .terminal-workspace{grid-template-columns:minmax(0,1fr) 160px}
+  .terminal-workspace{grid-template-columns:minmax(0,1fr) 190px}
   .live-metrics{grid-template-columns:repeat(3,1fr)}
   .metric-card:nth-child(n+4){display:none}
 }
@@ -626,7 +626,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v3",
+    "axion_live_heatmap_v4",
     html=HTML,
     css=CSS,
     js=JS,
@@ -639,10 +639,10 @@ def render_axion_live_heatmap(
     symbol: str = "XAUUSD",
     timeframe: str = "15m",
     key: str = "axion_live_heatmap",
-    height: int = 920,
+    height: int = 860,
 ):
     """
-    Renderiza AXION LIVE / Heatmap V3.
+    Renderiza AXION LIVE / Heatmap V4.
     No genera ni simula datos de liquidez.
     """
     payload = {
