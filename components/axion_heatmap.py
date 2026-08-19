@@ -5,133 +5,180 @@ import streamlit as st
 
 HTML = r"""
 <div class="axion-live-shell" id="axion-live-shell">
-  <header class="live-topbar">
+  <header class="live-header">
     <div class="live-brand">
       <div class="brand-mark">A</div>
-      <div>
+      <div class="brand-copy">
         <div class="brand-name">AXION <span>PRIME</span></div>
-        <div class="brand-sub">MARKET INTELLIGENCE</div>
+        <div class="brand-sub">ORDER FLOW TERMINAL</div>
       </div>
     </div>
 
-    <div class="instrument-block">
-      <div class="instrument-name" id="instrument-name">XAU/USD</div>
-      <div class="instrument-sub" id="instrument-sub">Oro / Dólar estadounidense</div>
+    <div class="instrument">
+      <strong id="instrument-name">XAU/USD</strong>
+      <span id="instrument-sub">Oro / Dólar estadounidense</span>
     </div>
 
-    <div class="live-status">
-      <span class="status-dot waiting"></span>
-      <span id="live-status-text">PROFUNDIDAD PENDIENTE</span>
+    <nav class="tf-nav" id="tf-nav">
+      <button data-tf="1m">1m</button>
+      <button data-tf="5m">5m</button>
+      <button data-tf="15m" class="active">15m</button>
+      <button data-tf="30m">30m</button>
+      <button data-tf="1H">1h</button>
+      <button data-tf="4H">4h</button>
+      <button data-tf="1D">D</button>
+    </nav>
+
+    <div class="header-status">
+      <span class="status-dot"></span>
+      <div>
+        <b>MARKET DEPTH</b>
+        <small>PENDIENTE DE CONEXIÓN</small>
+      </div>
     </div>
 
-    <button class="ghost-btn" id="backtesting-btn" type="button">⟲ Backtesting</button>
-    <button class="primary-btn" id="live-btn" type="button">⚡ Mercado Live</button>
+    <button class="icon-btn" id="fullscreen-btn" type="button" title="Pantalla completa">⛶</button>
   </header>
 
   <aside class="live-sidebar">
-    <button class="side-btn active" type="button" data-view="chart" title="Gráfico">⌁<span>Gráfico</span></button>
-    <button class="side-btn" type="button" data-view="heatmap" title="Heatmap">⠿<span>Heatmap</span></button>
-    <button class="side-btn" type="button" data-view="orders" title="Órdenes">≋<span>Órdenes</span></button>
-    <button class="side-btn" type="button" data-view="positions" title="Posiciones">⌗<span>Posiciones</span></button>
-    <button class="side-btn" type="button" data-view="dom" title="Libro DOM">▥<span>Libro DOM</span></button>
-    <button class="side-btn" type="button" data-view="news" title="Noticias">▤<span>Noticias</span></button>
-    <button class="side-btn" type="button" data-view="calendar" title="Calendario">▣<span>Calendario</span></button>
+    <button class="side-btn active" data-view="chart" type="button" title="Gráfico">
+      <svg viewBox="0 0 24 24"><path d="M4 17l4-5 4 3 5-8 3 3"/></svg><span>Gráfico</span>
+    </button>
+    <button class="side-btn" data-view="heatmap" type="button" title="Heatmap">
+      <svg viewBox="0 0 24 24"><path d="M5 5h4v4H5zM10 5h4v4h-4zM15 5h4v4h-4zM5 10h4v4H5zM10 10h4v4h-4zM15 10h4v4h-4zM5 15h4v4H5zM10 15h4v4h-4zM15 15h4v4h-4z"/></svg><span>Heatmap</span>
+    </button>
+    <button class="side-btn" data-view="orders" type="button" title="Órdenes">
+      <svg viewBox="0 0 24 24"><path d="M6 7h12M6 12h9M6 17h6"/></svg><span>Órdenes</span>
+    </button>
+    <button class="side-btn" data-view="positions" type="button" title="Posiciones">
+      <svg viewBox="0 0 24 24"><path d="M6 18V8m6 10V4m6 14v-7"/></svg><span>Posiciones</span>
+    </button>
+    <button class="side-btn" data-view="dom" type="button" title="Libro DOM">
+      <svg viewBox="0 0 24 24"><path d="M5 6h14v4H5zM5 14h14v4H5z"/></svg><span>Libro DOM</span>
+    </button>
     <div class="side-spacer"></div>
-    <button class="side-btn" type="button" data-view="settings" title="Ajustes">⚙<span>Ajustes</span></button>
+    <button class="side-btn" data-view="settings" type="button" title="Ajustes">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.4 1a8 8 0 00-2-.9L14 3h-4l-.5 3a8 8 0 00-2 .9l-2.4-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.4-1a8 8 0 002 .9L10 21h4l.5-3a8 8 0 002-.9l2.4 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg><span>Ajustes</span>
+    </button>
   </aside>
 
   <main class="live-main">
-    <section class="live-toolbar">
-      <button class="mode-tab active" type="button">Heatmap Order Flow</button>
-      <button class="mode-tab" type="button">Volumen</button>
-      <button class="mode-tab" type="button">VWAP</button>
-      <button class="mode-tab" type="button">Zonas de Liquidez</button>
-      <button class="mode-tab" type="button">Bloques de Órdenes</button>
+    <section class="module-tabs">
+      <div class="tab-group">
+        <button class="module-tab active" type="button">Heatmap Order Flow</button>
+        <button class="module-tab" type="button">Volumen</button>
+        <button class="module-tab" type="button">VWAP</button>
+        <button class="module-tab" type="button">Zonas de liquidez</button>
+        <button class="module-tab" type="button">Bloques de órdenes</button>
+      </div>
 
-      <div class="toolbar-spacer"></div>
-
-      <select id="symbol-select" class="top-select">
-        <option value="XAUUSD">XAU/USD</option>
-        <option value="BTCUSDT">BTC/USDT</option>
-      </select>
-
-      <select id="tf-select" class="top-select compact">
-        <option>1m</option>
-        <option>5m</option>
-        <option selected>15m</option>
-        <option>30m</option>
-        <option>1H</option>
-      </select>
-
-      <label class="intensity-control">
-        <span>Intensidad</span>
-        <input id="intensity" type="range" min="10" max="100" value="70">
-      </label>
-
-      <button class="icon-btn" id="fullscreen-btn" type="button" title="Pantalla completa">⛶</button>
+      <div class="toolbar-right">
+        <select id="symbol-select">
+          <option value="XAUUSD">XAU/USD</option>
+          <option value="BTCUSDT">BTC/USDT</option>
+        </select>
+        <label class="slider-control">
+          <span>Intensidad</span>
+          <input id="intensity" type="range" min="10" max="100" value="70">
+        </label>
+      </div>
     </section>
 
-    <section class="heatmap-stage">
-      <div class="chart-meta">
-        <div>
-          <strong id="meta-symbol">XAU/USD</strong>
-          <span> · ORDER FLOW</span>
+    <section class="terminal-workspace">
+      <div class="chart-area">
+        <div class="chart-head">
+          <div>
+            <strong id="meta-symbol">XAU/USD</strong>
+            <span> · 15m · AXION PRIME</span>
+          </div>
+          <div id="ohlc-line">O — H — L — C —</div>
         </div>
-        <div class="ohlc-muted" id="ohlc-line">Esperando feed real de mercado...</div>
-      </div>
 
-      <div class="chart-grid" id="chart-grid"></div>
+        <div class="heatmap-canvas">
+          <div class="grid"></div>
 
-      <div class="heatmap-locked" id="heatmap-locked">
-        <div class="lock-icon">◫</div>
-        <div class="lock-title">HEATMAP DE LIQUIDEZ</div>
-        <div class="lock-copy">
-          Fuente de profundidad real todavía no conectada.
-          AXION no mostrará liquidez sintética.
+          <div class="feed-warning">
+            <div class="warning-eyebrow">HEATMAP ORDER FLOW</div>
+            <strong>Esperando profundidad real de mercado</strong>
+            <p>
+              El precio puede conectarse de forma independiente, pero las bandas de liquidez,
+              órdenes pasivas, DOM y delta permanecerán vacías hasta recibir un order book verificable.
+            </p>
+            <div class="warning-badges">
+              <span>NO DATA SYNTHESIS</span>
+              <span>MARKET DEPTH REQUIRED</span>
+            </div>
+          </div>
+
+          <div class="current-price-line"></div>
         </div>
-        <div class="lock-chip">ORDER BOOK / MARKET DEPTH REQUIRED</div>
+
+        <div class="time-axis">
+          <span>21:00</span><span>00:00</span><span>03:00</span><span>06:00</span>
+          <span>09:00</span><span>12:00</span>
+        </div>
       </div>
 
-      <div class="price-axis">
-        <span>—</span><span>—</span><span>—</span><span>—</span><span>—</span>
-      </div>
+      <aside class="profile-panel">
+        <div class="profile-head">
+          <strong>VOLUME PROFILE</strong>
+          <span>REAL DATA ONLY</span>
+        </div>
+
+        <div class="profile-empty">
+          <div class="profile-axis">
+            <span>—</span><span>—</span><span>—</span><span>—</span><span>—</span>
+          </div>
+          <div class="profile-message">
+            <b>Perfil pendiente</b>
+            <small>Se activará cuando la fuente entregue volumen válido.</small>
+          </div>
+        </div>
+
+        <div class="profile-footer">
+          <span>POC</span><b>—</b>
+          <span>VAH</span><b>—</b>
+          <span>VAL</span><b>—</b>
+        </div>
+      </aside>
     </section>
 
     <section class="live-metrics">
       <article class="metric-card">
-        <div class="metric-label buy">● LIQUIDEZ COMPRADORA</div>
-        <div class="metric-value muted">Sin datos</div>
-        <div class="metric-bar"><i></i></div>
-        <div class="metric-foot"><span>Baja</span><span>Alta</span></div>
+        <div class="metric-title buy">LIQUIDEZ COMPRADORA</div>
+        <div class="metric-value disabled">—</div>
+        <div class="metric-sub">Order book requerido</div>
+        <div class="meter"><i></i></div>
       </article>
 
       <article class="metric-card">
-        <div class="metric-label sell">● LIQUIDEZ VENDEDORA</div>
-        <div class="metric-value muted">Sin datos</div>
-        <div class="metric-bar sellbar"><i></i></div>
-        <div class="metric-foot"><span>Baja</span><span>Alta</span></div>
+        <div class="metric-title sell">LIQUIDEZ VENDEDORA</div>
+        <div class="metric-value disabled">—</div>
+        <div class="metric-sub">Order book requerido</div>
+        <div class="meter sell-meter"><i></i></div>
       </article>
 
       <article class="metric-card">
-        <div class="metric-label delta">△ DELTA ACUMULADO</div>
-        <div class="metric-value muted">Sin datos</div>
-        <div class="delta-line"></div>
-        <div class="metric-foot"><span>Venta</span><span>0</span><span>Compra</span></div>
+        <div class="metric-title delta">DELTA ACUMULADO</div>
+        <div class="metric-value disabled">—</div>
+        <div class="metric-sub">Trades agresores requeridos</div>
+        <div class="delta-meter"><i></i></div>
       </article>
 
       <article class="metric-card">
-        <div class="metric-label session">▣ SESIÓN</div>
-        <div class="metric-value" id="session-name">—</div>
-        <div class="metric-small">Se activará con feed horario real</div>
+        <div class="metric-title session">SESIÓN</div>
+        <div class="metric-value small-value" id="session-name">—</div>
+        <div class="metric-sub">Horario de mercado</div>
+        <div class="session-track"><i></i></div>
       </article>
 
-      <article class="metric-card visualization-card">
-        <div class="metric-label">VISUALIZACIÓN</div>
-        <div class="visual-row">
-          <button class="scheme active" data-scheme="axion" type="button">◫</button>
-          <button class="scheme" data-scheme="fire" type="button">◫</button>
-          <button class="scheme" data-scheme="ice" type="button">◫</button>
-          <button class="scheme" data-scheme="mono" type="button">◫</button>
+      <article class="metric-card visual-card">
+        <div class="metric-title">VISUALIZACIÓN</div>
+        <div class="scheme-row">
+          <button class="scheme active" data-scheme="axion" type="button"></button>
+          <button class="scheme fire" data-scheme="fire" type="button"></button>
+          <button class="scheme ice" data-scheme="ice" type="button"></button>
+          <button class="scheme mono" data-scheme="mono" type="button"></button>
         </div>
         <label class="contrast-control">
           <span>Contraste</span>
@@ -144,162 +191,221 @@ HTML = r"""
 """
 
 CSS = r"""
-:host{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+:host{
+  display:block;
+  width:100%;
+  height:100%;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
 *{box-sizing:border-box}
 button,select,input{font:inherit}
+button{user-select:none}
 .axion-live-shell{
-  width:100%;height:920px;min-height:720px;overflow:hidden;
-  display:grid;grid-template-columns:76px minmax(0,1fr);
-  grid-template-rows:70px minmax(0,1fr);
-  color:#dce7f7;background:#040913;border:1px solid #142137;border-radius:14px;
-  box-shadow:0 24px 80px rgba(0,0,0,.28)
+  width:100%;
+  height:920px;
+  min-height:720px;
+  display:grid;
+  grid-template-columns:64px minmax(0,1fr);
+  grid-template-rows:64px minmax(0,1fr);
+  overflow:hidden;
+  color:#dce6f7;
+  background:#030812;
+  border:1px solid rgba(65,94,143,.34);
+  border-radius:14px;
+  box-shadow:0 24px 80px rgba(0,0,0,.32);
 }
-.live-topbar{
-  grid-column:1/3;display:grid;
-  grid-template-columns:300px minmax(220px,1fr) auto auto auto;
-  align-items:center;gap:12px;padding:0 18px;
-  background:linear-gradient(180deg,#07101d,#040a14);
-  border-bottom:1px solid #17243a
+.axion-live-shell:fullscreen{width:100vw;height:100vh;border:0;border-radius:0}
+
+.live-header{
+  grid-column:1/3;
+  display:grid;
+  grid-template-columns:250px 240px minmax(350px,1fr) auto 38px;
+  align-items:center;
+  gap:14px;
+  padding:0 12px 0 16px;
+  border-bottom:1px solid rgba(64,88,132,.28);
+  background:linear-gradient(180deg,#07101c,#040a13);
 }
-.live-brand{display:flex;align-items:center;gap:11px}
+.live-brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand-mark{
-  width:37px;height:37px;border-radius:10px;display:grid;place-items:center;
-  font-size:22px;font-weight:900;color:#06111c;
-  background:linear-gradient(135deg,#57ddf0,#7470ff)
+  width:34px;height:34px;display:grid;place-items:center;
+  border-radius:8px;
+  font-size:20px;font-weight:950;color:#06111a;
+  background:linear-gradient(135deg,#4cdaf0,#6464ff);
 }
-.brand-name{font-weight:850;font-size:17px;letter-spacing:.7px}
-.brand-name span{color:#58dced}
-.brand-sub{font-size:7px;letter-spacing:2px;color:#60718e;margin-top:2px}
-.instrument-block{padding-left:17px;border-left:1px solid #1a2940}
-.instrument-name{font-size:16px;font-weight:800}
-.instrument-sub{font-size:9px;color:#6e809e;margin-top:2px}
-.live-status{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:800;color:#a1aec2}
-.status-dot{width:8px;height:8px;border-radius:50%;background:#6c7688}
-.status-dot.waiting{box-shadow:0 0 12px rgba(255,190,87,.2);background:#d5a95b}
-.ghost-btn,.primary-btn,.icon-btn{
-  border-radius:8px;height:34px;padding:0 12px;cursor:pointer
+.brand-name{font-size:16px;font-weight:900;letter-spacing:.6px;color:#f2f6fc}
+.brand-name span{color:#61dced}
+.brand-sub{font-size:6px;letter-spacing:1.8px;color:#5e708b;margin-top:1px}
+.instrument{padding-left:14px;border-left:1px solid #1c2a40;min-width:0}
+.instrument strong{display:block;font-size:14px;color:#f3f7fd}
+.instrument span{display:block;margin-top:2px;font-size:8px;color:#6d7e99}
+.tf-nav{display:flex;align-items:center;gap:2px;overflow:hidden}
+.tf-nav button{
+  height:31px;min-width:36px;padding:0 7px;border:0;border-radius:6px;
+  color:#71819b;background:transparent;cursor:pointer;font-size:9px
 }
-.ghost-btn{background:#081221;color:#a9b9d1;border:1px solid #223652}
-.primary-btn{
-  color:white;border:1px solid #2e7ff0;
-  background:linear-gradient(135deg,#168cde,#6354f5)
+.tf-nav button:hover{background:#101a29;color:#dce8f8}
+.tf-nav button.active{background:#0f2238;color:#53d8ee}
+.header-status{
+  height:34px;display:flex;align-items:center;gap:8px;
+  padding:0 10px;border:1px solid #27354a;border-radius:7px;background:#08111e
 }
+.status-dot{width:7px;height:7px;border-radius:50%;background:#d7a855;box-shadow:0 0 12px rgba(215,168,85,.24)}
+.header-status b{display:block;color:#aeb9ca;font-size:7px;letter-spacing:.7px}
+.header-status small{display:block;color:#6d7a90;font-size:6px;margin-top:1px}
+.icon-btn{
+  width:34px;height:34px;border:1px solid #253850;border-radius:7px;
+  background:#081321;color:#aebcd1;cursor:pointer;font-size:15px
+}
+
 .live-sidebar{
-  grid-column:1;grid-row:2;background:#050c17;border-right:1px solid #18263a;
-  padding:9px 8px;display:flex;flex-direction:column;align-items:center;gap:4px
+  grid-column:1;grid-row:2;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:7px 6px;
+  background:#050b14;border-right:1px solid rgba(65,90,132,.28)
 }
 .side-btn{
-  width:58px;height:54px;border:1px solid transparent;border-radius:10px;
-  background:transparent;color:#6e819f;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:3px;cursor:pointer;font-size:18px
+  width:48px;height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;border:0;border-radius:7px;background:transparent;color:#6e7c94;cursor:pointer
 }
-.side-btn span{font-size:7px}
-.side-btn:hover{background:#0a1728;color:#dce8fa}
-.side-btn.active{background:#0b1b2e;border-color:#1d5270;color:#56d9eb}
+.side-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.45;stroke-linecap:round;stroke-linejoin:round}
+.side-btn span{font-size:6px}
+.side-btn:hover{background:#111a28;color:#dce6f5}
+.side-btn.active{color:#55d7eb;background:#0b1c2c;box-shadow:inset 2px 0 #45d7ef}
 .side-spacer{flex:1}
-.live-main{grid-column:2;grid-row:2;min-width:0;display:grid;grid-template-rows:54px minmax(0,1fr) 178px}
-.live-toolbar{
-  display:flex;align-items:center;gap:6px;padding:7px 10px;
-  border-bottom:1px solid #15243a;background:#060d18;min-width:0
+
+.live-main{
+  grid-column:2;grid-row:2;min-width:0;min-height:0;
+  display:grid;grid-template-rows:48px minmax(0,1fr) 162px
 }
-.mode-tab{
-  height:32px;padding:0 13px;border-radius:5px;border:1px solid #17263b;
-  color:#7f90aa;background:#07111f;cursor:pointer;font-size:9px
+.module-tabs{
+  min-width:0;display:flex;align-items:center;gap:8px;
+  padding:6px 9px;border-bottom:1px solid rgba(65,90,132,.26);background:#060c15
 }
-.mode-tab.active{
-  color:#ecf8ff;border-color:#2873c9;
-  background:linear-gradient(135deg,#126bc1,#4e52ed)
+.tab-group{display:flex;align-items:center;gap:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.tab-group::-webkit-scrollbar{display:none}
+.module-tab{
+  height:30px;padding:0 11px;border:1px solid transparent;border-radius:5px;
+  color:#738198;background:transparent;cursor:pointer;font-size:8px;white-space:nowrap
 }
-.toolbar-spacer{flex:1}
-.top-select{
-  height:32px;min-width:108px;border:1px solid #233651;border-radius:6px;
-  background:#07111f;color:#c8d6ea;padding:0 8px;font-size:9px
+.module-tab:hover{background:#0d1725;color:#d9e4f4}
+.module-tab.active{background:#10213a;border-color:#255d8a;color:#59d9ec}
+.toolbar-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.toolbar-right select{
+  height:30px;border:1px solid #24364f;border-radius:6px;background:#08111e;color:#c8d4e5;
+  padding:0 8px;font-size:8px
 }
-.top-select.compact{min-width:66px}
-.intensity-control{
-  height:32px;display:flex;align-items:center;gap:7px;padding:0 9px;
-  border:1px solid #20324c;border-radius:6px;color:#70829d;font-size:8px
+.slider-control{
+  height:30px;display:flex;align-items:center;gap:7px;padding:0 8px;
+  border:1px solid #24364f;border-radius:6px;color:#718099;font-size:7px
 }
-.intensity-control input{width:95px}
-.icon-btn{width:36px;padding:0;background:#081323;border:1px solid #233854;color:#9eb0c9}
-.heatmap-stage{
-  position:relative;min-height:0;overflow:hidden;background:
-  radial-gradient(circle at 60% 35%,rgba(35,54,93,.12),transparent 34%),
-  linear-gradient(180deg,#050a13,#040812)
+.slider-control input{width:90px}
+
+.terminal-workspace{
+  min-height:0;min-width:0;
+  display:grid;grid-template-columns:minmax(0,1fr) 190px;
+  background:#030812
 }
-.chart-meta{
-  position:absolute;top:11px;left:14px;right:74px;z-index:5;
-  display:flex;justify-content:space-between;align-items:center;
-  color:#a7b6cb;font-size:10px
+.chart-area{position:relative;min-width:0;min-height:0;border-right:1px solid rgba(65,90,132,.24)}
+.chart-head{
+  position:absolute;top:0;left:0;right:0;height:34px;z-index:4;
+  display:flex;align-items:center;justify-content:space-between;padding:0 10px;
+  border-bottom:1px solid rgba(65,90,132,.15);background:rgba(3,8,18,.88);
+  color:#64738a;font-size:7px
 }
-.chart-meta strong{color:#eff7ff;font-size:13px}
-.ohlc-muted{font-size:8px;color:#667894}
-.chart-grid{
-  position:absolute;inset:42px 66px 18px 0;
+.chart-head strong{font-size:11px;color:#eef4fc}
+.chart-head span{color:#7888a1}
+.heatmap-canvas{position:absolute;inset:34px 0 22px 0;overflow:hidden;background:#030711}
+.grid{
+  position:absolute;inset:0;
   background-image:
-    linear-gradient(rgba(41,62,94,.32) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(41,62,94,.26) 1px,transparent 1px);
-  background-size:100% 64px,105px 100%;
-  border-top:1px solid rgba(48,72,109,.22)
+    linear-gradient(rgba(51,71,103,.20) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(51,71,103,.18) 1px,transparent 1px);
+  background-size:100% 54px,90px 100%
 }
-.chart-grid:after{
-  content:"";
-  position:absolute;left:5%;right:3%;top:54%;
-  border-top:1px dashed rgba(64,213,231,.42)
+.current-price-line{
+  position:absolute;left:0;right:0;top:56%;
+  border-top:1px dashed rgba(69,214,235,.32)
 }
-.heatmap-locked{
-  position:absolute;left:50%;top:49%;transform:translate(-50%,-50%);
-  width:min(460px,70%);padding:27px;text-align:center;z-index:6;
-  border:1px solid rgba(88,120,174,.24);border-radius:14px;
-  background:rgba(5,12,24,.82);backdrop-filter:blur(9px);
-  box-shadow:0 18px 55px rgba(0,0,0,.32)
+.feed-warning{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(500px,72%);padding:23px 26px;text-align:center;
+  border:1px solid rgba(78,106,154,.30);border-radius:12px;
+  background:rgba(5,12,22,.88);backdrop-filter:blur(8px);
+  box-shadow:0 18px 45px rgba(0,0,0,.28)
 }
-.lock-icon{font-size:28px;color:#55d8ec}
-.lock-title{font-size:15px;font-weight:900;letter-spacing:1.5px;margin-top:7px}
-.lock-copy{font-size:10px;line-height:1.55;color:#8294b0;max-width:340px;margin:8px auto 0}
-.lock-chip{
-  display:inline-block;margin-top:13px;padding:6px 9px;border-radius:999px;
-  border:1px solid #3f536f;color:#95a6bf;font-size:7px;letter-spacing:.8px
+.warning-eyebrow{font-size:7px;font-weight:900;letter-spacing:1.4px;color:#54d8ec}
+.feed-warning strong{display:block;margin-top:7px;font-size:14px;color:#eef4fc}
+.feed-warning p{margin:8px auto 0;max-width:400px;color:#718098;font-size:8px;line-height:1.55}
+.warning-badges{display:flex;justify-content:center;gap:6px;margin-top:12px}
+.warning-badges span{
+  padding:5px 7px;border:1px solid #34445e;border-radius:999px;
+  color:#8997ab;background:#08111d;font-size:6px;font-weight:800;letter-spacing:.55px
 }
-.price-axis{
-  position:absolute;right:0;top:50px;bottom:20px;width:66px;
-  border-left:1px solid rgba(48,72,109,.28);
+.time-axis{
+  position:absolute;left:0;right:0;bottom:0;height:22px;
+  display:flex;align-items:center;justify-content:space-around;
+  color:#55657c;font-size:7px;border-top:1px solid rgba(65,90,132,.16)
+}
+
+.profile-panel{min-height:0;display:grid;grid-template-rows:36px minmax(0,1fr) 58px;background:#050b15}
+.profile-head{
+  display:flex;align-items:center;justify-content:space-between;padding:0 10px;
+  border-bottom:1px solid rgba(65,90,132,.18)
+}
+.profile-head strong{font-size:8px;color:#dfe7f3}
+.profile-head span{font-size:5px;color:#65748a;letter-spacing:.7px}
+.profile-empty{position:relative;min-height:0}
+.profile-axis{
+  position:absolute;right:8px;top:12px;bottom:12px;
   display:flex;flex-direction:column;justify-content:space-around;
-  color:#576984;font-size:8px;padding-left:8px
+  color:#5a6980;font-size:7px
 }
+.profile-message{
+  position:absolute;left:12px;right:45px;top:50%;transform:translateY(-50%);
+  padding:12px;border:1px dashed #2b3c55;border-radius:8px;background:#07101b
+}
+.profile-message b{display:block;font-size:8px;color:#9eacbf}
+.profile-message small{display:block;margin-top:5px;font-size:6px;line-height:1.4;color:#65748a}
+.profile-footer{
+  display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr;align-items:center;gap:5px;
+  padding:0 9px;border-top:1px solid rgba(65,90,132,.18);font-size:6px;color:#65748a
+}
+.profile-footer b{color:#aab6c8;font-size:7px}
+
 .live-metrics{
-  min-width:0;display:grid;grid-template-columns:1fr 1fr 1fr .85fr 1.2fr;
-  border-top:1px solid #17263b;background:#07101c
+  min-width:0;display:grid;grid-template-columns:1fr 1fr 1fr .8fr 1.1fr;
+  background:#060d17;border-top:1px solid rgba(65,90,132,.26)
 }
-.metric-card{padding:17px 18px;border-right:1px solid #18263a;min-width:0}
+.metric-card{min-width:0;padding:14px 15px;border-right:1px solid rgba(65,90,132,.20)}
 .metric-card:last-child{border-right:0}
-.metric-label{font-size:8px;font-weight:800;color:#8191a9;letter-spacing:.25px}
-.metric-label.buy{color:#45d9ba}.metric-label.sell{color:#ff6b7e}.metric-label.delta{color:#9d7cff}
-.metric-label.session{color:#63a8ff}
-.metric-value{font-size:20px;font-weight:850;margin-top:13px;color:#eff5ff}
-.metric-value.muted{color:#66758b}
-.metric-bar{height:8px;border-radius:999px;background:#11273b;margin-top:14px;overflow:hidden}
-.metric-bar i{display:block;width:0;height:100%;background:#39c8a9}
-.metric-bar.sellbar i{background:#ec586e}
-.metric-foot{display:flex;justify-content:space-between;color:#55657c;font-size:7px;margin-top:5px}
-.metric-small{font-size:8px;color:#687994;margin-top:7px}
-.delta-line{height:8px;margin-top:14px;border-radius:999px;background:linear-gradient(90deg,#5e2231 0 48%,#1c292e 48% 52%,#174837 52%)}
-.visual-row{display:flex;gap:7px;margin-top:12px}
-.scheme{
-  width:39px;height:28px;border-radius:5px;border:1px solid #273954;cursor:pointer;
-  background:linear-gradient(135deg,#151030,#0f4f6f,#c96825)
-}
-.scheme:nth-child(2){background:linear-gradient(135deg,#241013,#8e301c,#ffc24a)}
-.scheme:nth-child(3){background:linear-gradient(135deg,#07152c,#174a88,#46d8eb)}
-.scheme:nth-child(4){background:linear-gradient(135deg,#111,#444,#999)}
-.scheme.active{outline:1px solid #4f8cff}
-.contrast-control{display:flex;align-items:center;gap:8px;margin-top:12px;color:#65758d;font-size:8px}
-.contrast-control input{width:100px}
-@media(max-width:1100px){
-  .live-topbar{grid-template-columns:230px minmax(160px,1fr) auto auto}
-  .live-status{display:none}
-  .mode-tab:nth-of-type(n+4){display:none}
-  .live-metrics{grid-template-columns:1fr 1fr 1fr}
+.metric-title{font-size:7px;font-weight:900;letter-spacing:.45px;color:#8090a8}
+.metric-title.buy{color:#46d7b6}.metric-title.sell{color:#ff6c80}.metric-title.delta{color:#a07bff}.metric-title.session{color:#68a9ff}
+.metric-value{margin-top:10px;font-size:18px;font-weight:900;color:#eef4fb}
+.metric-value.disabled{color:#617086}
+.metric-value.small-value{font-size:15px}
+.metric-sub{margin-top:3px;color:#607087;font-size:6px}
+.meter{height:6px;border-radius:999px;background:#11202d;margin-top:12px;overflow:hidden}
+.meter i{display:block;width:0;height:100%;background:#36c6a5}
+.sell-meter i{background:#ed536b}
+.delta-meter{height:6px;margin-top:12px;border-radius:999px;background:linear-gradient(90deg,#542331 0 48%,#1c252c 48% 52%,#174236 52%)}
+.delta-meter i{display:none}
+.session-track{height:4px;border-radius:999px;background:#142033;margin-top:14px}.session-track i{display:block;width:0}
+.scheme-row{display:flex;gap:5px;margin-top:11px}
+.scheme{width:34px;height:25px;border:1px solid #2b3b52;border-radius:5px;cursor:pointer;background:linear-gradient(135deg,#0a1330,#163b70,#922563)}
+.scheme.fire{background:linear-gradient(135deg,#241014,#8e3020,#ffc84e)}
+.scheme.ice{background:linear-gradient(135deg,#06142a,#175191,#48dce9)}
+.scheme.mono{background:linear-gradient(135deg,#111,#555,#aaa)}
+.scheme.active{outline:1px solid #4d8cff}
+.contrast-control{display:flex;align-items:center;gap:7px;margin-top:10px;color:#637187;font-size:6px}
+.contrast-control input{width:90px}
+
+@media(max-width:1150px){
+  .live-header{grid-template-columns:210px 180px minmax(280px,1fr) 38px}
+  .header-status{display:none}
+  .module-tab:nth-child(n+4){display:none}
+  .terminal-workspace{grid-template-columns:minmax(0,1fr) 160px}
+  .live-metrics{grid-template-columns:repeat(3,1fr)}
   .metric-card:nth-child(n+4){display:none}
 }
 """
@@ -311,38 +417,56 @@ export default function(component) {
   if (!shell) return;
 
   const symbolSelect=parentElement.querySelector('#symbol-select');
-  const tfSelect=parentElement.querySelector('#tf-select');
   const intensity=parentElement.querySelector('#intensity');
   const contrast=parentElement.querySelector('#contrast');
+  const tfButtons=[...parentElement.querySelectorAll('[data-tf]')];
 
-  if (data?.symbol) symbolSelect.value=data.symbol;
-  if (data?.timeframe) tfSelect.value=data.timeframe;
+  const currentSymbol=String(data?.symbol || 'XAUUSD').toUpperCase();
+  const currentTf=String(data?.timeframe || '15m');
 
-  const symbolLabel=(symbolSelect.value==='XAUUSD')?'XAU/USD':'BTC/USDT';
-  parentElement.querySelector('#instrument-name').textContent=symbolLabel;
-  parentElement.querySelector('#meta-symbol').textContent=symbolLabel;
+  symbolSelect.value=currentSymbol;
+  tfButtons.forEach(btn=>btn.classList.toggle('active',btn.dataset.tf===currentTf));
+
+  function symbolLabel(value){
+    return value==='BTCUSDT' ? 'BTC/USDT' : 'XAU/USD';
+  }
+  function symbolSubtitle(value){
+    return value==='BTCUSDT' ? 'Bitcoin / TetherUS' : 'Oro / Dólar estadounidense';
+  }
+  function paintHeader(){
+    const label=symbolLabel(symbolSelect.value);
+    parentElement.querySelector('#instrument-name').textContent=label;
+    parentElement.querySelector('#meta-symbol').textContent=label;
+    parentElement.querySelector('#instrument-sub').textContent=symbolSubtitle(symbolSelect.value);
+  }
+  paintHeader();
 
   symbolSelect.onchange=()=>{
+    paintHeader();
     setTriggerValue('symbol',symbolSelect.value);
   };
 
-  tfSelect.onchange=()=>{
-    setTriggerValue('timeframe',tfSelect.value);
-  };
+  tfButtons.forEach(btn=>{
+    btn.onclick=()=>{
+      tfButtons.forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+      setTriggerValue('timeframe',btn.dataset.tf);
+    };
+  });
 
-  intensity.oninput=()=>{
-    setStateValue('heatmap_intensity',Number(intensity.value));
-  };
+  intensity.oninput=()=>setStateValue('heatmap_intensity',Number(intensity.value));
 
   contrast.oninput=()=>{
     setStateValue('heatmap_contrast',Number(contrast.value));
-    shell.style.filter=`contrast(${Number(contrast.value)/70})`;
+    const value=Math.max(.75,Math.min(1.35,Number(contrast.value)/70));
+    parentElement.querySelector('.terminal-workspace').style.filter=`contrast(${value})`;
   };
 
-  parentElement.querySelectorAll('.mode-tab').forEach(btn=>{
+  parentElement.querySelectorAll('.module-tab').forEach(btn=>{
     btn.onclick=()=>{
-      parentElement.querySelectorAll('.mode-tab').forEach(x=>x.classList.remove('active'));
+      parentElement.querySelectorAll('.module-tab').forEach(x=>x.classList.remove('active'));
       btn.classList.add('active');
+      setStateValue('heatmap_mode',btn.textContent.trim());
     };
   });
 
@@ -366,14 +490,7 @@ export default function(component) {
     try{
       if(!document.fullscreenElement) await shell.requestFullscreen();
       else await document.exitFullscreen();
-    }catch(err){console.error('Fullscreen',err)}
-  };
-
-  parentElement.querySelector('#backtesting-btn').onclick=()=>{
-    setTriggerValue('navigate','backtesting');
-  };
-  parentElement.querySelector('#live-btn').onclick=()=>{
-    setTriggerValue('navigate','live');
+    }catch(err){console.error('AXION Heatmap fullscreen',err)}
   };
 
   return ()=>{};
@@ -381,7 +498,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_live_heatmap_v1",
+    "axion_live_heatmap_v2",
     html=HTML,
     css=CSS,
     js=JS,
@@ -397,7 +514,7 @@ def render_axion_live_heatmap(
     height: int = 920,
 ):
     """
-    Renderiza la carcasa visual de AXION LIVE / Heatmap.
+    Renderiza AXION LIVE / Heatmap V2.
     No genera ni simula datos de liquidez.
     """
     payload = {
