@@ -52,42 +52,30 @@ st.set_page_config(
     page_title="AXION PRIME X10 PRO",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed", # Colapsado para dar prioridad al nuevo UI
+    initial_sidebar_state="expanded",
 )
 
 REQUEST_TIMEOUT = 30
 
 # =========================================================
-# ESTILOS GLOBALES (BOCETO 4 / FULL SCREEN)
+# ESTILOS GLOBALES
 # =========================================================
 
-# Obtenemos la página actual antes de aplicar los estilos
 current_page = st.session_state.get("page", "Dashboard")
 
-# Ocultamos el header y footer en TODA la app
+# Mantener la navegación lateral disponible también en Dashboard.
+# Solo ocultamos header/footer nativos de Streamlit.
 global_css = """
-    <style>
-        header { display: none !important; }
-        footer { display: none !important; }
-    </style>
+<style>
+    header { display: none !important; }
+    footer { display: none !important; }
+    .block-container {
+        max-width: 100% !important;
+        padding-top: 1rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+</style>
 """
-
-# Si estamos en el Dashboard (donde va el nuevo mapa de calor), 
-# ocultamos ABSOLUTAMENTE TODO el padding y la barra lateral de Streamlit
-if current_page == "Dashboard":
-    global_css += """
-        <style>
-            .block-container { padding: 0rem !important; max-width: 100% !important; }
-            [data-testid="stSidebar"] { display: none !important; }
-        </style>
-    """
-else:
-    # Para las demás páginas, dejamos un poco de padding superior para que no se pegue al borde
-    global_css += """
-        <style>
-            .block-container { padding-top: 2rem !important; }
-        </style>
-    """
 
 st.markdown(global_css, unsafe_allow_html=True)
 
@@ -374,9 +362,9 @@ if not st.session_state.get("authenticated", False):
 trader_name, capital_actual, capital_meta = _sync_profile_state()
 _redirect_expired_membership()
 
-# Renderizamos la sidebar nativa SI NO estamos en el Dashboard
-if current_page != "Dashboard":
-    render_v2_sidebar()
+# Mantener la navegación principal disponible en todas las páginas,
+# incluido Dashboard / Mercado Live.
+render_v2_sidebar()
 
 trades = _load_trades()
 df = prepare_df(trades)
