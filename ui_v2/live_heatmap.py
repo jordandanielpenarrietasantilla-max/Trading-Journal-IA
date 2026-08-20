@@ -188,6 +188,80 @@ def _compact_trade_row(row: dict[str, Any]) -> list[float | int]:
 
 
 @st.cache_data(ttl=5, show_spinner=False)
+
+def _load_orderflow_history_fast_rpc(
+    symbol: str = "BTCUSDT",
+    minutes: int = 360,
+    depth_step_seconds: int = 10,
+    trade_step_seconds: int = 10,
+) -> dict:
+    client = _client()
+    resp = client.rpc(
+        "axion_orderflow_history_fast",
+        {
+            "p_symbol": symbol,
+            "p_minutes": minutes,
+            "p_depth_step_seconds": depth_step_seconds,
+            "p_trade_step_seconds": trade_step_seconds,
+        },
+    ).execute()
+
+    payload = resp.data or {}
+    if isinstance(payload, list) and payload:
+        payload = payload[0]
+
+    depth = []
+    for row in payload.get("depth") or []:
+        buckets = row.get("buckets") or []
+        compact = []
+        for b in buckets:
+            if isinstance(b, dict):
+                p = float(b.get("price") or 0)
+                bid = float(b.get("bid") or 0)
+                ask = float(b.get("ask") or 0)
+                qty = float(b.get("qty") or 0)
+            elif isinstance(b, (list, tuple)) and len(b) >= 4:
+                p, bid, ask, qty = [float(x or 0) for x in b[:4]]
+            else:
+                continue
+            if p > 0 and qty > 0:
+                compact.append([p, bid, ask, qty])
+
+        depth.append({
+            "t": _epoch_ms(row.get("ts")),
+            "m": float(row.get("mid") or 0),
+            "bb": float(row.get("best_bid") or 0),
+            "ba": float(row.get("best_ask") or 0),
+            "sp": float(row.get("spread") or 0),
+            "s": float(row.get("bucket_step") or 5),
+            "x": compact,
+        })
+
+    trades = []
+    for row in payload.get("trades") or []:
+        trades.append([
+            _epoch_ms(row.get("ts")),
+            0.0, 0.0, 0.0, 0.0,
+            float(row.get("volume") or 0),
+            float(row.get("buy_volume") or 0),
+            float(row.get("sell_volume") or 0),
+            float(row.get("delta") or 0),
+            float(row.get("vwap") or 0),
+            int(row.get("trade_count") or 0),
+        ])
+
+    return {
+        "symbol": payload.get("symbol") or symbol,
+        "minutes": int(payload.get("minutes") or minutes),
+        "depth": depth,
+        "trades": trades,
+        "depth_count": len(depth),
+        "trade_count": len(trades),
+        "source": "rpc_fast",
+        "error": None,
+    }
+
+
 def load_orderflow_history(
     *,
     symbol: str = "BTCUSDT",
@@ -951,6 +1025,48 @@ export default function(component) {
     return clamp(.78 + .22*((value-q97)/Math.max(q97*.8,1e-9)),0,1)
   }
 
+
+  function buildLiquidityBands(cols,minP,maxP,q85){
+    const bands=[],active=new Map();
+    if(!cols||cols.length<2)return bands;
+
+    const keyOf=(p,step)=>String(Math.round(Number(p)/Math.max(Number(step)||5,1e-9)));
+
+    for(const col of cols){
+      const t=Number(col.t),step=Number(col.s)||5,seen=new Set();
+
+      for(const row of col.x||[]){
+        const p=Number(row[0]),q=Number(row[3]);
+        if(!(p>=minP&&p<=maxP&&q>=q85))continue;
+
+        const key=keyOf(p,step);
+        seen.add(key);
+        const prev=active.get(key);
+
+        if(prev && t-prev.lastT<=25000){
+          prev.lastT=t;
+          prev.p=prev.p*.75+p*.25;
+          prev.maxQ=Math.max(prev.maxQ,q);
+          prev.sumQ+=q;
+          prev.count++;
+        }else{
+          if(prev&&prev.count>=2)bands.push({...prev});
+          active.set(key,{startT:t,lastT:t,p,maxQ:q,sumQ:q,count:1,step})
+        }
+      }
+
+      for(const [key,b] of active.entries()){
+        if(!seen.has(key)&&t-b.lastT>25000){
+          if(b.count>=2)bands.push({...b});
+          active.delete(key)
+        }
+      }
+    }
+
+    for(const b of active.values())if(b.count>=2)bands.push({...b});
+    return bands
+  }
+
   function heatColor(n,bias){
     const a=intensity;
     if(n<=0)return'rgba(0,0,0,0)';
@@ -987,22 +1103,61 @@ export default function(component) {
       if(p>=minP&&p<=maxP&&v>0)totals.push(v)
     }
     totals.sort((a,b)=>a-b);
-    const q50=percentile(totals,.5)||1,q85=percentile(totals,.85)||q50,q97=percentile(totals,.97)||q85;
 
+    const q62=percentile(totals,.62)||1;
+    const q85=percentile(totals,.85)||q62;
+    const q97=percentile(totals,.97)||q85;
+
+    // Sparse snapshot texture
     for(let i=0;i<cols.length;i++){
       const col=cols[i],x=xOf(col.t);
-      const nextT=i<cols.length-1?Number(cols[i+1].t):Math.min(win.end,Number(col.t)+1000);
-      const cw=Math.max(.8*q,xOf(nextT)-x+.5*q);
+      const nextT=i<cols.length-1?Number(cols[i+1].t):Math.min(win.end,Number(col.t)+10000);
+      const cw=Math.max(.7*q,xOf(nextT)-x+.35*q);
       const step=Number(col.s)||5,cm=Number(col.m)||m;
-      const bh=Math.max(1.7*q,Math.abs(yOf(cm+step)-yOf(cm))*.9);
+      const bh=Math.max(1.0*q,Math.abs(yOf(cm+step)-yOf(cm))*.62);
+
       for(const row of col.x||[]){
         const p=Number(row[0]),bid=Number(row[1]),ask=Number(row[2]),v=Number(row[3]);
-        if(p<minP||p>maxP||!(v>0))continue;
-        const n=heatNorm(v,q50,q85,q97),bias=(bid-ask)/Math.max(v,1e-9);
-        hctx.fillStyle=heatColor(n,bias);
+        if(p<minP||p>maxP||v<q62)continue;
+
+        const n=heatNorm(v,q62,q85,q97);
+        if(n<=0)continue;
+
+        hctx.fillStyle=heatColor(n,(bid-ask)/Math.max(v,1e-9));
         hctx.fillRect(x,yOf(p)-bh/2,cw,bh)
       }
     }
+
+    // Persistent bands only from strong levels that survive real snapshots
+    const bands=buildLiquidityBands(cols,minP,maxP,q85);
+
+    hctx.save();
+    hctx.globalCompositeOperation='screen';
+
+    for(const b of bands){
+      const x1=xOf(b.startT),x2=xOf(b.lastT);
+      if(x2-x1<2*q)continue;
+
+      const avg=b.sumQ/Math.max(1,b.count);
+      const n=heatNorm(Math.max(avg,b.maxQ*.82),q62,q85,q97);
+      if(n<.40)continue;
+
+      const y=yOf(b.p);
+      const bandH=Math.max(1.1*q,Math.abs(yOf(b.p+b.step)-yOf(b.p))*.62);
+      const alpha=clamp(.20+n*.46,.20,.70)*intensity;
+
+      let color;
+      if(n<.58)color=`rgba(105,60,178,${alpha})`;
+      else if(n<.76)color=`rgba(191,54,123,${alpha})`;
+      else if(n<.90)color=`rgba(235,73,70,${alpha})`;
+      else if(n<.975)color=`rgba(255,129,37,${alpha})`;
+      else color=`rgba(255,218,66,${alpha})`;
+
+      hctx.fillStyle=color;
+      hctx.fillRect(x1,y-bandH/2,Math.max(2*q,x2-x1),bandH)
+    }
+
+    hctx.restore();
 
     drawPriceAxis(minP,maxP);
     window.__axionViewport={win,minP,maxP,yOf,xOf,w,h,q,m}
@@ -1180,7 +1335,7 @@ export default function(component) {
       $('#feed-status').textContent='HIST + LIVE';
       $('#loading-title').textContent='AXION sincronizado';
       $('#loading-message').textContent='Supabase Depth + Binance Klines + aggTrade LIVE';
-      setTimeout(()=>{if(!destroyed)$('#loading-card').classList.add('hide')},1200);
+      setTimeout(()=>{if(!destroyed)$('#loading-card').classList.add('hide')},350);
       drawHeat();drawOverlay()
     }).catch(err=>{
       console.error(err);$('#feed-status').textContent='ERROR LIVE';
@@ -1269,7 +1424,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_fixed6h_tinycandles_v1",
+    "axion_orderflow_fastbands_v1",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1284,47 +1439,41 @@ def _history_minutes_for_timeframe(timeframe: str) -> int:
     return 360
 
 
-def _history_payload(timeframe: str) -> dict:
-    minutes = _history_minutes_for_timeframe(timeframe)
-
+def _history_payload() -> dict:
     try:
-        return load_orderflow_history(
+        return _load_orderflow_history_fast_rpc(
             symbol="BTCUSDT",
-            minutes=minutes,
-            max_depth_columns=1000,
+            minutes=360,
+            depth_step_seconds=10,
+            trade_step_seconds=10,
         )
-    except Exception as exc:
-        return {
-            "symbol": "BTCUSDT",
-            "minutes": minutes,
-            "depth": [],
-            "trades": [],
-            "depth_count": 0,
-            "trade_count": 0,
-            "error": str(exc),
-        }
-
-
-def _init_live_state() -> None:
-    if "live_timeframe" not in st.session_state:
-        st.session_state.live_timeframe = "1m"
-
-
-def _handle_result(result) -> None:
-    if result is None:
-        return
-
-    timeframe = getattr(result, "timeframe", None)
-
-    if timeframe and timeframe != st.session_state.live_timeframe:
-        st.session_state.live_timeframe = timeframe
-        st.rerun()
+    except Exception as fast_exc:
+        try:
+            payload = load_orderflow_history(
+                symbol="BTCUSDT",
+                minutes=360,
+                max_depth_columns=700,
+            )
+            payload["source"] = "fallback"
+            payload["error"] = f"Fast RPC unavailable: {fast_exc}"
+            return payload
+        except Exception as exc:
+            return {
+                "symbol": "BTCUSDT",
+                "minutes": 360,
+                "depth": [],
+                "trades": [],
+                "depth_count": 0,
+                "trade_count": 0,
+                "source": "error",
+                "error": str(exc),
+            }
 
 
 def render_live_heatmap() -> None:
     _init_live_state()
 
-    history = _history_payload(st.session_state.live_timeframe)
+    history = _history_payload()
 
     result = _component(
         data={
