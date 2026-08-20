@@ -26,7 +26,7 @@ from supabase import Client, create_client
 #   - Capture one REAL liquidity matrix column every second.
 #   - Aggregate REAL aggTrade events into 1-second OHLC / buy / sell volume bars.
 #   - Persist both streams to Supabase.
-#   - Keep only a rolling retention window (default 6 hours).
+#   - Keep only a rolling retention window (default 24 hours).
 #
 # This process is designed to run 24/7 as a background worker.
 # =============================================================================
@@ -40,7 +40,7 @@ DEPTH_STREAM = f"{SYMBOL.lower()}@depth@100ms"
 TRADE_STREAM = f"{SYMBOL.lower()}@aggTrade"
 
 CAPTURE_INTERVAL_SECONDS = float(os.getenv("AXION_OF_CAPTURE_SECONDS", "1"))
-RETENTION_HOURS = int(os.getenv("AXION_OF_RETENTION_HOURS", "6"))
+RETENTION_HOURS = int(os.getenv("AXION_OF_RETENTION_HOURS", "24"))
 BOOK_LEVELS_PER_SIDE = int(os.getenv("AXION_OF_BOOK_LEVELS", "700"))
 VISIBLE_RANGE_PCT = float(os.getenv("AXION_OF_RANGE_PCT", "0.010"))
 BATCH_SIZE = int(os.getenv("AXION_OF_BATCH_SIZE", "15"))
