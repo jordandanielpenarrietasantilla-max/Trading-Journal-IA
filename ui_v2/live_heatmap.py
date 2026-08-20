@@ -418,8 +418,8 @@ CSS = r"""
 button,input{font:inherit}
 
 .axion-b3{
-  width:100%;height:910px;min-height:760px;overflow:hidden;
-  display:grid;grid-template-rows:64px 44px minmax(0,1fr) 140px 24px;
+  width:100%;height:840px;min-height:720px;overflow:hidden;
+  display:grid;grid-template-rows:58px 40px minmax(0,1fr) 116px 22px;
   color:#dce6f4;background:#02060d;border:1px solid #172338;border-radius:12px
 }
 .axion-b3:fullscreen{width:100vw;height:100vh;border:0;border-radius:0}
@@ -491,7 +491,7 @@ button,input{font:inherit}
 .toolbar-controls input{width:120px}
 .toolbar-controls strong{color:#9fb0c7;font-size:7px}
 
-.b3-workspace{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 215px}
+.b3-workspace{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 205px}
 .chart-stage{
   position:relative;min-width:0;min-height:0;overflow:hidden;
   background:#02060d;border-right:1px solid #18253a
@@ -776,14 +776,27 @@ export default function(component) {
   function candles(){
     const span=tfMs(),out=[];
     for(const r of allTradeRows()){
-      const t=Math.floor(Number(r[0])/span)*span;
+      const observedT=Number(r[0]);
+      const t=Math.floor(observedT/span)*span;
       let c=out[out.length-1];
       if(!c||c.t!==t){
-        c={t,o:Number(r[1]),h:Number(r[2]),l:Number(r[3]),c:Number(r[4]),v:Number(r[5])};
+        c={
+          t,
+          firstObserved:observedT,
+          lastObserved:observedT,
+          o:Number(r[1]),
+          h:Number(r[2]),
+          l:Number(r[3]),
+          c:Number(r[4]),
+          v:Number(r[5])
+        };
         out.push(c)
       }else{
-        c.h=Math.max(c.h,Number(r[2]));c.l=Math.min(c.l,Number(r[3]));
-        c.c=Number(r[4]);c.v+=Number(r[5])
+        c.h=Math.max(c.h,Number(r[2]));
+        c.l=Math.min(c.l,Number(r[3]));
+        c.c=Number(r[4]);
+        c.v+=Number(r[5]);
+        c.lastObserved=observedT
       }
     }
     return out
@@ -851,7 +864,7 @@ export default function(component) {
     drawGrid(hctx,w,h,q);
 
     const win=timeWindow(),cols=depthHistory.filter(c=>c.t>=win.start&&c.t<=win.end);
-    const cnds=candles().filter(c=>c.t+tfMs()>=win.start&&c.t<=win.end);
+    const cnds=candles().filter(c=>(c.lastObserved??c.t)>=win.start&&(c.firstObserved??c.t)<=win.end);
     const m=mid()??(cols.length?Number(cols[cols.length-1].m):null);
     const range=robustRange(cols,cnds,m),minP=range.min,maxP=range.max;
     const yOf=p=>h-((p-minP)/(maxP-minP))*h;
@@ -891,7 +904,7 @@ export default function(component) {
     octx.clearRect(0,0,w,h);
 
     const rows=allTradeRows().filter(r=>r[0]>=win.start&&r[0]<=win.end);
-    const cnds=candles().filter(c=>c.t+tfMs()>=win.start&&c.t<=win.end);
+    const cnds=candles().filter(c=>(c.lastObserved??c.t)>=win.start&&(c.firstObserved??c.t)<=win.end);
 
     // Window VWAP
     let vol=0,notional=0,buy=0,sell=0;
@@ -922,52 +935,58 @@ export default function(component) {
 
     // Candles clearly ABOVE heatmap.
     const theoretical=(tfMs()/(win.end-win.start))*w;
-    const bodyW=clamp(theoretical*.72,5.5*q,13*q);
-    const wickW=clamp(bodyW*.20,1.4*q,2.2*q);
+    const bodyW=clamp(theoretical*.22,2.2*q,5.2*q);
+    const wickW=clamp(bodyW*.15,.65*q,1.0*q);
 
     for(const c of cnds){
       if(![c.o,c.h,c.l,c.c].every(Number.isFinite)||c.h<minP||c.l>maxP)continue;
-      const x=xOf(c.t+tfMs()/2);
-      if(x<0||x>w)continue;
+
+      const observedStart=clamp(Number(c.firstObserved??c.t),win.start,win.end);
+      const observedEnd=clamp(Number(c.lastObserved??c.t),win.start,win.end);
+
+      const candleEnd=c.t+tfMs();
+      const theoreticalCenter=c.t+tfMs()/2;
+
+      // Closed candles stay fixed at the proper center of their timeframe.
+      // The unfinished candle is placed no further right than the latest
+      // timestamp that AXION has actually observed.
+      const candleXTime=
+        candleEnd<=win.end
+          ? theoreticalCenter
+          : Math.min(theoreticalCenter, observedEnd);
+
+      const x=xOf(clamp(candleXTime,win.start,win.end));
+
+      if(!Number.isFinite(x)||x<0||x>w)continue;
       const yh=yOf(c.h),yl=yOf(c.l),yo=yOf(c.o),yc=yOf(c.c),up=c.c>=c.o;
-      const fill=up?'#18e1ae':'#ff4f68';
-      const edge=up?'#b3ffe7':'#ffd0d7';
-      const halo=up?'rgba(24,225,174,.18)':'rgba(255,79,104,.18)';
+      const fill=up?'#20d7ad':'#ef5268';
+      const edge=up?'#78ebca':'#ff8b99';
 
-      // subtle local dimming behind candle so it never gets lost in heat
-      const shadeTop=Math.min(yh,yl)-3*q;
-      const shadeH=Math.abs(yl-yh)+6*q;
-      octx.fillStyle='rgba(2,6,12,.22)';
-      octx.fillRect(x-bodyW*.9,shadeTop,bodyW*1.8,shadeH);
+      octx.strokeStyle='rgba(0,4,9,.96)';
+      octx.lineWidth=wickW+1.0*q;
+      octx.beginPath();
+      octx.moveTo(x,yh);
+      octx.lineTo(x,yl);
+      octx.stroke();
 
-      // outer wick halo / separator
-      octx.strokeStyle='rgba(0,3,8,.98)';
-      octx.lineWidth=wickW+2.4*q;
-      octx.beginPath();octx.moveTo(x,yh);octx.lineTo(x,yl);octx.stroke();
-
-      // visible wick
       octx.strokeStyle=edge;
       octx.lineWidth=wickW;
-      octx.beginPath();octx.moveTo(x,yh);octx.lineTo(x,yl);octx.stroke();
+      octx.beginPath();
+      octx.moveTo(x,yh);
+      octx.lineTo(x,yl);
+      octx.stroke();
 
       const top=Math.min(yo,yc);
-      const bodyH=Math.max(3.2*q,Math.abs(yc-yo));
+      const bodyH=Math.max(1.35*q,Math.abs(yc-yo));
 
-      // body shadow
-      octx.save();
-      octx.shadowColor=halo;
-      octx.shadowBlur=5*q;
-
-      // outer dark frame
-      octx.fillStyle='rgba(0,3,8,.98)';
+      octx.fillStyle='rgba(0,4,9,.96)';
       octx.fillRect(
-        x-bodyW/2-1.3*q,
-        top-1.3*q,
-        bodyW+2.6*q,
-        bodyH+2.6*q
+        x-bodyW/2-.45*q,
+        top-.45*q,
+        bodyW+.9*q,
+        bodyH+.9*q
       );
 
-      // candle body
       octx.fillStyle=fill;
       octx.fillRect(
         x-bodyW/2,
@@ -975,18 +994,6 @@ export default function(component) {
         bodyW,
         bodyH
       );
-
-      // fine highlight edge
-      octx.strokeStyle=edge;
-      octx.lineWidth=.9*q;
-      octx.strokeRect(
-        x-bodyW/2+.45*q,
-        top+.45*q,
-        Math.max(1*q,bodyW-.9*q),
-        Math.max(1*q,bodyH-.9*q)
-      );
-
-      octx.restore();
     }
 
     const m=mid()??vp.m;
@@ -1100,7 +1107,7 @@ export default function(component) {
     ws.onerror=()=>{$('#feed-status').textContent='RECONNECT'};
     ws.onclose=()=>{if(!destroyed)scheduleReconnect()};
     captureTimer=setInterval(captureDepth,1000);
-    drawTimer=setInterval(()=>{drawOverlay()},750)
+    drawTimer=setInterval(()=>{drawOverlay()},350)
   }
 
   function scheduleReconnect(){
@@ -1150,7 +1157,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_boceto3_recovery_realdata_v1",
+    "axion_boceto3_v5_safe_wide",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1206,7 +1213,7 @@ def render_live_heatmap() -> None:
         default=None,
         key="axion_boceto3_market_live",
         width="stretch",
-        height=910,
+        height=840,
     )
 
     _handle_result(result)
