@@ -113,7 +113,7 @@ def _fetch_all(
         offset += page_size
 
         # Safety guard: more than enough for the AXION chart.
-        if offset >= 30_000:
+        if offset >= 10_000:
             break
 
     return rows
@@ -418,8 +418,8 @@ CSS = r"""
 button,input{font:inherit}
 
 .axion-b3{
-  width:100%;height:840px;min-height:720px;overflow:hidden;
-  display:grid;grid-template-rows:58px 40px minmax(0,1fr) 116px 22px;
+  width:100%;height:820px;min-height:700px;overflow:hidden;
+  display:grid;grid-template-rows:64px 44px minmax(0,1fr) 140px 24px;
   color:#dce6f4;background:#02060d;border:1px solid #172338;border-radius:12px
 }
 .axion-b3:fullscreen{width:100vw;height:100vh;border:0;border-radius:0}
@@ -491,7 +491,7 @@ button,input{font:inherit}
 .toolbar-controls input{width:120px}
 .toolbar-controls strong{color:#9fb0c7;font-size:7px}
 
-.b3-workspace{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 205px}
+.b3-workspace{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 220px}
 .chart-stage{
   position:relative;min-width:0;min-height:0;overflow:hidden;
   background:#02060d;border-right:1px solid #18253a
@@ -630,15 +630,7 @@ export default function(component) {
   let intensity=.70;
 
   const history=data?.history||{};
-  const HISTORY_MS=Math.max(5,Number(history.minutes||45))*60_000;
-
-  const historyLabel=document.getElementById('history-label');
-  if(historyLabel){
-    const mins=Number(history.minutes||45);
-    historyLabel.textContent=mins>=60
-      ?((mins%60===0)?`${mins/60}h`:`${(mins/60).toFixed(1)}h`)
-      :`${mins}m`;
-  }
+  const HISTORY_MS=Math.max(5,Number(history.minutes||30))*60_000;
   const MAX_DEPTH_COLS=1200;
 
   // Historical depth: {t,m,bb,ba,sp,s,x:[[p,b,a,q],...]}
@@ -784,14 +776,15 @@ export default function(component) {
   function candles(){
     const span=tfMs(),out=[];
     for(const r of allTradeRows()){
-      const observedT=Number(r[0]);
-      const t=Math.floor(observedT/span)*span;
+      const obs=Number(r[0]);
+      const t=Math.floor(obs/span)*span;
       let c=out[out.length-1];
+
       if(!c||c.t!==t){
         c={
           t,
-          firstObserved:observedT,
-          lastObserved:observedT,
+          firstObserved:obs,
+          lastObserved:obs,
           o:Number(r[1]),
           h:Number(r[2]),
           l:Number(r[3]),
@@ -804,7 +797,7 @@ export default function(component) {
         c.l=Math.min(c.l,Number(r[3]));
         c.c=Number(r[4]);
         c.v+=Number(r[5]);
-        c.lastObserved=observedT
+        c.lastObserved=obs
       }
     }
     return out
@@ -820,43 +813,75 @@ export default function(component) {
   }
 
   function robustRange(cols,cnds,m){
-    const samples=[];
-    for(const col of cols){
-      for(const row of col.x||[])if(Number.isFinite(Number(row[0])))samples.push(Number(row[0]))
+    const candlePts=[];
+    for(const c of cnds){
+      if(Number.isFinite(c.h))candlePts.push(c.h);
+      if(Number.isFinite(c.l))candlePts.push(c.l);
     }
-    for(const c of cnds){samples.push(c.h,c.l)}
-    if(!samples.length){
-      const center=m||1;return{min:center*.997,max:center*1.003}
+
+    let min,max;
+
+    if(candlePts.length){
+      candlePts.sort((a,b)=>a-b);
+      min=percentile(candlePts,.02);
+      max=percentile(candlePts,.98);
+    }else{
+      const center=Number.isFinite(m)?m:1;
+      min=center*.9975;
+      max=center*1.0025;
     }
-    samples.sort((a,b)=>a-b);
-    let min=percentile(samples,.015),max=percentile(samples,.985);
+
     if(Number.isFinite(m)){
-      const half=Math.max(Math.abs(m-min),Math.abs(max-m),m*.00125);
-      min=m-half;max=m+half
+      min=Math.min(min,m);
+      max=Math.max(max,m);
     }
-    const range=Math.max(max-min,(m||max)*.001);
-    return{min:min-range*.06,max:max+range*.06}
+
+    let range=Math.max(max-min,Math.max(Math.abs(m||max),1)*.00045);
+
+    // symmetric breathing room around traded price only
+    min-=range*.10;
+    max+=range*.10;
+
+    // hard protection against a single malformed candle/spike destroying scale
+    const center=Number.isFinite(m)?m:(min+max)/2;
+    const maxHalf=Math.max(center*.006,range*.75);
+    min=Math.max(min,center-maxHalf);
+    max=Math.min(max,center+maxHalf);
+
+    if(!(max>min)){
+      min=center*.998;
+      max=center*1.002
+    }
+
+    return{min,max}
   }
 
   function heatNorm(value,q50,q85,q97){
     if(!(value>0))return 0;
-    const lv=Math.log1p(value),a=Math.log1p(Math.max(q50,1e-9)),
-      b=Math.log1p(Math.max(q85,q50,1e-9)),c=Math.log1p(Math.max(q97,q85,1e-9));
-    if(lv<=a)return .08+.24*(lv/Math.max(a,1e-9));
-    if(lv<=b)return .32+.28*((lv-a)/Math.max(b-a,1e-9));
-    if(lv<=c)return .60+.26*((lv-b)/Math.max(c-b,1e-9));
-    return clamp(.86+.14*((lv-c)/Math.max(c*.18,1e-9)),0,1)
+
+    // weak liquidity is intentionally invisible
+    if(value<q50)return 0;
+
+    if(value<q85){
+      return .18 + .22*((value-q50)/Math.max(q85-q50,1e-9))
+    }
+
+    if(value<q97){
+      return .40 + .35*((value-q85)/Math.max(q97-q85,1e-9))
+    }
+
+    return clamp(.78 + .22*((value-q97)/Math.max(q97*.8,1e-9)),0,1)
   }
+
   function heatColor(n,bias){
     const a=intensity;
-    if(n<.18)return`rgba(17,24,67,${(.11+n*.56)*a})`;
-    if(n<.38)return bias<-.2?`rgba(27,84,133,${(.16+n*.66)*a})`
-      :bias>.2?`rgba(80,42,136,${(.16+n*.66)*a})`
-      :`rgba(61,42,128,${(.16+n*.66)*a})`;
-    if(n<.58)return`rgba(139,46,151,${(.19+n*.64)*a})`;
-    if(n<.78)return`rgba(220,56,82,${(.20+n*.50)*a})`;
-    if(n<.92)return`rgba(255,111,38,${(.26+n*.46)*a})`;
-    return`rgba(255,210,48,${(.36+n*.38)*a})`
+    if(n<=0)return'rgba(0,0,0,0)';
+    if(n<.30)return`rgba(40,55,124,${(.10+n*.22)*a})`;
+    if(n<.52)return`rgba(96,53,156,${(.15+n*.30)*a})`;
+    if(n<.72)return`rgba(177,50,126,${(.20+n*.36)*a})`;
+    if(n<.88)return`rgba(232,70,73,${(.28+n*.38)*a})`;
+    if(n<.97)return`rgba(255,126,35,${(.38+n*.42)*a})`;
+    return`rgba(255,215,61,${(.58+n*.34)*a})`
   }
 
   function drawGrid(ctx,w,h,q){
@@ -922,7 +947,7 @@ export default function(component) {
     }
     const vwap=vol>0?notional/vol:null;
     if(Number.isFinite(vwap)&&vwap>=minP&&vwap<=maxP){
-      const y=yOf(vwap);octx.strokeStyle='rgba(83,169,255,.84)';octx.lineWidth=1*q;
+      const y=yOf(vwap);octx.strokeStyle='rgba(83,169,255,.64)';octx.lineWidth=1*q;
       octx.setLineDash([7*q,5*q]);octx.beginPath();octx.moveTo(0,y);octx.lineTo(w,y);octx.stroke();
       octx.setLineDash([]);octx.fillStyle='#6eafff';octx.font=`${7*q}px Inter`;octx.fillText('VWAP',8*q,Math.max(11*q,y-4*q))
     }
@@ -936,74 +961,62 @@ export default function(component) {
     }
     const poc=[...profile.entries()].sort((a,b)=>b[1]-a[1])[0];
     if(poc&&poc[0]>=minP&&poc[0]<=maxP){
-      const y=yOf(poc[0]);octx.strokeStyle='rgba(246,177,48,.96)';octx.lineWidth=1*q;
+      const y=yOf(poc[0]);octx.strokeStyle='rgba(246,177,48,.74)';octx.lineWidth=1*q;
       octx.setLineDash([8*q,5*q]);octx.beginPath();octx.moveTo(0,y);octx.lineTo(w,y);octx.stroke();
       octx.setLineDash([]);octx.fillStyle='#f2b33c';octx.font=`${7*q}px Inter`;octx.fillText('FLOW POC',45*q,Math.max(11*q,y-4*q))
     }
 
     // Candles clearly ABOVE heatmap.
     const theoretical=(tfMs()/(win.end-win.start))*w;
-
-    // Keep candles visually compact on every timeframe.
-    // The timeframe controls aggregation/history, not giant candle width.
-    const bodyW=clamp(3.4*q,2.6*q,4.4*q);
-    const wickW=clamp(.78*q,.65*q,.95*q);
+    const bodyW=clamp(theoretical*.40,2.8*q,6.2*q);
+    const wickW=clamp(.80*q,.65*q,1.05*q);
 
     for(const c of cnds){
       if(![c.o,c.h,c.l,c.c].every(Number.isFinite)||c.h<minP||c.l>maxP)continue;
 
-      const observedStart=clamp(Number(c.firstObserved??c.t),win.start,win.end);
-      const observedEnd=clamp(Number(c.lastObserved??c.t),win.start,win.end);
-
       const candleEnd=c.t+tfMs();
       const theoreticalCenter=c.t+tfMs()/2;
+      const latestObserved=Number(c.lastObserved??c.t);
 
-      // Closed candles stay fixed at the proper center of their timeframe.
-      // The unfinished candle is placed no further right than the latest
-      // timestamp that AXION has actually observed.
-      const candleXTime=
+      const xTime=
         candleEnd<=win.end
           ? theoreticalCenter
-          : Math.min(theoreticalCenter, observedEnd);
+          : Math.min(theoreticalCenter,latestObserved);
 
-      const x=xOf(clamp(candleXTime,win.start,win.end));
-
+      const x=xOf(clamp(xTime,win.start,win.end));
       if(!Number.isFinite(x)||x<0||x>w)continue;
       const yh=yOf(c.h),yl=yOf(c.l),yo=yOf(c.o),yc=yOf(c.c),up=c.c>=c.o;
-      const fill=up?'#20d7ad':'#ef5268';
-      const edge=up?'#78ebca':'#ff8b99';
+      const fill=up?'#21d3a7':'#ef5368';
+      const edge=up?'#77e7c5':'#ff8a98';
 
-      octx.strokeStyle='rgba(0,4,9,.96)';
-      octx.lineWidth=wickW+1.0*q;
-      octx.beginPath();
-      octx.moveTo(x,yh);
-      octx.lineTo(x,yl);
-      octx.stroke();
+      // clean wick separator
+      octx.strokeStyle='rgba(0,3,8,.96)';
+      octx.lineWidth=wickW+1.1*q;
+      octx.beginPath();octx.moveTo(x,yh);octx.lineTo(x,yl);octx.stroke();
 
       octx.strokeStyle=edge;
       octx.lineWidth=wickW;
-      octx.beginPath();
-      octx.moveTo(x,yh);
-      octx.lineTo(x,yl);
-      octx.stroke();
+      octx.beginPath();octx.moveTo(x,yh);octx.lineTo(x,yl);octx.stroke();
 
       const top=Math.min(yo,yc);
-      const bodyH=Math.max(1.10*q,Math.abs(yc-yo));
+      const bodyH=Math.max(1.25*q,Math.abs(yc-yo));
 
-      octx.fillStyle='rgba(0,4,9,.96)';
-      octx.fillRect(
-        x-bodyW/2-.45*q,
-        top-.45*q,
-        bodyW+.9*q,
-        bodyH+.9*q
-      );
+      // dark border
+      octx.fillStyle='rgba(0,3,8,.98)';
+      octx.fillRect(x-bodyW/2-.55*q,top-.55*q,bodyW+1.1*q,bodyH+1.1*q);
 
+      // candle
       octx.fillStyle=fill;
-      octx.fillRect(
-        x-bodyW/2,
-        top,
-        bodyW,
-        bodyH
+      octx.fillRect(x-bodyW/2,top,bodyW,bodyH);
+
+      // subtle inner edge
+      octx.strokeStyle=edge;
+      octx.lineWidth=.55*q;
+      octx.strokeRect(
+        x-bodyW/2+.3*q,
+        top+.3*q,
+        Math.max(.8*q,bodyW-.6*q),
+        Math.max(.8*q,bodyH-.6*q)
       );
     }
 
@@ -1118,7 +1131,7 @@ export default function(component) {
     ws.onerror=()=>{$('#feed-status').textContent='RECONNECT'};
     ws.onclose=()=>{if(!destroyed)scheduleReconnect()};
     captureTimer=setInterval(captureDepth,1000);
-    drawTimer=setInterval(()=>{drawOverlay()},350)
+    drawTimer=setInterval(()=>{drawOverlay()},750)
   }
 
   function scheduleReconnect(){
@@ -1168,7 +1181,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_boceto3_v6_final_adaptive",
+    "axion_orderflow_final_single_v1",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1176,31 +1189,17 @@ _component = st.components.v2.component(
 )
 
 
-def _history_minutes_for_timeframe(timeframe: str) -> int:
-    # Match the visible history to the selected candle timeframe.
-    # Recorder retention is currently 6h, so we never request beyond 360m.
-    return {
-        "1m": 45,
-        "5m": 120,
-        "15m": 240,
-        "30m": 360,
-        "1H": 360,
-    }.get(timeframe, 45)
-
-
-def _history_payload(timeframe: str) -> dict:
-    minutes = _history_minutes_for_timeframe(timeframe)
-
+def _history_payload() -> dict:
     try:
         return load_orderflow_history(
             symbol="BTCUSDT",
-            minutes=minutes,
+            minutes=30,
             max_depth_columns=900,
         )
     except Exception as exc:
         return {
             "symbol": "BTCUSDT",
-            "minutes": minutes,
+            "minutes": 30,
             "depth": [],
             "trades": [],
             "depth_count": 0,
@@ -1228,7 +1227,7 @@ def _handle_result(result) -> None:
 def render_live_heatmap() -> None:
     _init_live_state()
 
-    history = _history_payload(st.session_state.live_timeframe)
+    history = _history_payload()
 
     result = _component(
         data={
@@ -1238,7 +1237,7 @@ def render_live_heatmap() -> None:
         default=None,
         key="axion_boceto3_market_live",
         width="stretch",
-        height=840,
+        height=820,
     )
 
     _handle_result(result)
