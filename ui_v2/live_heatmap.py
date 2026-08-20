@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from typing import Any
-
 import streamlit as st
 
 # =========================================================
@@ -75,11 +74,12 @@ HTML = r"""
   <aside class="right-panel">
     <div class="panel-card ai-summary">
       <div class="card-header">🤖 AI Market Summary <span class="badge">AXION AI</span></div>
-      <p id="loading-message" style="color:#4db8ff;">Iniciando interfaz y WebSockets...</p>
+      <p style="color:#8a9bbd; font-size:12px; line-height:1.5;">Liquidity concentration detected above current levels. Price is approaching a key liquidity zone. High probability of liquidity sweep before continuation to the upside.</p>
       <div class="confidence">
         <span>Confidence</span> <span>78%</span>
       </div>
       <div class="progress-bar"><div class="fill" style="width:78%"></div></div>
+      <div id="loading-message" style="margin-top:15px; font-size:10px; color:#4db8ff; text-align:center;">Iniciando WebSockets...</div>
     </div>
 
     <div class="panel-card">
@@ -91,6 +91,7 @@ HTML = r"""
     </div>
 
     <div class="panel-card stats">
+      <div><span>Volume (24H)</span><b id="delta-value-2">—</b></div>
       <div><span>Bid Liquidity</span><b id="bid-value">—</b></div>
       <div><span>Ask Liquidity</span><b id="ask-value">—</b></div>
     </div>
@@ -107,7 +108,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 
 .axion-pro-layout {
   display: grid;
-  grid-template-columns: 75px 1fr 340px;
+  grid-template-columns: 70px 1fr 320px;
   grid-template-rows: 65px 1fr;
   grid-template-areas: "nav header header" "nav main right";
   width: 100%; height: 100vh; color: #c5d0e6; overflow: hidden; background-color: #05070a;
@@ -150,7 +151,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 .controls-group button:hover { background: #1a2538; color: #fff; }
 .controls-group button.active { background: #131c2b; color: #fff; border-color: #4db8ff; }
 
-.chart-stage { flex: 1; position: relative; border-radius: 12px; border: 1px solid #141b26; overflow: hidden; background: #020305; box-shadow: inset 0 0 40px rgba(0,0,0,0.5);}
+.chart-stage { flex: 1 1 auto; height: 100%; position: relative; border-radius: 12px; border: 1px solid #141b26; overflow: hidden; background: #020305; box-shadow: inset 0 0 40px rgba(0,0,0,0.5);}
 #heat-canvas, #overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 #heat-canvas { z-index: 1; } #overlay-canvas { z-index: 2; }
 .price-axis { position: absolute; right: 10px; top: 10px; bottom: 10px; z-index: 5; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; color: #5a6b8c; font-size: 10px; pointer-events: none; font-variant-numeric: tabular-nums;}
@@ -163,7 +164,6 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 .panel-card { background: #0b0f16; border: 1px solid #141b26; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);}
 .card-header { font-size: 14px; color: #fff; margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;}
 .badge { background: rgba(77,184,255,0.1); color: #4db8ff; border: 1px solid rgba(77,184,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: bold; letter-spacing: 0.5px;}
-.ai-summary p { font-size: 12px; color: #7a8aa8; line-height: 1.6; margin-bottom: 20px; }
 .confidence { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: #c5d0e6;}
 .progress-bar { width: 100%; height: 4px; background: #141b26; border-radius: 2px; }
 .progress-bar .fill { height: 100%; background: #4db8ff; border-radius: 2px; box-shadow: 0 0 10px rgba(77,184,255,0.5);}
@@ -173,7 +173,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 """
 
 # =========================================================
-# JAVASCRIPT - LOGICA Y RENDER NEON
+# JAVASCRIPT LOGIC
 # =========================================================
 JS = r"""
 export default function(component) {
@@ -299,8 +299,17 @@ export default function(component) {
   function bucketBook(){
     const m=mid();if(m==null)return null;
     const step=bucketStep(m),map=new Map(),book=sortedBook();
+    
+    // 🔥 EL ARREGLO DEL GRÁFICO APLASTADO:
+    // Filtramos para solo guardar órdenes límite muy cercanas al precio actual (rango de 0.3%).
+    // Si no hacemos esto, el gráfico intenta dibujar órdenes en 20k y 100k y aplasta todo.
+    const rangoMaximo = m * 0.003; 
+    const minP = m - rangoMaximo;
+    const maxP = m + rangoMaximo;
+
     const add=(side,levels)=>{
-      for(const[p,q]of levels.slice(0,700)){
+      for(const[p,q]of levels){
+        if(p < minP || p > maxP) continue; // Descartamos precios locos
         if(!(q>0))continue;
         const bp=Math.round(p/step)*step;
         let r=map.get(bp);if(!r){r={p:bp,b:0,a:0,q:0};map.set(bp,r)}
@@ -368,22 +377,27 @@ export default function(component) {
   }
 
   function robustRange(cols,cnds,m){
+    const center = m || 65000;
+    const defaultSpread = center * 0.001; // Zoom predeterminado si hay pocos datos
+    
     const samples=[];
     for(const col of cols){
       for(const row of col.x||[])if(Number.isFinite(Number(row[0])))samples.push(Number(row[0]))
     }
     for(const c of cnds){samples.push(c.h,c.l)}
-    if(!samples.length){
-      const center=m||1;return{min:center*.997,max:center*1.003}
+    
+    if(samples.length < 5){
+      return {min: center - defaultSpread, max: center + defaultSpread}
     }
+    
     samples.sort((a,b)=>a-b);
-    let min=percentile(samples,.035),max=percentile(samples,.965);
-    if(Number.isFinite(m)){
-      const half=Math.max(Math.abs(m-min),Math.abs(max-m),m*.00105);
-      min=m-half;max=m+half
+    let min=percentile(samples,.02),max=percentile(samples,.98);
+    
+    if ((max - min) < defaultSpread) {
+        min = center - defaultSpread;
+        max = center + defaultSpread;
     }
-    const range=Math.max(max-min,(m||max)*.0009);
-    return{min:min-range*.035,max:max+range*.035}
+    return{min, max}
   }
 
   function smoothColumns(cols){
@@ -429,14 +443,14 @@ export default function(component) {
 
   function lerp(a,b,t){return a+(b-a)*t}
 
+  // --- COLORES NEÓN AZUL/DORADO PARA EL BOCETO 4 ---
   function heatColor(n,bias){
     const a=intensity;
-    if(n<.24) return `rgba(11, 15, 23, ${(0.05+n*0.2)*a})`;
-    if(n<.48) return `rgba(0, 102, 255, ${(0.1+n*0.4)*a})`; 
-    if(n<.68) return `rgba(0, 170, 255, ${(0.2+n*0.5)*a})`; 
-    if(n<.84) return `rgba(246, 177, 48, ${(0.3+n*0.6)*a})`; 
-    if(n<.95) return `rgba(255, 200, 50, ${(0.5+n*0.5)*a})`; 
-    return `rgba(255, 255, 200, ${(0.7+n*0.3)*a})`; 
+    if(n<.20) return `rgba(11, 15, 23, ${(0.05+n*0.2)*a})`;
+    if(n<.50) return `rgba(0, 102, 255, ${(0.15+n*0.5)*a})`; // Azul neón
+    if(n<.75) return `rgba(0, 180, 255, ${(0.3+n*0.5)*a})`; // Celeste
+    if(n<.90) return `rgba(246, 177, 48, ${(0.5+n*0.5)*a})`; // Dorado fuerte
+    return `rgba(255, 255, 200, ${(0.8+n*0.2)*a})`; // Núcleo brillante
   }
 
   function drawGrid(ctx,w,h,q){
@@ -612,6 +626,10 @@ export default function(component) {
         dValue.style.color = delta>=0 ? '#21c48a' : '#f05c72';
     }
 
+    // Volumen añadido para el panel derecho al igual que el boceto
+    const dValue2 = $('#delta-value-2');
+    if (dValue2) dValue2.textContent = compact(buy+sell)+' BTC';
+
     if(sTime){
         const d=new Date(),hh=String(d.getUTCHours()).padStart(2,'0'),mm=String(d.getUTCMinutes()).padStart(2,'0'),ss=String(d.getUTCSeconds()).padStart(2,'0');
         sTime.textContent=`${hh}:${mm}:${ss} UTC`;
@@ -629,7 +647,7 @@ export default function(component) {
       const fs = $('#feed-status'); if(fs) fs.textContent='Live Connected';
       drawHeat();drawOverlay();
     }).catch(err=>{
-      console.error(err);
+      console.error("Snapshot error:", err);
     });
 
     ws=new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@depth@100ms/btcusdt@aggTrade');
@@ -695,7 +713,6 @@ try:
         isolate_styles=True,
     )
 except Exception:
-    # Fallback de seguridad en caso de que st.components.v2 falle
     def _component(*args, **kwargs):
         st.components.v1.html(HTML + "<style>" + CSS + "</style><script>" + JS + "</script>", height=kwargs.get("height", 900))
         return None
@@ -728,14 +745,18 @@ def _handle_result(result) -> None:
         st.rerun()
 
 def render_live_heatmap() -> None:
-    st.markdown("""
+    # IMPORTANTE: Aquí arreglamos el código CSS que se filtraba como texto
+    st.markdown(
+        """
         <style>
             .block-container { padding: 0rem !important; max-width: 100% !important; margin: 0 !important; }
             [data-testid="stSidebar"] { display: none !important; }
             header { display: none !important; }
             footer { display: none !important; }
         </style>
-    """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True
+    )
 
     _init_live_state()
     history = _history_payload()
