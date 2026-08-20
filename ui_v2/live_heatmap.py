@@ -1008,6 +1008,149 @@ export default function(component) {
     return{min,max}
   }
 
+
+  const HEAT_ROWS=140;
+  const HEAT_COLS=260;
+
+  const heatOff=document.createElement('canvas');
+  heatOff.width=HEAT_COLS;
+  heatOff.height=HEAT_ROWS;
+  const heatOctx=heatOff.getContext('2d',{alpha:true});
+
+  function buildHeatGrid(cols,minP,maxP,win){
+    const grid=new Float32Array(HEAT_ROWS*HEAT_COLS);
+    const spanP=Math.max(maxP-minP,1e-9);
+    const rowStep=spanP/(HEAT_ROWS-1);
+
+    const colOf=t=>clamp(
+      Math.floor(((Number(t)-win.start)/(win.end-win.start))*HEAT_COLS),
+      0,
+      HEAT_COLS-1
+    );
+
+    for(const col of cols){
+      const c=colOf(col.t);
+
+      for(const row of col.x||[]){
+        const p=Number(row[0]);
+        const q=Number(row[3]);
+
+        if(!(q>0)||p<minP||p>maxP)continue;
+
+        const r=clamp(
+          Math.round((maxP-p)/rowStep),
+          0,
+          HEAT_ROWS-1
+        );
+
+        const idx=r*HEAT_COLS+c;
+
+        // Preserve the strongest real level observed in this raster cell.
+        if(q>grid[idx])grid[idx]=q;
+      }
+    }
+
+    // Short visual gap-fill ONLY.
+    // Maximum carry = 3 columns, so vanished liquidity cannot become
+    // a long artificial band.
+    for(let r=0;r<HEAT_ROWS;r++){
+      let carry=0;
+      let gaps=0;
+
+      for(let c=0;c<HEAT_COLS;c++){
+        const idx=r*HEAT_COLS+c;
+        const v=grid[idx];
+
+        if(v>0){
+          carry=v;
+          gaps=0;
+          continue;
+        }
+
+        if(carry>0&&gaps<3){
+          gaps++;
+          carry*=0.72;
+          grid[idx]=carry;
+        }else{
+          carry=0;
+          gaps=0;
+        }
+      }
+    }
+
+    return grid
+  }
+
+  function gridQuantiles(grid){
+    const vals=[];
+    for(let i=0;i<grid.length;i++){
+      const v=grid[i];
+      if(v>0)vals.push(v)
+    }
+
+    if(!vals.length)return{q55:1,q82:2,q95:3,q99:4};
+
+    vals.sort((a,b)=>a-b);
+
+    return{
+      q55:percentile(vals,.55)||1,
+      q82:percentile(vals,.82)||1,
+      q95:percentile(vals,.95)||1,
+      q99:percentile(vals,.99)||1
+    }
+  }
+
+  function rasterNorm(v,q){
+    if(!(v>0))return 0;
+    if(v<q.q55)return 0;
+
+    if(v<q.q82){
+      return .18+.24*((v-q.q55)/Math.max(q.q82-q.q55,1e-9))
+    }
+    if(v<q.q95){
+      return .42+.30*((v-q.q82)/Math.max(q.q95-q.q82,1e-9))
+    }
+    if(v<q.q99){
+      return .72+.22*((v-q.q95)/Math.max(q.q99-q.q95,1e-9))
+    }
+    return 1
+  }
+
+  function heatColorRGBA(n){
+    if(n<=0)return[0,0,0,0];
+
+    let rgba;
+    if(n<.30)rgba=[40,55,124,35+n*110];
+    else if(n<.52)rgba=[96,53,156,50+n*125];
+    else if(n<.72)rgba=[177,50,126,60+n*135];
+    else if(n<.88)rgba=[232,70,73,75+n*145];
+    else if(n<.97)rgba=[255,126,35,95+n*150];
+    else rgba=[255,215,61,140+n*110];
+
+    rgba[3]=clamp(Math.round(rgba[3]*intensity),0,255);
+    return rgba
+  }
+
+  function paintHeatGrid(grid){
+    const q=gridQuantiles(grid);
+    const img=heatOctx.createImageData(HEAT_COLS,HEAT_ROWS);
+    const d=img.data;
+
+    for(let i=0;i<grid.length;i++){
+      const n=rasterNorm(grid[i],q);
+      const rgba=heatColorRGBA(n);
+      const j=i*4;
+
+      d[j]=rgba[0];
+      d[j+1]=rgba[1];
+      d[j+2]=rgba[2];
+      d[j+3]=rgba[3];
+    }
+
+    heatOctx.clearRect(0,0,HEAT_COLS,HEAT_ROWS);
+    heatOctx.putImageData(img,0,0)
+  }
+
   function heatNorm(value,q50,q85,q97){
     if(!(value>0))return 0;
 
@@ -1025,47 +1168,6 @@ export default function(component) {
     return clamp(.78 + .22*((value-q97)/Math.max(q97*.8,1e-9)),0,1)
   }
 
-
-  function buildLiquidityBands(cols,minP,maxP,q85){
-    const bands=[],active=new Map();
-    if(!cols||cols.length<2)return bands;
-
-    const keyOf=(p,step)=>String(Math.round(Number(p)/Math.max(Number(step)||5,1e-9)));
-
-    for(const col of cols){
-      const t=Number(col.t),step=Number(col.s)||5,seen=new Set();
-
-      for(const row of col.x||[]){
-        const p=Number(row[0]),q=Number(row[3]);
-        if(!(p>=minP&&p<=maxP&&q>=q85))continue;
-
-        const key=keyOf(p,step);
-        seen.add(key);
-        const prev=active.get(key);
-
-        if(prev && t-prev.lastT<=25000){
-          prev.lastT=t;
-          prev.p=prev.p*.75+p*.25;
-          prev.maxQ=Math.max(prev.maxQ,q);
-          prev.sumQ+=q;
-          prev.count++;
-        }else{
-          if(prev&&prev.count>=2)bands.push({...prev});
-          active.set(key,{startT:t,lastT:t,p,maxQ:q,sumQ:q,count:1,step})
-        }
-      }
-
-      for(const [key,b] of active.entries()){
-        if(!seen.has(key)&&t-b.lastT>25000){
-          if(b.count>=2)bands.push({...b});
-          active.delete(key)
-        }
-      }
-    }
-
-    for(const b of active.values())if(b.count>=2)bands.push({...b});
-    return bands
-  }
 
   function heatColor(n,bias){
     const a=intensity;
@@ -1097,66 +1199,19 @@ export default function(component) {
     const yOf=p=>h-((p-minP)/(maxP-minP))*h;
     const xOf=t=>((Number(t)-win.start)/(win.end-win.start))*w;
 
-    const totals=[];
-    for(const col of cols)for(const row of col.x||[]){
-      const p=Number(row[0]),v=Number(row[3]);
-      if(p>=minP&&p<=maxP&&v>0)totals.push(v)
-    }
-    totals.sort((a,b)=>a-b);
-
-    const q62=percentile(totals,.62)||1;
-    const q85=percentile(totals,.85)||q62;
-    const q97=percentile(totals,.97)||q85;
-
-    // Sparse snapshot texture
-    for(let i=0;i<cols.length;i++){
-      const col=cols[i],x=xOf(col.t);
-      const nextT=i<cols.length-1?Number(cols[i+1].t):Math.min(win.end,Number(col.t)+10000);
-      const cw=Math.max(.7*q,xOf(nextT)-x+.35*q);
-      const step=Number(col.s)||5,cm=Number(col.m)||m;
-      const bh=Math.max(1.0*q,Math.abs(yOf(cm+step)-yOf(cm))*.62);
-
-      for(const row of col.x||[]){
-        const p=Number(row[0]),bid=Number(row[1]),ask=Number(row[2]),v=Number(row[3]);
-        if(p<minP||p>maxP||v<q62)continue;
-
-        const n=heatNorm(v,q62,q85,q97);
-        if(n<=0)continue;
-
-        hctx.fillStyle=heatColor(n,(bid-ask)/Math.max(v,1e-9));
-        hctx.fillRect(x,yOf(p)-bh/2,cw,bh)
-      }
-    }
-
-    // Persistent bands only from strong levels that survive real snapshots
-    const bands=buildLiquidityBands(cols,minP,maxP,q85);
+    // Fixed-cost raster heatmap:
+    // 260 time cells × 140 price cells, independent of raw history size.
+    const grid=buildHeatGrid(cols,minP,maxP,win);
+    paintHeatGrid(grid);
 
     hctx.save();
-    hctx.globalCompositeOperation='screen';
-
-    for(const b of bands){
-      const x1=xOf(b.startT),x2=xOf(b.lastT);
-      if(x2-x1<2*q)continue;
-
-      const avg=b.sumQ/Math.max(1,b.count);
-      const n=heatNorm(Math.max(avg,b.maxQ*.82),q62,q85,q97);
-      if(n<.40)continue;
-
-      const y=yOf(b.p);
-      const bandH=Math.max(1.1*q,Math.abs(yOf(b.p+b.step)-yOf(b.p))*.62);
-      const alpha=clamp(.20+n*.46,.20,.70)*intensity;
-
-      let color;
-      if(n<.58)color=`rgba(105,60,178,${alpha})`;
-      else if(n<.76)color=`rgba(191,54,123,${alpha})`;
-      else if(n<.90)color=`rgba(235,73,70,${alpha})`;
-      else if(n<.975)color=`rgba(255,129,37,${alpha})`;
-      else color=`rgba(255,218,66,${alpha})`;
-
-      hctx.fillStyle=color;
-      hctx.fillRect(x1,y-bandH/2,Math.max(2*q,x2-x1),bandH)
-    }
-
+    hctx.imageSmoothingEnabled=true;
+    hctx.globalAlpha=.96;
+    hctx.drawImage(
+      heatOff,
+      0,0,HEAT_COLS,HEAT_ROWS,
+      0,0,w,h
+    );
     hctx.restore();
 
     drawPriceAxis(minP,maxP);
@@ -1335,7 +1390,7 @@ export default function(component) {
       $('#feed-status').textContent='HIST + LIVE';
       $('#loading-title').textContent='AXION sincronizado';
       $('#loading-message').textContent='Supabase Depth + Binance Klines + aggTrade LIVE';
-      setTimeout(()=>{if(!destroyed)$('#loading-card').classList.add('hide')},350);
+      setTimeout(()=>{if(!destroyed)$('#loading-card').classList.add('hide')},250);
       drawHeat();drawOverlay()
     }).catch(err=>{
       console.error(err);$('#feed-status').textContent='ERROR LIVE';
@@ -1387,10 +1442,20 @@ export default function(component) {
   $$('#timeframes button').forEach(btn=>btn.onclick=()=>{
     $$('#timeframes button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
     currentTf=btn.dataset.tf||'1m';
-    setTriggerValue('timeframe',currentTf);
+
+    // 100% client-side timeframe change:
+    // no Streamlit rerun, no Supabase reload, no component reset.
+    if(ws){
+      try{ws.close()}catch(_){}
+      ws=null
+    }
 
     fetchKlines()
-      .then(()=>{drawHeat();drawOverlay()})
+      .then(()=>{
+        drawHeat();
+        drawOverlay();
+        connect()
+      })
       .catch(err=>console.error('Klines timeframe:',err))
   });
   $('#heat-intensity').oninput=e=>{intensity=clamp(Number(e.target.value)/100,.45,1);drawHeat();drawOverlay()};
@@ -1424,7 +1489,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_fastbands_v1",
+    "axion_orderflow_raster_final_v1",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1439,13 +1504,15 @@ def _history_minutes_for_timeframe(timeframe: str) -> int:
     return 360
 
 
-def _history_payload() -> dict:
+def _fetch_history_impl() -> dict:
     try:
+        # Uses the optimized Supabase RPC already installed.
+        # 20s depth sampling + 30s trade aggregation.
         return _load_orderflow_history_fast_rpc(
             symbol="BTCUSDT",
             minutes=360,
-            depth_step_seconds=10,
-            trade_step_seconds=10,
+            depth_step_seconds=20,
+            trade_step_seconds=30,
         )
     except Exception as fast_exc:
         try:
@@ -1468,6 +1535,28 @@ def _history_payload() -> dict:
                 "source": "error",
                 "error": str(exc),
             }
+
+
+def _history_payload() -> dict:
+    now = datetime.now(timezone.utc)
+    cached = st.session_state.get("axion_history_cache")
+
+    if cached:
+        fetched_at = cached.get("_fetched_at")
+        payload = cached.get("payload")
+        if (
+            isinstance(fetched_at, datetime)
+            and payload is not None
+            and (now - fetched_at).total_seconds() < 30
+        ):
+            return payload
+
+    payload = _fetch_history_impl()
+    st.session_state["axion_history_cache"] = {
+        "_fetched_at": now,
+        "payload": payload,
+    }
+    return payload
 
 
 def render_live_heatmap() -> None:
