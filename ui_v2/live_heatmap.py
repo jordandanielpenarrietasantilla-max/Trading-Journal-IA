@@ -701,20 +701,12 @@ export default function(component) {
   let resizeObserver=null;
 
   let currentTf=String(data?.timeframe||'1m');
-  let intensity=.68;
+  let intensity=.74;
 
   const history=data?.history||{};
-  const HISTORY_MS=Math.max(5,Number(history.minutes||60))*60_000;
+  const DEPTH_RETENTION_MS=Math.max(5,Number(history.minutes||1440))*60_000;
 
-  const historyWindowLabel=document.getElementById('history-window-label');
-  if(historyWindowLabel){
-    const mins=Number(history.minutes||360);
-    historyWindowLabel.textContent=
-      mins>=60
-        ?((mins%60===0)?`${mins/60}h`:`${(mins/60).toFixed(1)}h`)
-        :`${mins}m`;
-  }
-  const MAX_DEPTH_COLS=1200;
+  const MAX_DEPTH_COLS=1800;
 
   // Historical depth: {t,m,bb,ba,sp,s,x:[[p,b,a,q],...]}
   let depthHistory=Array.isArray(history.depth)?history.depth.slice():[];
@@ -757,7 +749,7 @@ export default function(component) {
   }
 
   function trimHistory(){
-    const now=Date.now(),cutoff=now-HISTORY_MS;
+    const now=Date.now(),cutoff=now-DEPTH_RETENTION_MS;
     depthHistory=depthHistory.filter(c=>Number(c.t)>=cutoff).slice(-MAX_DEPTH_COLS);
     tradeSeconds=tradeSeconds.filter(r=>Number(r[0])>=cutoff);
   }
@@ -785,7 +777,7 @@ export default function(component) {
   }
 
   async function fetchSnapshot(){
-    const res=await fetch('https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=220',{cache:'no-store'});
+    const res=await fetch('https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=180',{cache:'no-store'});
     if(!res.ok)throw new Error('Depth HTTP '+res.status);
     const snap=await res.json();
     bids=new Map(normalizeLevels(snap.bids).filter(x=>x[1]>0));
@@ -933,7 +925,7 @@ export default function(component) {
     }
 
     // Keep a generous local buffer without growing forever.
-    if(klineCandles.length>240)klineCandles=klineCandles.slice(-240);
+    if(klineCandles.length>200)klineCandles=klineCandles.slice(-200);
 
     if(firstPrice==null&&klineCandles.length)firstPrice=klineCandles[0].o;
     klinesReady=true
@@ -956,17 +948,37 @@ export default function(component) {
       .sort((a,b)=>a.t-b.t)
   }
 
-  const TARGET_VISIBLE_CANDLES=100;
-  const MAX_DEPTH_HISTORY_MS=24*60*60*1000;
+  const TARGET_VISIBLE_CANDLES=120;
 
-  function desiredWindowMs(){
-    return Math.min(tfMs()*TARGET_VISIBLE_CANDLES,MAX_DEPTH_HISTORY_MS)
+  function candleWindow(){
+    const cs=candles();
+    if(cs.length){
+      const visible=cs.slice(-TARGET_VISIBLE_CANDLES);
+      const first=visible[0];
+      const last=visible[visible.length-1];
+
+      return{
+        start:Number(first.t),
+        end:Number(last.t)+tfMs(),
+        candleCount:visible.length
+      }
+    }
+
+    const end=Date.now();
+    return{
+      start:end-tfMs()*TARGET_VISIBLE_CANDLES,
+      end,
+      candleCount:0
+    }
   }
 
   function updateHistoryWindowLabel(){
     const el=document.getElementById('history-window-label');
     if(!el)return;
-    const mins=Math.round(desiredWindowMs()/60000);
+
+    const win=candleWindow();
+    const mins=Math.max(1,Math.round((win.end-win.start)/60000));
+
     el.textContent=
       mins>=1440
         ?`${(mins/1440).toFixed(mins%1440?1:0)}d`
@@ -977,12 +989,7 @@ export default function(component) {
 
   function timeWindow(){
     trimHistory();
-    const now=Date.now();
-    const depthLast=depthHistory.length?Number(depthHistory[depthHistory.length-1].t):0;
-    const candleLast=klineCandles.length?Number(klineCandles[klineCandles.length-1].t)+tfMs():0;
-    const end=Math.max(now,depthLast,candleLast);
-    const desired=desiredWindowMs();
-    return{start:end-desired,end,desired}
+    return candleWindow()
   }
 
   function robustRange(cols,cnds,m){
@@ -1072,7 +1079,7 @@ export default function(component) {
       }
 
       const quantities=raw.map(x=>x.q).sort((a,b)=>a-b);
-      const strongThreshold=percentile(quantities,.72)||0;
+      const strongThreshold=percentile(quantities,.60)||0;
       const current=new Map();
 
       for(const x of raw){
@@ -1085,10 +1092,10 @@ export default function(component) {
 
       if(prevStrong&&prevCol!=null){
         const gap=c-prevCol;
-        if(gap>0&&gap<=6){
+        if(gap>0&&gap<=10){
           for(const [r,q] of current.entries()){
             let bestPrev=0;
-            for(let dr=-1;dr<=1;dr++){
+            for(let dr=-2;dr<=2;dr++){
               bestPrev=Math.max(bestPrev,prevStrong.get(r+dr)||0)
             }
             if(!(bestPrev>0))continue;
@@ -1260,12 +1267,10 @@ export default function(component) {
     }
 
     // Candles clearly ABOVE heatmap.
-    const theoretical=(tfMs()/(win.end-win.start))*w;
-
-    // Thin terminal-style candles.
-    // Timeframe changes aggregation; candle width does NOT balloon with TF.
-    const bodyW=clamp(theoretical*.34,1.15*q,3.20*q);
-    const wickW=clamp(.52*q,.45*q,.72*q);
+    // Fixed terminal candle width on every timeframe.
+    // No dependence on timeframe or visible-hour span.
+    const bodyW=2.15*q;
+    const wickW=.52*q;
 
     for(const c of cnds){
       if(![c.o,c.h,c.l,c.c].every(Number.isFinite)||c.h<minP||c.l>maxP)continue;
@@ -1396,6 +1401,7 @@ export default function(component) {
       $('#loading-title').textContent='AXION sincronizado';
       $('#loading-message').textContent='Supabase Depth + Binance Klines + aggTrade LIVE';
       setTimeout(()=>{if(!destroyed)$('#loading-card').classList.add('hide')},250);
+      updateHistoryWindowLabel();
       drawHeat();drawOverlay()
     }).catch(err=>{
       console.error(err);$('#feed-status').textContent='ERROR LIVE';
@@ -1432,6 +1438,52 @@ export default function(component) {
     drawTimer=setInterval(()=>{drawOverlay()},750)
   }
 
+  function reconnectStreamOnly(){
+    if(ws){
+      try{ws.onclose=null;ws.close()}catch(_){}
+      ws=null
+    }
+
+    if(captureTimer){
+      clearInterval(captureTimer);
+      captureTimer=null
+    }
+    if(drawTimer){
+      clearInterval(drawTimer);
+      drawTimer=null
+    }
+
+    const kStream=`btcusdt@kline_${binanceInterval()}`;
+    ws=new WebSocket(
+      `wss://stream.binance.com:9443/stream?streams=`+
+      `btcusdt@depth@100ms/btcusdt@aggTrade/${kStream}`
+    );
+
+    ws.onmessage=e=>{
+      const msg=JSON.parse(e.data||'{}'),evt=msg.data||{};
+      if(evt.e==='depthUpdate'){
+        if(!snapshotReady){
+          depthBuffer.push(evt);
+          if(depthBuffer.length>3000)depthBuffer.shift()
+        }else{
+          if(Number(evt.U)>lastUpdateId+1){fetchSnapshot().catch(()=>{});return}
+          if(Number(evt.u)>lastUpdateId)applyDepth(evt)
+        }
+      }else if(evt.e==='aggTrade'){
+        ingestTrade(evt)
+      }else if(evt.e==='kline'){
+        ingestKline(evt.k);
+        drawHeat();
+        drawOverlay()
+      }
+    };
+
+    ws.onerror=()=>{$('#feed-status').textContent='RECONNECT'};
+    ws.onclose=()=>{if(!destroyed)scheduleReconnect()};
+    captureTimer=setInterval(captureDepth,1000);
+    drawTimer=setInterval(()=>{drawOverlay()},750)
+  }
+
   function scheduleReconnect(){
     if(reconnectTimer)clearTimeout(reconnectTimer);
     reconnectTimer=setTimeout(connect,1800)
@@ -1458,16 +1510,15 @@ export default function(component) {
 
     fetchKlines()
       .then(()=>{
+        updateHistoryWindowLabel();
         drawHeat();
         drawOverlay();
-        connect()
+        reconnectStreamOnly()
       })
       .catch(err=>console.error('Klines timeframe:',err))
   });
   $('#heat-intensity').oninput=e=>{intensity=clamp(Number(e.target.value)/100,.45,1);drawHeat();drawOverlay()};
   $('#fullscreen-btn').onclick=async()=>{try{if(!document.fullscreenElement)await root.requestFullscreen();else await document.exitFullscreen()}catch(_){}};
-
-  $('#history-label').textContent=(history.minutes||30)+'m';
   sessionInfo();clockTimer=setInterval(sessionInfo,1000);
 
   if(typeof ResizeObserver!=='undefined'){
@@ -1495,7 +1546,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_boceto3_24h_v1",
+    "axion_orderflow_boceto3_clean_v2",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1543,7 +1594,7 @@ def _fetch_history_impl() -> dict:
 
 def _history_payload() -> dict:
     now = datetime.now(timezone.utc)
-    cached = st.session_state.get("axion_history_cache")
+    cached = st.session_state.get("axion_history_cache_v2")
 
     if cached:
         fetched_at = cached.get("_fetched_at")
@@ -1556,7 +1607,7 @@ def _history_payload() -> dict:
             return payload
 
     payload = _fetch_history_impl()
-    st.session_state["axion_history_cache"] = {
+    st.session_state["axion_history_cache_v2"] = {
         "_fetched_at": now,
         "payload": payload,
     }
