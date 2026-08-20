@@ -256,28 +256,6 @@ def load_orderflow_history(
 
 HTML = r"""
 <div id="axion-b3-root" class="axion-b3">
-  <div id="diagbar" style="
-    height:30px;
-    display:flex;
-    align-items:center;
-    gap:14px;
-    padding:0 12px;
-    background:#07101c;
-    border-bottom:1px solid rgba(91,121,163,.28);
-    color:#aab8cb;
-    font:600 11px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    white-space:nowrap;
-    overflow-x:auto;
-    box-sizing:border-box;
-  ">
-    <span style="color:#55d8b1">DIAG</span>
-    <span id="diag-depth">DEPTH: --</span>
-    <span id="diag-trades">TRADES: --</span>
-    <span id="diag-candles">CANDLES: --</span>
-    <span id="diag-tf">TF: --</span>
-    <span id="diag-depth-range">DEPTH RANGE: --</span>
-    <span id="diag-trade-range">TRADE RANGE: --</span>
-  </div>
   <header class="b3-header">
     <div class="brand">
       <div class="brand-mark">A</div>
@@ -658,13 +636,17 @@ export default function(component) {
   // Historical depth: {t,m,bb,ba,sp,s,x:[[p,b,a,q],...]}
   let depthHistory=Array.isArray(history.depth)?history.depth.slice():[];
 
-  // Historical trade seconds:
-  // [t,o,h,l,c,v,buy,sell,delta,vwap,count]
+  // Historical trade seconds are retained ONLY for delta / volume / flow profile.
+  // They are NOT used to build candlesticks anymore.
   let tradeSeconds=Array.isArray(history.trades)?history.trades.slice():[];
+
+  // Candles come exclusively from official Binance Klines.
+  let klineCandles=[];
+  let klinesReady=false;
 
   let bids=new Map(),asks=new Map(),lastUpdateId=0,snapshotReady=false,depthBuffer=[];
   let liveTradeSecond=null;
-  let firstPrice=tradeSeconds.length?Number(tradeSeconds[0][1]):null;
+  let firstPrice=null;
 
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const dpr=()=>clamp(window.devicePixelRatio||1,1,2);
@@ -768,8 +750,7 @@ export default function(component) {
   function captureDepth(){
     if(!snapshotReady)return;
     const col=bucketBook();if(!col)return;
-    depthHistory.push(col);trimHistory();updateDiagnostics();
-    drawHeat();drawOverlay()
+    depthHistory.push(col);trimHistory();drawHeat();drawOverlay()
   }
 
   function ingestTrade(evt){
@@ -791,87 +772,104 @@ export default function(component) {
   function tfMs(){
     return{'1m':60_000,'5m':300_000,'15m':900_000,'30m':1_800_000,'1H':3_600_000}[currentTf]||60_000
   }
+
+  function binanceInterval(){
+    return{'1m':'1m','5m':'5m','15m':'15m','30m':'30m','1H':'1h'}[currentTf]||'1m'
+  }
+
+  async function fetchKlines(){
+    klinesReady=false;
+
+    const interval=binanceInterval();
+    const url=
+      `https://data-api.binance.vision/api/v3/klines`+
+      `?symbol=BTCUSDT&interval=${encodeURIComponent(interval)}&limit=240`;
+
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok)throw new Error('Klines HTTP '+res.status);
+
+    const raw=await res.json();
+    if(!Array.isArray(raw))throw new Error('Respuesta Klines inválida');
+
+    klineCandles=raw.map(k=>({
+      t:Number(k[0]),
+      closeTime:Number(k[6]),
+      o:Number(k[1]),
+      h:Number(k[2]),
+      l:Number(k[3]),
+      c:Number(k[4]),
+      v:Number(k[5]),
+      closed:Number(k[6])<Date.now()
+    })).filter(c=>
+      Number.isFinite(c.t)&&
+      Number.isFinite(c.o)&&c.o>0&&
+      Number.isFinite(c.h)&&c.h>0&&
+      Number.isFinite(c.l)&&c.l>0&&
+      Number.isFinite(c.c)&&c.c>0&&
+      c.h>=c.l
+    ).sort((a,b)=>a.t-b.t);
+
+    if(klineCandles.length){
+      firstPrice=klineCandles[0].o;
+      klinesReady=true
+    }
+
+    return klineCandles
+  }
+
+  function ingestKline(k){
+    if(!k)return;
+
+    const candle={
+      t:Number(k.t),
+      closeTime:Number(k.T),
+      o:Number(k.o),
+      h:Number(k.h),
+      l:Number(k.l),
+      c:Number(k.c),
+      v:Number(k.v),
+      closed:Boolean(k.x)
+    };
+
+    if(
+      !Number.isFinite(candle.t)||
+      !Number.isFinite(candle.o)||candle.o<=0||
+      !Number.isFinite(candle.h)||candle.h<=0||
+      !Number.isFinite(candle.l)||candle.l<=0||
+      !Number.isFinite(candle.c)||candle.c<=0||
+      candle.h<candle.l
+    )return;
+
+    const idx=klineCandles.findIndex(c=>c.t===candle.t);
+
+    if(idx>=0)klineCandles[idx]=candle;
+    else{
+      klineCandles.push(candle);
+      klineCandles.sort((a,b)=>a.t-b.t)
+    }
+
+    // Keep a generous local buffer without growing forever.
+    if(klineCandles.length>300)klineCandles=klineCandles.slice(-300);
+
+    if(firstPrice==null&&klineCandles.length)firstPrice=klineCandles[0].o;
+    klinesReady=true
+  }
   function allTradeRows(){
     const arr=tradeSeconds.slice();
     if(liveTradeSecond)arr.push(liveTradeSecond);
     return arr.sort((a,b)=>a[0]-b[0])
   }
-
-  function fmtDiagTime(t){
-    const n=Number(t);
-    if(!Number.isFinite(n)||n<=0)return'--';
-    try{
-      return new Date(n).toLocaleTimeString([],{
-        hour:'2-digit',
-        minute:'2-digit',
-        second:'2-digit'
-      })
-    }catch(_){return String(n)}
-  }
-
-  function updateDiagnostics(){
-    try{
-      const d=allDepthRows();
-      const tr=allTradeRows();
-      const cs=candles();
-
-      const set=(id,v)=>{
-        const el=document.getElementById(id);
-        if(el)el.textContent=v
-      };
-
-      set('diag-depth',`DEPTH: ${d.length}`);
-      set('diag-trades',`TRADES: ${tr.length}`);
-      set('diag-candles',`CANDLES: ${cs.length}`);
-      set('diag-tf',`TF: ${currentTf}`);
-
-      set(
-        'diag-depth-range',
-        d.length
-          ? `DEPTH RANGE: ${fmtDiagTime(d[0].t)} → ${fmtDiagTime(d[d.length-1].t)}`
-          : 'DEPTH RANGE: --'
-      );
-
-      set(
-        'diag-trade-range',
-        tr.length
-          ? `TRADE RANGE: ${fmtDiagTime(tr[0][0])} → ${fmtDiagTime(tr[tr.length-1][0])}`
-          : 'TRADE RANGE: --'
-      );
-    }catch(err){
-      const el=document.getElementById('diagbar');
-      if(el)el.textContent='DIAG ERROR: '+String(err?.message||err)
-    }
-  }
-
   function candles(){
-    const span=tfMs(),out=[];
-    for(const r of allTradeRows()){
-      const obs=Number(r[0]);
-      const t=Math.floor(obs/span)*span;
-      let c=out[out.length-1];
-
-      if(!c||c.t!==t){
-        c={
-          t,
-          firstObserved:obs,
-          lastObserved:obs,
-          o:Number(r[1]),
-          h:Number(r[2]),
-          l:Number(r[3]),
-          c:Number(r[4]),
-          v:Number(r[5])
-        };
-        out.push(c)
-      }else{
-        c.h=Math.max(c.h,Number(r[2]));
-        c.l=Math.min(c.l,Number(r[3]));
-        c.c=Number(r[4]);
-        c.v+=Number(r[5]);
-        c.lastObserved=obs
-      }
-    }
-    return out
+    return klineCandles
+      .filter(c=>
+        Number.isFinite(c.t)&&
+        Number.isFinite(c.o)&&c.o>0&&
+        Number.isFinite(c.h)&&c.h>0&&
+        Number.isFinite(c.l)&&c.l>0&&
+        Number.isFinite(c.c)&&c.c>0&&
+        c.h>=c.l
+      )
+      .sort((a,b)=>a.t-b.t)
   }
 
   function timeWindow(){
@@ -968,7 +966,7 @@ export default function(component) {
     drawGrid(hctx,w,h,q);
 
     const win=timeWindow(),cols=depthHistory.filter(c=>c.t>=win.start&&c.t<=win.end);
-    const cnds=candles().filter(c=>(c.lastObserved??c.t)>=win.start&&(c.firstObserved??c.t)<=win.end);
+    const cnds=candles().filter(c=>c.t+tfMs()>=win.start&&c.t<=win.end);
     const m=mid()??(cols.length?Number(cols[cols.length-1].m):null);
     const range=robustRange(cols,cnds,m),minP=range.min,maxP=range.max;
     const yOf=p=>h-((p-minP)/(maxP-minP))*h;
@@ -1008,7 +1006,7 @@ export default function(component) {
     octx.clearRect(0,0,w,h);
 
     const rows=allTradeRows().filter(r=>r[0]>=win.start&&r[0]<=win.end);
-    const cnds=candles().filter(c=>(c.lastObserved??c.t)>=win.start&&(c.firstObserved??c.t)<=win.end);
+    const cnds=candles().filter(c=>c.t+tfMs()>=win.start&&c.t<=win.end);
 
     // Window VWAP
     let vol=0,notional=0,buy=0,sell=0;
@@ -1039,22 +1037,14 @@ export default function(component) {
 
     // Candles clearly ABOVE heatmap.
     const theoretical=(tfMs()/(win.end-win.start))*w;
-    const bodyW=clamp(theoretical*.40,2.8*q,6.2*q);
-    const wickW=clamp(.80*q,.65*q,1.05*q);
+    const bodyW=clamp(theoretical*.46,3.0*q,7.0*q);
+    const wickW=clamp(.82*q,.70*q,1.05*q);
 
     for(const c of cnds){
       if(![c.o,c.h,c.l,c.c].every(Number.isFinite)||c.h<minP||c.l>maxP)continue;
 
-      const candleEnd=c.t+tfMs();
       const theoreticalCenter=c.t+tfMs()/2;
-      const latestObserved=Number(c.lastObserved??c.t);
-
-      const xTime=
-        candleEnd<=win.end
-          ? theoreticalCenter
-          : Math.min(theoreticalCenter,latestObserved);
-
-      const x=xOf(clamp(xTime,win.start,win.end));
+      const x=xOf(clamp(theoreticalCenter,win.start,win.end));
       if(!Number.isFinite(x)||x<0||x>w)continue;
       const yh=yOf(c.h),yl=yOf(c.l),yo=yOf(c.o),yc=yOf(c.c),up=c.c>=c.o;
       const fill=up?'#21d3a7':'#ef5368';
@@ -1155,7 +1145,7 @@ export default function(component) {
 
     const hc=depthHistory.length,tc=tradeSeconds.length;
     $('#history-badge-text').textContent=`HIST ${history.depth_count||0} + LIVE ${Math.max(0,hc-(history.depth_count||0))}`;
-    $('#footer-left').textContent=`● Supabase ${history.depth_count||0} depth · ${history.trade_count||0} trades · Binance LIVE`
+    $('#footer-left').textContent=`● Supabase Depth · Binance Klines · aggTrade LIVE`
   }
 
   function sessionInfo(){
@@ -1174,11 +1164,11 @@ export default function(component) {
     $('#loading-title').textContent='Sincronizando Binance LIVE…';
     $('#loading-message').textContent=`Histórico cargado: ${history.depth_count||0} columnas de depth`;
 
-    fetchSnapshot().then(()=>{
+    Promise.all([fetchSnapshot(),fetchKlines()]).then(()=>{
       $('#feed-status').textContent='HIST + LIVE';
       $('#loading-title').textContent='AXION sincronizado';
-      $('#loading-message').textContent='Supabase histórico + Binance depth/aggTrade';
-      setTimeout(()=>{if(!destroyed)$('#loading-card').classList.add('hide')},1800);
+      $('#loading-message').textContent='Supabase Depth + Binance Klines + aggTrade LIVE';
+      setTimeout(()=>{if(!destroyed)$('#loading-card').classList.add('hide')},1200);
       drawHeat();drawOverlay()
     }).catch(err=>{
       console.error(err);$('#feed-status').textContent='ERROR LIVE';
@@ -1186,7 +1176,11 @@ export default function(component) {
       $('#loading-message').textContent=String(err?.message||err)
     });
 
-    ws=new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@depth@100ms/btcusdt@aggTrade');
+    const kStream=`btcusdt@kline_${binanceInterval()}`;
+    ws=new WebSocket(
+      `wss://stream.binance.com:9443/stream?streams=`+
+      `btcusdt@depth@100ms/btcusdt@aggTrade/${kStream}`
+    );
     ws.onmessage=e=>{
       if(destroyed)return;
       let msg;try{msg=JSON.parse(e.data)}catch(_){return}
@@ -1197,7 +1191,13 @@ export default function(component) {
         if(u<expected)return;
         if(U>expected){snapshotReady=false;fetchSnapshot().catch(scheduleReconnect);return}
         applyDepth(evt)
-      }else if(evt.e==='aggTrade'){ingestTrade(evt)}
+      }else if(evt.e==='aggTrade'){
+        ingestTrade(evt)
+      }else if(evt.e==='kline'){
+        ingestKline(evt.k);
+        drawHeat();
+        drawOverlay()
+      }
     };
     ws.onerror=()=>{$('#feed-status').textContent='RECONNECT'};
     ws.onclose=()=>{if(!destroyed)scheduleReconnect()};
@@ -1219,7 +1219,12 @@ export default function(component) {
 
   $$('#timeframes button').forEach(btn=>btn.onclick=()=>{
     $$('#timeframes button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
-    currentTf=btn.dataset.tf||'1m';setTriggerValue('timeframe',currentTf);drawHeat();drawOverlay()
+    currentTf=btn.dataset.tf||'1m';
+    setTriggerValue('timeframe',currentTf);
+
+    fetchKlines()
+      .then(()=>{drawHeat();drawOverlay()})
+      .catch(err=>console.error('Klines timeframe:',err))
   });
   $('#heat-intensity').oninput=e=>{intensity=clamp(Number(e.target.value)/100,.45,1);drawHeat();drawOverlay()};
   $('#fullscreen-btn').onclick=async()=>{try{if(!document.fullscreenElement)await root.requestFullscreen();else await document.exitFullscreen()}catch(_){}};
@@ -1228,8 +1233,7 @@ export default function(component) {
   sessionInfo();clockTimer=setInterval(sessionInfo,1000);
 
   if(typeof ResizeObserver!=='undefined'){
-    resizeObserver=setInterval(updateDiagnostics,1000);
-  new ResizeObserver(()=>{drawHeat();drawOverlay()});
+    resizeObserver=new ResizeObserver(()=>{drawHeat();drawOverlay()});
     resizeObserver.observe(parentElement.querySelector('.b3-workspace'))
   }
 
@@ -1253,7 +1257,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_diag_v1",
+    "axion_orderflow_binance_klines_v1",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1309,7 +1313,7 @@ def render_live_heatmap() -> None:
         default=None,
         key="axion_boceto3_market_live",
         width="stretch",
-        height=850,
+        height=820,
     )
 
     _handle_result(result)
