@@ -11,14 +11,12 @@ def _secret(name: str) -> str | None:
     value = os.getenv(name)
     if value:
         return str(value).strip()
-
     try:
         value = st.secrets.get(name)
         if value:
             return str(value).strip()
     except Exception:
         pass
-
     try:
         supabase_cfg = st.secrets.get("supabase", {})
         nested_name = {
@@ -31,19 +29,16 @@ def _secret(name: str) -> str | None:
                 return str(value).strip()
     except Exception:
         pass
-
     return None
 
 @st.cache_resource(show_spinner=False)
 def _client() -> Client:
     url = _secret("SUPABASE_URL")
     key = _secret("SUPABASE_SERVICE_ROLE_KEY")
-
     if not url:
         raise RuntimeError("Falta SUPABASE_URL en los Secrets de Streamlit.")
     if not key:
         raise RuntimeError("Falta SUPABASE_SERVICE_ROLE_KEY en los Secrets de Streamlit. ")
-
     return create_client(url, key)
 
 def _iso_to_ms(value: Any) -> int:
@@ -61,7 +56,6 @@ def _fetch_all(*, table: str, columns: str, symbol: str, cutoff_iso: str, page_s
     client = _client()
     rows: list[dict[str, Any]] = []
     offset = 0
-
     while True:
         response = (
             client.table(table)
@@ -93,7 +87,6 @@ def _downsample_evenly(rows: list[dict[str, Any]], max_points: int) -> list[dict
 def _compact_depth_row(row: dict[str, Any]) -> dict[str, Any]:
     buckets_raw = row.get("buckets") or []
     compact: list[list[float]] = []
-
     if isinstance(buckets_raw, list):
         for item in buckets_raw:
             if not isinstance(item, dict):
@@ -106,7 +99,6 @@ def _compact_depth_row(row: dict[str, Any]) -> dict[str, Any]:
             except (TypeError, ValueError):
                 continue
             compact.append([p, b, a, q])
-
     return {
         "t": _iso_to_ms(row.get("ts")),
         "m": float(row.get("mid") or 0),
@@ -133,7 +125,8 @@ def _compact_trade_row(row: dict[str, Any]) -> list[float | int]:
     ]
 
 @st.cache_data(ttl=5, show_spinner=False)
-def load_orderflow_history(*, symbol: str = "BTCUSDT", minutes: int = 30, max_depth_columns: int = 900) -> dict[str, Any]:
+def load_orderflow_history(*, symbol: str = "BTCUSDT", minutes: int = 5, max_depth_columns: int = 900) -> dict[str, Any]:
+    # IMPORTANTE: Hemos bajado a 'minutes=5' para que Supabase cargue rápido.
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(minutes=minutes)
     cutoff_iso = cutoff.isoformat()
@@ -144,7 +137,6 @@ def load_orderflow_history(*, symbol: str = "BTCUSDT", minutes: int = 30, max_de
         symbol=symbol,
         cutoff_iso=cutoff_iso,
     )
-
     trade_rows = _fetch_all(
         table="orderflow_trade_seconds",
         columns="ts,open,high,low,close,volume,buy_volume,sell_volume,delta,vwap,trade_count",
@@ -167,11 +159,10 @@ def load_orderflow_history(*, symbol: str = "BTCUSDT", minutes: int = 30, max_de
     }
 
 # =========================================================
-# ESTRUCTURA HTML - BOCETO 4 PRO
+# HTML Y CSS DEL BOCETO 4
 # =========================================================
 HTML = r"""
 <div id="axion-pro-root" class="axion-pro-layout">
-  <!-- 1. BARRA LATERAL IZQUIERDA -->
   <aside class="side-nav">
     <div class="nav-logo">A</div>
     <nav class="nav-icons">
@@ -185,7 +176,6 @@ HTML = r"""
     </div>
   </aside>
 
-  <!-- 2. HEADER SUPERIOR -->
   <header class="top-header">
     <div class="header-brand">AXION <span>PRIME</span></div>
     <div class="header-actions">
@@ -195,13 +185,12 @@ HTML = r"""
         <div class="avatar">AP</div>
         <div class="user-info">
           <b>AXION PRIME</b>
-          <span id="feed-status" style="color:#21c48a;">Pro Trader</span>
+          <span id="feed-status" style="color:#21c48a;">Iniciando...</span>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- 3. PANEL CENTRAL (Gráfico) -->
   <main class="main-content">
     <div class="asset-bar">
       <div class="asset-title">BTC/USDT <span>★</span> <b id="quote-price">—</b> <small class="up" id="quote-change">—</small></div>
@@ -236,11 +225,10 @@ HTML = r"""
     </div>
   </main>
 
-  <!-- 4. PANEL DERECHO (IA y Métricas) -->
   <aside class="right-panel">
     <div class="panel-card ai-summary">
       <div class="card-header">🤖 AI Market Summary <span class="badge">AXION AI</span></div>
-      <p id="loading-message">Sincronizando histórica y Live WebSockets...</p>
+      <p id="loading-message" style="color:#4db8ff;">Sincronizando profundidad y WebSockets...</p>
       <div class="confidence">
         <span>Confidence</span> <span>78%</span>
       </div>
@@ -265,9 +253,6 @@ HTML = r"""
 </div>
 """
 
-# =========================================================
-# CSS - GLASSMORPHISM OSCURO
-# =========================================================
 CSS = r"""
 :host { display:block; width:100%; height:100vh; font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; background-color: #05070a; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -277,16 +262,11 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   display: grid;
   grid-template-columns: 75px 1fr 340px;
   grid-template-rows: 65px 1fr;
-  grid-template-areas: 
-    "nav header header"
-    "nav main right";
-  width: 100%; height: 100vh;
-  color: #c5d0e6; overflow: hidden;
-  background-color: #05070a;
+  grid-template-areas: "nav header header" "nav main right";
+  width: 100%; height: 100vh; color: #c5d0e6; overflow: hidden; background-color: #05070a;
 }
 .axion-pro-layout:fullscreen { width: 100vw; height: 100vh; }
 
-/* NAV */
 .side-nav { grid-area: nav; background: #080b10; border-right: 1px solid #141b26; display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
 .nav-logo { font-size: 24px; font-weight: 900; color: #4db8ff; margin-bottom: 30px; letter-spacing: -1px;}
 .nav-icons { display: flex; flex-direction: column; gap: 20px; width: 100%; }
@@ -296,7 +276,6 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 .nav-btn span { font-size: 20px; }
 .nav-btn small { font-size: 9px; font-weight: 600; letter-spacing: 0.5px;}
 
-/* HEADER */
 .top-header { grid-area: header; background: #080b10; display: flex; justify-content: space-between; align-items: center; padding: 0 25px; border-bottom: 1px solid #141b26; }
 .header-brand { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #fff;}
 .header-brand span { color: #5a6b8c; font-weight: 400; }
@@ -308,7 +287,6 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 .user-info b { display: block; font-size: 13px; color: #fff; }
 .user-info span { font-size: 10px; color: #21c48a; }
 
-/* MAIN */
 .main-content { grid-area: main; display: flex; flex-direction: column; padding: 20px 25px; background: #05070a; min-width:0; min-height:0; }
 .asset-bar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
 .asset-title { font-size: 26px; font-weight: 600; color: #fff; display: flex; align-items: baseline; gap: 12px; }
@@ -334,7 +312,6 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 .intensity-bar-container { display: flex; align-items: center; gap: 15px; font-size: 10px; margin-top: 20px; color: #5a6b8c; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;}
 .intensity-gradient { flex: 1; height: 6px; border-radius: 4px; background: linear-gradient(90deg, #020305, #0055ff, #f6b130, #fff); }
 
-/* RIGHT PANEL */
 .right-panel { grid-area: right; background: #080b10; border-left: 1px solid #141b26; padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;}
 .panel-card { background: #0b0f16; border: 1px solid #141b26; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);}
 .card-header { font-size: 14px; color: #fff; margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;}
@@ -349,7 +326,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 """
 
 # =========================================================
-# JAVASCRIPT - LOGICA Y RENDER NEON
+# JAVASCRIPT LOGIC
 # =========================================================
 JS = r"""
 export default function(component) {
@@ -440,23 +417,31 @@ export default function(component) {
   }
 
   async function fetchSnapshot(){
-    const res=await fetch('https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=1000',{cache:'no-store'});
-    if(!res.ok)throw new Error('Depth HTTP '+res.status);
-    const snap=await res.json();
-    bids=new Map(normalizeLevels(snap.bids).filter(x=>x[1]>0));
-    asks=new Map(normalizeLevels(snap.asks).filter(x=>x[1]>0));
-    lastUpdateId=Number(snap.lastUpdateId||0);
+    try {
+        const res=await fetch('https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=1000',{cache:'no-store'});
+        if(!res.ok)throw new Error('Depth HTTP '+res.status);
+        const snap=await res.json();
+        bids=new Map(normalizeLevels(snap.bids).filter(x=>x[1]>0));
+        asks=new Map(normalizeLevels(snap.asks).filter(x=>x[1]>0));
+        lastUpdateId=Number(snap.lastUpdateId||0);
 
-    const buffered=depthBuffer.filter(e=>Number(e.u)>lastUpdateId);
-    let start=-1;
-    for(let i=0;i<buffered.length;i++){
-      const e=buffered[i],expected=lastUpdateId+1;
-      if(Number(e.U)<=expected&&Number(e.u)>=expected){start=i;break}
+        const buffered=depthBuffer.filter(e=>Number(e.u)>lastUpdateId);
+        let start=-1;
+        for(let i=0;i<buffered.length;i++){
+          const e=buffered[i],expected=lastUpdateId+1;
+          if(Number(e.U)<=expected&&Number(e.u)>=expected){start=i;break}
+        }
+        if(start>=0){
+          for(let i=start;i<buffered.length;i++)if(Number(buffered[i].u)>lastUpdateId)applyDepth(buffered[i])
+        }
+        depthBuffer=[];
+        snapshotReady=true;
+    } catch(err) {
+        // En caso de que el adblocker bloquee Binance
+        console.error("Binance Snapshot bloqueado:", err);
+        snapshotReady=true;
+        throw err;
     }
-    if(start>=0){
-      for(let i=start;i<buffered.length;i++)if(Number(buffered[i].u)>lastUpdateId)applyDepth(buffered[i])
-    }
-    depthBuffer=[];snapshotReady=true
   }
 
   function bucketStep(price){
@@ -466,6 +451,7 @@ export default function(component) {
     if(price>=5000)return 1;
     return .5
   }
+  
   function bucketBook(){
     const m=mid();if(m==null)return null;
     const step=bucketStep(m),map=new Map(),book=sortedBook();
@@ -599,7 +585,6 @@ export default function(component) {
 
   function lerp(a,b,t){return a+(b-a)*t}
 
-  // --- COLORES NEÓN AZUL/DORADO PARA EL BOCETO 4 ---
   function heatColor(n,bias){
     const a=intensity;
     if(n<.24) return `rgba(11, 15, 23, ${(0.05+n*0.2)*a})`;
@@ -624,7 +609,6 @@ export default function(component) {
     hctx.fillRect(0,0,w,h);
     drawGrid(hctx,w,h,q);
 
-    // MAGIA NEÓN: Activa la mezcla aditiva para que los colores brillen intensamente
     hctx.globalCompositeOperation = 'lighter';
 
     const win=timeWindow(),cols=depthHistory.filter(c=>c.t>=win.start&&c.t<=win.end);
@@ -691,7 +675,6 @@ export default function(component) {
       }
     }
     
-    // Restaurar a dibujado normal para velas y texto
     hctx.globalCompositeOperation = 'source-over';
     drawPriceAxis(minP,maxP);
     window.__axionViewport={win,minP,maxP,yOf,xOf:xOfT,w,h,q,m}
@@ -760,13 +743,8 @@ export default function(component) {
 
   function updateUI(rows){
     const book=sortedBook(),m=mid();
-    
-    const qPrice = $('#quote-price');
-    const qChange = $('#quote-change');
-    const bValue = $('#bid-value');
-    const aValue = $('#ask-value');
-    const dValue = $('#delta-value');
-    const sTime = $('#session-time');
+    const qPrice = $('#quote-price'), qChange = $('#quote-change');
+    const bValue = $('#bid-value'), aValue = $('#ask-value'), dValue = $('#delta-value'), sTime = $('#session-time');
     
     if(Number.isFinite(m)){
       if(qPrice) qPrice.textContent=fmt(m,2);
@@ -795,9 +773,11 @@ export default function(component) {
         sTime.textContent=`${hh}:${mm}:${ss} UTC`;
     }
     
+    // CORRECCIÓN DEL BUG VISUAL: Ahora SIEMPRE actualiza el texto, aunque esté en 0.
     const msg = $('#loading-message');
-    if(msg && history.depth_count) {
-        msg.innerHTML = `Cargadas <b style="color:#fff;">${history.depth_count}</b> columnas de profundidad histórica.<br>Conectado a Binance Websocket ⚡.`;
+    if(msg) {
+        const count = history.depth_count || 0;
+        msg.innerHTML = `Loaded <b style="color:#4db8ff;">${count}</b> historical depth columns.<br><span style="color:#21c48a;">⚡ Live WebSockets Sync Active</span>`;
     }
   }
 
@@ -808,6 +788,9 @@ export default function(component) {
       drawHeat();drawOverlay();
     }).catch(err=>{
       console.error(err);
+      const fs = $('#feed-status'); if(fs) fs.textContent='API Error';
+      const msg = $('#loading-message');
+      if(msg) msg.innerHTML = `<span style="color:#f05c72;">API Binance bloqueada. Intenta desactivar tu AdBlock/Brave Shields.</span>`;
     });
 
     ws=new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@depth@100ms/btcusdt@aggTrade');
@@ -876,13 +859,13 @@ def _history_payload() -> dict:
     try:
         return load_orderflow_history(
             symbol="BTCUSDT",
-            minutes=30,
+            minutes=5,  # Bajado a 5 minutos para que cargue rapidísimo
             max_depth_columns=900,
         )
     except Exception as exc:
         return {
             "symbol": "BTCUSDT",
-            "minutes": 30,
+            "minutes": 5,
             "depth": [],
             "trades": [],
             "depth_count": 0,
@@ -897,17 +880,24 @@ def _init_live_state() -> None:
 def _handle_result(result) -> None:
     if result is None:
         return
-    timeframe = getattr(result, "timeframe", None)
+    # Corrección de seguridad en Python para evitar fallos si llega como diccionario
+    if isinstance(result, dict):
+        timeframe = result.get("timeframe")
+    else:
+        timeframe = getattr(result, "timeframe", None)
+        
     if timeframe and timeframe != st.session_state.live_timeframe:
         st.session_state.live_timeframe = timeframe
         st.rerun()
 
 def render_live_heatmap() -> None:
-    # 🌟 AÑADIDO: Forzamos que este componente no tenga márgenes para que abarque 
-    # toda la pantalla debajo de tu switcher superior.
+    # Quitamos márgenes y forzamos ancho completo en Streamlit
     st.markdown("""
         <style>
-            .block-container { padding: 0rem !important; max-width: 100% !important; }
+            .block-container { padding: 0rem !important; max-width: 100% !important; margin: 0 !important; }
+            [data-testid="stSidebar"] { display: none !important; }
+            header { display: none !important; }
+            footer { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -922,7 +912,7 @@ def render_live_heatmap() -> None:
         default=None,
         key="axion_boceto4_market_live",
         width="stretch",
-        height=900, # Ajustado para que encaje perfecto debajo del switcher
+        height=900,
     )
 
     _handle_result(result)
