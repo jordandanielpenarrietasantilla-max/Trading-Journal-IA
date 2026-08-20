@@ -701,7 +701,7 @@ export default function(component) {
   let resizeObserver=null;
 
   let currentTf=String(data?.timeframe||'1m');
-  let intensity=.70;
+  let intensity=.68;
 
   const history=data?.history||{};
   const HISTORY_MS=Math.max(5,Number(history.minutes||60))*60_000;
@@ -785,7 +785,7 @@ export default function(component) {
   }
 
   async function fetchSnapshot(){
-    const res=await fetch('https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=1000',{cache:'no-store'});
+    const res=await fetch('https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=220',{cache:'no-store'});
     if(!res.ok)throw new Error('Depth HTTP '+res.status);
     const snap=await res.json();
     bids=new Map(normalizeLevels(snap.bids).filter(x=>x[1]>0));
@@ -833,7 +833,8 @@ export default function(component) {
   function captureDepth(){
     if(!snapshotReady)return;
     const col=bucketBook();if(!col)return;
-    depthHistory.push(col);trimHistory();drawHeat();drawOverlay()
+    depthHistory.push(col);trimHistory();updateHistoryWindowLabel();
+    drawHeat();drawOverlay()
   }
 
   function ingestTrade(evt){
@@ -932,7 +933,7 @@ export default function(component) {
     }
 
     // Keep a generous local buffer without growing forever.
-    if(klineCandles.length>550)klineCandles=klineCandles.slice(-550);
+    if(klineCandles.length>240)klineCandles=klineCandles.slice(-240);
 
     if(firstPrice==null&&klineCandles.length)firstPrice=klineCandles[0].o;
     klinesReady=true
@@ -955,13 +956,33 @@ export default function(component) {
       .sort((a,b)=>a.t-b.t)
   }
 
+  const TARGET_VISIBLE_CANDLES=100;
+  const MAX_DEPTH_HISTORY_MS=24*60*60*1000;
+
+  function desiredWindowMs(){
+    return Math.min(tfMs()*TARGET_VISIBLE_CANDLES,MAX_DEPTH_HISTORY_MS)
+  }
+
+  function updateHistoryWindowLabel(){
+    const el=document.getElementById('history-window-label');
+    if(!el)return;
+    const mins=Math.round(desiredWindowMs()/60000);
+    el.textContent=
+      mins>=1440
+        ?`${(mins/1440).toFixed(mins%1440?1:0)}d`
+        :mins>=60
+          ?`${(mins/60).toFixed(mins%60?1:0)}h`
+          :`${mins}m`
+  }
+
   function timeWindow(){
     trimHistory();
-    const end=Math.max(
-      Date.now(),
-      depthHistory.length?Number(depthHistory[depthHistory.length-1].t):0
-    );
-    return{start:end-HISTORY_MS,end}
+    const now=Date.now();
+    const depthLast=depthHistory.length?Number(depthHistory[depthHistory.length-1].t):0;
+    const candleLast=klineCandles.length?Number(klineCandles[klineCandles.length-1].t)+tfMs():0;
+    const end=Math.max(now,depthLast,candleLast);
+    const desired=desiredWindowMs();
+    return{start:end-desired,end,desired}
   }
 
   function robustRange(cols,cnds,m){
@@ -1009,73 +1030,80 @@ export default function(component) {
   }
 
 
-  const HEAT_ROWS=140;
-  const HEAT_COLS=260;
+  const HEAT_ROWS=150;
+  const HEAT_COLS=300;
 
   const heatOff=document.createElement('canvas');
   heatOff.width=HEAT_COLS;
   heatOff.height=HEAT_ROWS;
   const heatOctx=heatOff.getContext('2d',{alpha:true});
 
-  function buildHeatGrid(cols,minP,maxP,win){
+  function buildObservedBandGrid(cols,minP,maxP,win){
     const grid=new Float32Array(HEAT_ROWS*HEAT_COLS);
     const spanP=Math.max(maxP-minP,1e-9);
     const rowStep=spanP/(HEAT_ROWS-1);
 
     const colOf=t=>clamp(
-      Math.floor(((Number(t)-win.start)/(win.end-win.start))*HEAT_COLS),
-      0,
-      HEAT_COLS-1
+      Math.round(((Number(t)-win.start)/(win.end-win.start))*(HEAT_COLS-1)),
+      0,HEAT_COLS-1
     );
+    const rowOf=p=>clamp(
+      Math.round((maxP-Number(p))/rowStep),
+      0,HEAT_ROWS-1
+    );
+
+    let prevStrong=null;
+    let prevCol=null;
 
     for(const col of cols){
       const c=colOf(col.t);
+      const raw=[];
 
       for(const row of col.x||[]){
-        const p=Number(row[0]);
-        const q=Number(row[3]);
-
+        const p=Number(row[0]),q=Number(row[3]);
         if(!(q>0)||p<minP||p>maxP)continue;
-
-        const r=clamp(
-          Math.round((maxP-p)/rowStep),
-          0,
-          HEAT_ROWS-1
-        );
-
-        const idx=r*HEAT_COLS+c;
-
-        // Preserve the strongest real level observed in this raster cell.
-        if(q>grid[idx])grid[idx]=q;
+        raw.push({r:rowOf(p),q})
       }
-    }
 
-    // Short visual gap-fill ONLY.
-    // Maximum carry = 3 columns, so vanished liquidity cannot become
-    // a long artificial band.
-    for(let r=0;r<HEAT_ROWS;r++){
-      let carry=0;
-      let gaps=0;
+      if(!raw.length){
+        prevStrong=null;
+        prevCol=c;
+        continue
+      }
 
-      for(let c=0;c<HEAT_COLS;c++){
-        const idx=r*HEAT_COLS+c;
-        const v=grid[idx];
+      const quantities=raw.map(x=>x.q).sort((a,b)=>a-b);
+      const strongThreshold=percentile(quantities,.72)||0;
+      const current=new Map();
 
-        if(v>0){
-          carry=v;
-          gaps=0;
-          continue;
-        }
+      for(const x of raw){
+        if(x.q<strongThreshold)continue;
+        const existing=current.get(x.r)||0;
+        if(x.q>existing)current.set(x.r,x.q);
+        const idx=x.r*HEAT_COLS+c;
+        if(x.q>grid[idx])grid[idx]=x.q
+      }
 
-        if(carry>0&&gaps<3){
-          gaps++;
-          carry*=0.72;
-          grid[idx]=carry;
-        }else{
-          carry=0;
-          gaps=0;
+      if(prevStrong&&prevCol!=null){
+        const gap=c-prevCol;
+        if(gap>0&&gap<=6){
+          for(const [r,q] of current.entries()){
+            let bestPrev=0;
+            for(let dr=-1;dr<=1;dr++){
+              bestPrev=Math.max(bestPrev,prevStrong.get(r+dr)||0)
+            }
+            if(!(bestPrev>0))continue;
+
+            const strength=Math.min(q,bestPrev);
+            for(let cc=prevCol;cc<=c;cc++){
+              const idx=r*HEAT_COLS+cc;
+              if(strength>grid[idx])grid[idx]=strength
+            }
+          }
         }
       }
+
+      prevStrong=current;
+      prevCol=c
     }
 
     return grid
@@ -1083,70 +1111,47 @@ export default function(component) {
 
   function gridQuantiles(grid){
     const vals=[];
-    for(let i=0;i<grid.length;i++){
-      const v=grid[i];
-      if(v>0)vals.push(v)
-    }
-
-    if(!vals.length)return{q55:1,q82:2,q95:3,q99:4};
-
+    for(let i=0;i<grid.length;i++)if(grid[i]>0)vals.push(grid[i]);
+    if(!vals.length)return{q52:1,q80:2,q94:3,q99:4};
     vals.sort((a,b)=>a-b);
-
     return{
-      q55:percentile(vals,.55)||1,
-      q82:percentile(vals,.82)||1,
-      q95:percentile(vals,.95)||1,
+      q52:percentile(vals,.52)||1,
+      q80:percentile(vals,.80)||1,
+      q94:percentile(vals,.94)||1,
       q99:percentile(vals,.99)||1
     }
   }
 
   function rasterNorm(v,q){
-    if(!(v>0))return 0;
-    if(v<q.q55)return 0;
-
-    if(v<q.q82){
-      return .18+.24*((v-q.q55)/Math.max(q.q82-q.q55,1e-9))
-    }
-    if(v<q.q95){
-      return .42+.30*((v-q.q82)/Math.max(q.q95-q.q82,1e-9))
-    }
-    if(v<q.q99){
-      return .72+.22*((v-q.q95)/Math.max(q.q99-q.q95,1e-9))
-    }
+    if(!(v>0)||v<q.q52)return 0;
+    if(v<q.q80)return .16+.26*((v-q.q52)/Math.max(q.q80-q.q52,1e-9));
+    if(v<q.q94)return .42+.30*((v-q.q80)/Math.max(q.q94-q.q80,1e-9));
+    if(v<q.q99)return .72+.22*((v-q.q94)/Math.max(q.q99-q.q94,1e-9));
     return 1
   }
 
   function heatColorRGBA(n){
     if(n<=0)return[0,0,0,0];
-
     let rgba;
-    if(n<.30)rgba=[40,55,124,35+n*110];
-    else if(n<.52)rgba=[96,53,156,50+n*125];
-    else if(n<.72)rgba=[177,50,126,60+n*135];
-    else if(n<.88)rgba=[232,70,73,75+n*145];
-    else if(n<.97)rgba=[255,126,35,95+n*150];
-    else rgba=[255,215,61,140+n*110];
-
+    if(n<.28)rgba=[32,51,121,42+n*105];
+    else if(n<.50)rgba=[82,52,160,55+n*120];
+    else if(n<.70)rgba=[169,49,132,70+n*130];
+    else if(n<.86)rgba=[228,67,77,88+n*140];
+    else if(n<.96)rgba=[255,126,35,110+n*145];
+    else rgba=[255,218,65,160+n*90];
     rgba[3]=clamp(Math.round(rgba[3]*intensity),0,255);
     return rgba
   }
 
-  function paintHeatGrid(grid){
+  function paintObservedBandGrid(grid){
     const q=gridQuantiles(grid);
     const img=heatOctx.createImageData(HEAT_COLS,HEAT_ROWS);
     const d=img.data;
-
     for(let i=0;i<grid.length;i++){
       const n=rasterNorm(grid[i],q);
-      const rgba=heatColorRGBA(n);
-      const j=i*4;
-
-      d[j]=rgba[0];
-      d[j+1]=rgba[1];
-      d[j+2]=rgba[2];
-      d[j+3]=rgba[3];
+      const rgba=heatColorRGBA(n),j=i*4;
+      d[j]=rgba[0];d[j+1]=rgba[1];d[j+2]=rgba[2];d[j+3]=rgba[3]
     }
-
     heatOctx.clearRect(0,0,HEAT_COLS,HEAT_ROWS);
     heatOctx.putImageData(img,0,0)
   }
@@ -1201,8 +1206,8 @@ export default function(component) {
 
     // Fixed-cost raster heatmap:
     // 260 time cells × 140 price cells, independent of raw history size.
-    const grid=buildHeatGrid(cols,minP,maxP,win);
-    paintHeatGrid(grid);
+    const grid=buildObservedBandGrid(cols,minP,maxP,win);
+    paintObservedBandGrid(grid);
 
     hctx.save();
     hctx.imageSmoothingEnabled=true;
@@ -1442,6 +1447,7 @@ export default function(component) {
   $$('#timeframes button').forEach(btn=>btn.onclick=()=>{
     $$('#timeframes button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
     currentTf=btn.dataset.tf||'1m';
+    updateHistoryWindowLabel();
 
     // 100% client-side timeframe change:
     // no Streamlit rerun, no Supabase reload, no component reset.
@@ -1489,7 +1495,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_raster_final_fix_v1",
+    "axion_orderflow_boceto3_24h_v1",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1506,20 +1512,18 @@ def _history_minutes_for_timeframe(timeframe: str) -> int:
 
 def _fetch_history_impl() -> dict:
     try:
-        # Uses the optimized Supabase RPC already installed.
-        # 20s depth sampling + 30s trade aggregation.
         return _load_orderflow_history_fast_rpc(
             symbol="BTCUSDT",
-            minutes=360,
-            depth_step_seconds=20,
-            trade_step_seconds=30,
+            minutes=1440,
+            depth_step_seconds=60,
+            trade_step_seconds=60,
         )
     except Exception as fast_exc:
         try:
             payload = load_orderflow_history(
                 symbol="BTCUSDT",
-                minutes=360,
-                max_depth_columns=700,
+                minutes=1440,
+                max_depth_columns=900,
             )
             payload["source"] = "fallback"
             payload["error"] = f"Fast RPC unavailable: {fast_exc}"
@@ -1527,7 +1531,7 @@ def _fetch_history_impl() -> dict:
         except Exception as exc:
             return {
                 "symbol": "BTCUSDT",
-                "minutes": 360,
+                "minutes": 1440,
                 "depth": [],
                 "trades": [],
                 "depth_count": 0,
@@ -1547,7 +1551,7 @@ def _history_payload() -> dict:
         if (
             isinstance(fetched_at, datetime)
             and payload is not None
-            and (now - fetched_at).total_seconds() < 30
+            and (now - fetched_at).total_seconds() < 60
         ):
             return payload
 
