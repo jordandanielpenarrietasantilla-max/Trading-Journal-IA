@@ -113,7 +113,7 @@ def _fetch_all(
         offset += page_size
 
         # Safety guard: more than enough for the AXION chart.
-        if offset >= 10_000:
+        if offset >= 30_000:
             break
 
     return rows
@@ -630,7 +630,16 @@ export default function(component) {
   let intensity=.70;
 
   const history=data?.history||{};
-  const HISTORY_MS=Math.max(5,Number(history.minutes||30))*60_000;
+  const HISTORY_MS=Math.max(5,Number(history.minutes||60))*60_000;
+
+  const historyWindowLabel=document.getElementById('history-window-label');
+  if(historyWindowLabel){
+    const mins=Number(history.minutes||360);
+    historyWindowLabel.textContent=
+      mins>=60
+        ?((mins%60===0)?`${mins/60}h`:`${(mins/60).toFixed(1)}h`)
+        :`${mins}m`;
+  }
   const MAX_DEPTH_COLS=1200;
 
   // Historical depth: {t,m,bb,ba,sp,s,x:[[p,b,a,q],...]}
@@ -783,7 +792,7 @@ export default function(component) {
     const interval=binanceInterval();
     const url=
       `https://data-api.binance.vision/api/v3/klines`+
-      `?symbol=BTCUSDT&interval=${encodeURIComponent(interval)}&limit=240`;
+      `?symbol=BTCUSDT&interval=${encodeURIComponent(interval)}&limit=500`;
 
     const res=await fetch(url,{cache:'no-store'});
     if(!res.ok)throw new Error('Klines HTTP '+res.status);
@@ -849,7 +858,7 @@ export default function(component) {
     }
 
     // Keep a generous local buffer without growing forever.
-    if(klineCandles.length>300)klineCandles=klineCandles.slice(-300);
+    if(klineCandles.length>550)klineCandles=klineCandles.slice(-550);
 
     if(firstPrice==null&&klineCandles.length)firstPrice=klineCandles[0].o;
     klinesReady=true
@@ -1037,8 +1046,11 @@ export default function(component) {
 
     // Candles clearly ABOVE heatmap.
     const theoretical=(tfMs()/(win.end-win.start))*w;
-    const bodyW=clamp(theoretical*.46,3.0*q,7.0*q);
-    const wickW=clamp(.82*q,.70*q,1.05*q);
+
+    // Thin terminal-style candles.
+    // Timeframe changes aggregation; candle width does NOT balloon with TF.
+    const bodyW=clamp(theoretical*.34,1.15*q,3.20*q);
+    const wickW=clamp(.52*q,.45*q,.72*q);
 
     for(const c of cnds){
       if(![c.o,c.h,c.l,c.c].every(Number.isFinite)||c.h<minP||c.l>maxP)continue;
@@ -1052,7 +1064,7 @@ export default function(component) {
 
       // clean wick separator
       octx.strokeStyle='rgba(0,3,8,.96)';
-      octx.lineWidth=wickW+1.1*q;
+      octx.lineWidth=wickW+.65*q;
       octx.beginPath();octx.moveTo(x,yh);octx.lineTo(x,yl);octx.stroke();
 
       octx.strokeStyle=edge;
@@ -1060,11 +1072,11 @@ export default function(component) {
       octx.beginPath();octx.moveTo(x,yh);octx.lineTo(x,yl);octx.stroke();
 
       const top=Math.min(yo,yc);
-      const bodyH=Math.max(1.25*q,Math.abs(yc-yo));
+      const bodyH=Math.max(.85*q,Math.abs(yc-yo));
 
       // dark border
       octx.fillStyle='rgba(0,3,8,.98)';
-      octx.fillRect(x-bodyW/2-.55*q,top-.55*q,bodyW+1.1*q,bodyH+1.1*q);
+      octx.fillRect(x-bodyW/2-.32*q,top-.32*q,bodyW+.64*q,bodyH+.64*q);
 
       // candle
       octx.fillStyle=fill;
@@ -1257,7 +1269,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_binance_klines_v1",
+    "axion_orderflow_fixed6h_tinycandles_v1",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1265,17 +1277,26 @@ _component = st.components.v2.component(
 )
 
 
-def _history_payload() -> dict:
+def _history_minutes_for_timeframe(timeframe: str) -> int:
+    # One fixed market window for every timeframe.
+    # The timeframe changes candle aggregation, NOT the visible historical span.
+    # Recorder retention is currently 6 hours.
+    return 360
+
+
+def _history_payload(timeframe: str) -> dict:
+    minutes = _history_minutes_for_timeframe(timeframe)
+
     try:
         return load_orderflow_history(
             symbol="BTCUSDT",
-            minutes=30,
-            max_depth_columns=900,
+            minutes=minutes,
+            max_depth_columns=1000,
         )
     except Exception as exc:
         return {
             "symbol": "BTCUSDT",
-            "minutes": 30,
+            "minutes": minutes,
             "depth": [],
             "trades": [],
             "depth_count": 0,
@@ -1303,7 +1324,7 @@ def _handle_result(result) -> None:
 def render_live_heatmap() -> None:
     _init_live_state()
 
-    history = _history_payload()
+    history = _history_payload(st.session_state.live_timeframe)
 
     result = _component(
         data={
