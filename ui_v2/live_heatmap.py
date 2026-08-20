@@ -300,7 +300,7 @@ HTML = r"""
 
     <div class="toolbar-controls">
       <span>Intensidad</span>
-      <input id="heat-intensity" type="range" min="45" max="100" value="70">
+      <input id="heat-intensity" type="range" min="45" max="100" value="66">
       <span>Histórico</span>
       <strong id="history-label">30m</strong>
     </div>
@@ -491,7 +491,7 @@ button,input{font:inherit}
 .toolbar-controls input{width:120px}
 .toolbar-controls strong{color:#9fb0c7;font-size:7px}
 
-.b3-workspace{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 215px}
+.b3-workspace{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 235px}
 .chart-stage{
   position:relative;min-width:0;min-height:0;overflow:hidden;
   background:#02060d;border-right:1px solid #18253a
@@ -627,7 +627,7 @@ export default function(component) {
   let resizeObserver=null;
 
   let currentTf=String(data?.timeframe||'1m');
-  let intensity=.70;
+  let intensity=.66;
 
   const history=data?.history||{};
   const HISTORY_MS=Math.max(5,Number(history.minutes||30))*60_000;
@@ -808,14 +808,74 @@ export default function(component) {
       const center=m||1;return{min:center*.997,max:center*1.003}
     }
     samples.sort((a,b)=>a-b);
-    let min=percentile(samples,.015),max=percentile(samples,.985);
+    let min=percentile(samples,.035),max=percentile(samples,.965);
     if(Number.isFinite(m)){
-      const half=Math.max(Math.abs(m-min),Math.abs(max-m),m*.00125);
+      const half=Math.max(Math.abs(m-min),Math.abs(max-m),m*.00105);
       min=m-half;max=m+half
     }
-    const range=Math.max(max-min,(m||max)*.001);
-    return{min:min-range*.06,max:max+range*.06}
+    const range=Math.max(max-min,(m||max)*.0009);
+    return{min:min-range*.035,max:max+range*.035}
   }
+
+  function smoothColumns(cols){
+    if(!cols.length)return [];
+
+    const out=[];
+    const persistence=new Map();
+    const decay=.76;
+
+    for(let i=0;i<cols.length;i++){
+      const col=cols[i];
+      const step=Number(col.s)||5;
+      const current=new Map();
+
+      for(const row of col.x||[]){
+        const p=Number(row[0]);
+        const bid=Number(row[1]);
+        const ask=Number(row[2]);
+        const q=Number(row[3]);
+        if(!(q>0)||!Number.isFinite(p))continue;
+        current.set(p,{p,bid,ask,q});
+      }
+
+      // decay previous liquidity so bands persist naturally for a few seconds
+      for(const [p,prev] of persistence.entries()){
+        const now=current.get(p);
+        if(now){
+          persistence.set(p,{
+            p,
+            bid:now.bid + prev.bid*decay*.22,
+            ask:now.ask + prev.ask*decay*.22,
+            q:now.q + prev.q*decay*.22
+          });
+        }else{
+          const decayed={
+            p,
+            bid:prev.bid*decay,
+            ask:prev.ask*decay,
+            q:prev.q*decay
+          };
+          if(decayed.q>.000001)persistence.set(p,decayed);
+          else persistence.delete(p)
+        }
+      }
+
+      // add new prices not present before
+      for(const [p,now] of current.entries()){
+        if(!persistence.has(p))persistence.set(p,{...now})
+      }
+
+      out.push({
+        ...col,
+        x:[...persistence.values()]
+          .sort((a,b)=>a.p-b.p)
+          .map(r=>[r.p,r.bid,r.ask,r.q])
+      })
+    }
+    return out
+  }
+
+  function lerp(a,b,t){return a+(b-a)*t}
 
   function heatNorm(value,q50,q85,q97){
     if(!(value>0))return 0;
@@ -828,14 +888,14 @@ export default function(component) {
   }
   function heatColor(n,bias){
     const a=intensity;
-    if(n<.18)return`rgba(17,24,67,${(.11+n*.56)*a})`;
-    if(n<.38)return bias<-.2?`rgba(27,84,133,${(.16+n*.66)*a})`
-      :bias>.2?`rgba(80,42,136,${(.16+n*.66)*a})`
-      :`rgba(61,42,128,${(.16+n*.66)*a})`;
-    if(n<.58)return`rgba(139,46,151,${(.19+n*.64)*a})`;
-    if(n<.78)return`rgba(220,56,82,${(.20+n*.50)*a})`;
-    if(n<.92)return`rgba(255,111,38,${(.26+n*.46)*a})`;
-    return`rgba(255,210,48,${(.36+n*.38)*a})`
+    if(n<.24)return`rgba(13,20,55,${(.08+n*.42)*a})`;
+    if(n<.48)return bias<-.2?`rgba(24,67,112,${(.12+n*.50)*a})`
+      :bias>.2?`rgba(67,36,121,${(.12+n*.50)*a})`
+      :`rgba(53,36,112,${(.12+n*.50)*a})`;
+    if(n<.68)return`rgba(132,42,145,${(.15+n*.52)*a})`;
+    if(n<.84)return`rgba(216,54,79,${(.18+n*.48)*a})`;
+    if(n<.95)return`rgba(255,112,39,${(.28+n*.44)*a})`;
+    return`rgba(255,214,55,${(.46+n*.44)*a})`
   }
 
   function drawGrid(ctx,w,h,q){
@@ -857,26 +917,86 @@ export default function(component) {
     const yOf=p=>h-((p-minP)/(maxP-minP))*h;
     const xOf=t=>((Number(t)-win.start)/(win.end-win.start))*w;
 
+    const smooth=smoothColumns(cols);
+
     const totals=[];
-    for(const col of cols)for(const row of col.x||[]){
+    for(const col of smooth)for(const row of col.x||[]){
       const p=Number(row[0]),v=Number(row[3]);
       if(p>=minP&&p<=maxP&&v>0)totals.push(v)
     }
     totals.sort((a,b)=>a-b);
-    const q50=percentile(totals,.5)||1,q85=percentile(totals,.85)||q50,q97=percentile(totals,.97)||q85;
 
-    for(let i=0;i<cols.length;i++){
-      const col=cols[i],x=xOf(col.t);
-      const nextT=i<cols.length-1?Number(cols[i+1].t):Math.min(win.end,Number(col.t)+1000);
-      const cw=Math.max(.8*q,xOf(nextT)-x+.5*q);
-      const step=Number(col.s)||5,cm=Number(col.m)||m;
-      const bh=Math.max(1.7*q,Math.abs(yOf(cm+step)-yOf(cm))*.9);
+    const q45=percentile(totals,.45)||1;
+    const q72=percentile(totals,.72)||q45;
+    const q90=percentile(totals,.90)||q72;
+    const q98=percentile(totals,.98)||q90;
+
+    const xOfT=t=>((Number(t)-win.start)/(win.end-win.start))*w;
+
+    for(let i=0;i<smooth.length;i++){
+      const col=smooth[i];
+      const next=i<smooth.length-1?smooth[i+1]:null;
+
+      const x1=xOfT(col.t);
+      const x2=xOfT(next?next.t:Math.min(win.end,Number(col.t)+1000));
+      const width=Math.max(1*q,x2-x1+1*q);
+
+      const step=Number(col.s)||5;
+      const cm=Number(col.m)||m;
+      const baseH=Math.max(1.5*q,Math.abs(yOf(cm+step)-yOf(cm))*.78);
+
+      // map next column by price for interpolation
+      const nextMap=new Map();
+      if(next){
+        for(const row of next.x||[])nextMap.set(Number(row[0]),row)
+      }
+
       for(const row of col.x||[]){
-        const p=Number(row[0]),bid=Number(row[1]),ask=Number(row[2]),v=Number(row[3]);
+        const p=Number(row[0]);
+        const bid=Number(row[1]);
+        const ask=Number(row[2]);
+        const v=Number(row[3]);
+
         if(p<minP||p>maxP||!(v>0))continue;
-        const n=heatNorm(v,q50,q85,q97),bias=(bid-ask)/Math.max(v,1e-9);
-        hctx.fillStyle=heatColor(n,bias);
-        hctx.fillRect(x,yOf(p)-bh/2,cw,bh)
+
+        const nr=nextMap.get(p);
+        const nextV=nr?Number(nr[3]):v*.72;
+        const nextBid=nr?Number(nr[1]):bid*.72;
+        const nextAsk=nr?Number(nr[2]):ask*.72;
+
+        // 3 sub-columns create smoother temporal transitions
+        for(let s=0;s<3;s++){
+          const t=s/3;
+          const sv=lerp(v,nextV,t);
+          const sb=lerp(bid,nextBid,t);
+          const sa=lerp(ask,nextAsk,t);
+
+          let n;
+          if(sv<=q45){
+            n=.08+.20*(sv/Math.max(q45,1e-9));
+          }else if(sv<=q72){
+            n=.28+.20*((sv-q45)/Math.max(q72-q45,1e-9));
+          }else if(sv<=q90){
+            n=.48+.24*((sv-q72)/Math.max(q90-q72,1e-9));
+          }else if(sv<=q98){
+            n=.72+.20*((sv-q90)/Math.max(q98-q90,1e-9));
+          }else{
+            n=.94;
+          }
+
+          const bias=(sb-sa)/Math.max(sv,1e-9);
+          hctx.fillStyle=heatColor(n,bias);
+
+          const subW=width/3+1*q;
+          const sx=x1+s*(width/3);
+
+          hctx.fillRect(
+            sx,
+            yOf(p)-baseH/2,
+            subW,
+            baseH
+          );
+        }
       }
     }
 
@@ -922,8 +1042,8 @@ export default function(component) {
 
     // Candles clearly ABOVE heatmap.
     const theoretical=(tfMs()/(win.end-win.start))*w;
-    const bodyW=clamp(theoretical*.72,5.5*q,13*q);
-    const wickW=clamp(bodyW*.20,1.4*q,2.2*q);
+    const bodyW=clamp(theoretical*.46,4.2*q,9*q);
+    const wickW=clamp(bodyW*.18,1.1*q,1.7*q);
 
     for(const c of cnds){
       if(![c.o,c.h,c.l,c.c].every(Number.isFinite)||c.h<minP||c.l>maxP)continue;
@@ -932,7 +1052,7 @@ export default function(component) {
       const yh=yOf(c.h),yl=yOf(c.l),yo=yOf(c.o),yc=yOf(c.c),up=c.c>=c.o;
       const fill=up?'#18e1ae':'#ff4f68';
       const edge=up?'#b3ffe7':'#ffd0d7';
-      const halo=up?'rgba(24,225,174,.18)':'rgba(255,79,104,.18)';
+      const halo=up?'rgba(24,225,174,.10)':'rgba(255,79,104,.10)';
 
       // subtle local dimming behind candle so it never gets lost in heat
       const shadeTop=Math.min(yh,yl)-3*q;
@@ -956,7 +1076,7 @@ export default function(component) {
       // body shadow
       octx.save();
       octx.shadowColor=halo;
-      octx.shadowBlur=5*q;
+      octx.shadowBlur=3*q;
 
       // outer dark frame
       octx.fillStyle='rgba(0,3,8,.98)';
@@ -1015,9 +1135,12 @@ export default function(component) {
     if(!rows.length)return;
     const maxV=Math.max(1,...rows.map(x=>x[1])),yOf=p=>h-((p-minP)/(maxP-minP))*h;
     for(const[p,v]of rows){
-      const width=(v/maxV)*w*.88,y=yOf(p),bh=Math.max(2*q,h/90);
+      const width=(v/maxV)*w*.96,y=yOf(p),bh=Math.max(2.3*q,h/82);
       const grad=pctx.createLinearGradient(w-width,0,w,0);
-      grad.addColorStop(0,'rgba(93,65,175,.28)');grad.addColorStop(.65,'rgba(126,75,199,.62)');grad.addColorStop(1,'rgba(49,206,176,.8)');
+      grad.addColorStop(0,'rgba(86,56,168,.34)');
+      grad.addColorStop(.58,'rgba(130,72,207,.72)');
+      grad.addColorStop(.86,'rgba(240,88,97,.78)');
+      grad.addColorStop(1,'rgba(255,193,54,.92)');
       pctx.fillStyle=grad;pctx.fillRect(w-width,y-bh/2,width,bh)
     }
   }
@@ -1150,7 +1273,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_boceto3_orderflow_pro_v2_candles",
+    "axion_boceto3_orderflow_pro_v3_persistence",
     html=HTML,
     css=CSS,
     js=JS,
