@@ -256,6 +256,28 @@ def load_orderflow_history(
 
 HTML = r"""
 <div id="axion-b3-root" class="axion-b3">
+  <div id="diagbar" style="
+    height:30px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:0 12px;
+    background:#07101c;
+    border-bottom:1px solid rgba(91,121,163,.28);
+    color:#aab8cb;
+    font:600 11px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    white-space:nowrap;
+    overflow-x:auto;
+    box-sizing:border-box;
+  ">
+    <span style="color:#55d8b1">DIAG</span>
+    <span id="diag-depth">DEPTH: --</span>
+    <span id="diag-trades">TRADES: --</span>
+    <span id="diag-candles">CANDLES: --</span>
+    <span id="diag-tf">TF: --</span>
+    <span id="diag-depth-range">DEPTH RANGE: --</span>
+    <span id="diag-trade-range">TRADE RANGE: --</span>
+  </div>
   <header class="b3-header">
     <div class="brand">
       <div class="brand-mark">A</div>
@@ -746,7 +768,8 @@ export default function(component) {
   function captureDepth(){
     if(!snapshotReady)return;
     const col=bucketBook();if(!col)return;
-    depthHistory.push(col);trimHistory();drawHeat();drawOverlay()
+    depthHistory.push(col);trimHistory();updateDiagnostics();
+    drawHeat();drawOverlay()
   }
 
   function ingestTrade(evt){
@@ -773,6 +796,54 @@ export default function(component) {
     if(liveTradeSecond)arr.push(liveTradeSecond);
     return arr.sort((a,b)=>a[0]-b[0])
   }
+
+  function fmtDiagTime(t){
+    const n=Number(t);
+    if(!Number.isFinite(n)||n<=0)return'--';
+    try{
+      return new Date(n).toLocaleTimeString([],{
+        hour:'2-digit',
+        minute:'2-digit',
+        second:'2-digit'
+      })
+    }catch(_){return String(n)}
+  }
+
+  function updateDiagnostics(){
+    try{
+      const d=allDepthRows();
+      const tr=allTradeRows();
+      const cs=candles();
+
+      const set=(id,v)=>{
+        const el=document.getElementById(id);
+        if(el)el.textContent=v
+      };
+
+      set('diag-depth',`DEPTH: ${d.length}`);
+      set('diag-trades',`TRADES: ${tr.length}`);
+      set('diag-candles',`CANDLES: ${cs.length}`);
+      set('diag-tf',`TF: ${currentTf}`);
+
+      set(
+        'diag-depth-range',
+        d.length
+          ? `DEPTH RANGE: ${fmtDiagTime(d[0].t)} → ${fmtDiagTime(d[d.length-1].t)}`
+          : 'DEPTH RANGE: --'
+      );
+
+      set(
+        'diag-trade-range',
+        tr.length
+          ? `TRADE RANGE: ${fmtDiagTime(tr[0][0])} → ${fmtDiagTime(tr[tr.length-1][0])}`
+          : 'TRADE RANGE: --'
+      );
+    }catch(err){
+      const el=document.getElementById('diagbar');
+      if(el)el.textContent='DIAG ERROR: '+String(err?.message||err)
+    }
+  }
+
   function candles(){
     const span=tfMs(),out=[];
     for(const r of allTradeRows()){
@@ -1157,7 +1228,8 @@ export default function(component) {
   sessionInfo();clockTimer=setInterval(sessionInfo,1000);
 
   if(typeof ResizeObserver!=='undefined'){
-    resizeObserver=new ResizeObserver(()=>{drawHeat();drawOverlay()});
+    resizeObserver=setInterval(updateDiagnostics,1000);
+  new ResizeObserver(()=>{drawHeat();drawOverlay()});
     resizeObserver.observe(parentElement.querySelector('.b3-workspace'))
   }
 
@@ -1181,7 +1253,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_final_single_v1",
+    "axion_orderflow_diag_v1",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1237,7 +1309,7 @@ def render_live_heatmap() -> None:
         default=None,
         key="axion_boceto3_market_live",
         width="stretch",
-        height=820,
+        height=850,
     )
 
     _handle_result(result)
