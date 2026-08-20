@@ -113,7 +113,7 @@ def _fetch_all(
         offset += page_size
 
         # Safety guard: more than enough for the AXION chart.
-        if offset >= 10_000:
+        if offset >= 30_000:
             break
 
     return rows
@@ -630,7 +630,15 @@ export default function(component) {
   let intensity=.70;
 
   const history=data?.history||{};
-  const HISTORY_MS=Math.max(5,Number(history.minutes||30))*60_000;
+  const HISTORY_MS=Math.max(5,Number(history.minutes||45))*60_000;
+
+  const historyLabel=document.getElementById('history-label');
+  if(historyLabel){
+    const mins=Number(history.minutes||45);
+    historyLabel.textContent=mins>=60
+      ?((mins%60===0)?`${mins/60}h`:`${(mins/60).toFixed(1)}h`)
+      :`${mins}m`;
+  }
   const MAX_DEPTH_COLS=1200;
 
   // Historical depth: {t,m,bb,ba,sp,s,x:[[p,b,a,q],...]}
@@ -935,8 +943,11 @@ export default function(component) {
 
     // Candles clearly ABOVE heatmap.
     const theoretical=(tfMs()/(win.end-win.start))*w;
-    const bodyW=clamp(theoretical*.22,2.2*q,5.2*q);
-    const wickW=clamp(bodyW*.15,.65*q,1.0*q);
+
+    // Keep candles visually compact on every timeframe.
+    // The timeframe controls aggregation/history, not giant candle width.
+    const bodyW=clamp(3.4*q,2.6*q,4.4*q);
+    const wickW=clamp(.78*q,.65*q,.95*q);
 
     for(const c of cnds){
       if(![c.o,c.h,c.l,c.c].every(Number.isFinite)||c.h<minP||c.l>maxP)continue;
@@ -977,7 +988,7 @@ export default function(component) {
       octx.stroke();
 
       const top=Math.min(yo,yc);
-      const bodyH=Math.max(1.35*q,Math.abs(yc-yo));
+      const bodyH=Math.max(1.10*q,Math.abs(yc-yo));
 
       octx.fillStyle='rgba(0,4,9,.96)';
       octx.fillRect(
@@ -1157,7 +1168,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_boceto3_v5_safe_wide",
+    "axion_boceto3_v6_final_adaptive",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1165,17 +1176,31 @@ _component = st.components.v2.component(
 )
 
 
-def _history_payload() -> dict:
+def _history_minutes_for_timeframe(timeframe: str) -> int:
+    # Match the visible history to the selected candle timeframe.
+    # Recorder retention is currently 6h, so we never request beyond 360m.
+    return {
+        "1m": 45,
+        "5m": 120,
+        "15m": 240,
+        "30m": 360,
+        "1H": 360,
+    }.get(timeframe, 45)
+
+
+def _history_payload(timeframe: str) -> dict:
+    minutes = _history_minutes_for_timeframe(timeframe)
+
     try:
         return load_orderflow_history(
             symbol="BTCUSDT",
-            minutes=30,
+            minutes=minutes,
             max_depth_columns=900,
         )
     except Exception as exc:
         return {
             "symbol": "BTCUSDT",
-            "minutes": 30,
+            "minutes": minutes,
             "depth": [],
             "trades": [],
             "depth_count": 0,
@@ -1203,7 +1228,7 @@ def _handle_result(result) -> None:
 def render_live_heatmap() -> None:
     _init_live_state()
 
-    history = _history_payload()
+    history = _history_payload(st.session_state.live_timeframe)
 
     result = _component(
         data={
