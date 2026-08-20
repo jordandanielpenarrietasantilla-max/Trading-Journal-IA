@@ -1,27 +1,165 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
+
 import streamlit as st
+from supabase import Client, create_client
+
+def _secret(name: str) -> str | None:
+    value = os.getenv(name)
+    if value:
+        return str(value).strip()
+    try:
+        value = st.secrets.get(name)
+        if value:
+            return str(value).strip()
+    except Exception:
+        pass
+    try:
+        supabase_cfg = st.secrets.get("supabase", {})
+        nested_name = {
+            "SUPABASE_URL": "url",
+            "SUPABASE_SERVICE_ROLE_KEY": "service_role_key",
+        }.get(name)
+        if nested_name:
+            value = supabase_cfg.get(nested_name)
+            if value:
+                return str(value).strip()
+    except Exception:
+        pass
+    return None
+
+@st.cache_resource(show_spinner=False)
+def _client() -> Client:
+    url = _secret("SUPABASE_URL")
+    key = _secret("SUPABASE_SERVICE_ROLE_KEY")
+    if not url or not key:
+        raise RuntimeError("Faltan las credenciales de Supabase en los Secrets.")
+    return create_client(url, key)
+
+def _iso_to_ms(value: Any) -> int:
+    if value is None:
+        return 0
+    text = str(value).strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
+    except Exception:
+        return 0
+
+def _fetch_all(*, table: str, columns: str, symbol: str, cutoff_iso: str, page_size: int = 500) -> list[dict[str, Any]]:
+    try:
+        client = _client()
+        response = (
+            client.table(table)
+            .select(columns)
+            .eq("symbol", symbol)
+            .gte("ts", cutoff_iso)
+            .order("ts", desc=False)
+            .limit(page_size)
+            .execute()
+        )
+        return list(response.data or [])
+    except Exception as e:
+        return []
+
+@st.cache_data(ttl=5, show_spinner=False)
+def load_orderflow_history(*, symbol: str = "BTCUSDT", minutes: int = 5) -> dict[str, Any]:
+    try:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=minutes)
+        cutoff_iso = cutoff.isoformat()
+
+        depth_rows = _fetch_all(
+            table="orderflow_depth",
+            columns="ts,mid,best_bid,best_ask,spread,bucket_step,buckets",
+            symbol=symbol,
+            cutoff_iso=cutoff_iso,
+            page_size=200
+        )
+        
+        trade_rows = _fetch_all(
+            table="orderflow_trade_seconds",
+            columns="ts,open,high,low,close,volume,buy_volume,sell_volume,delta,vwap,trade_count",
+            symbol=symbol,
+            cutoff_iso=cutoff_iso,
+            page_size=200
+        )
+
+        depth = []
+        for row in depth_rows:
+            if not row.get("ts"): continue
+            buckets_raw = row.get("buckets") or []
+            compact = []
+            if isinstance(buckets_raw, list):
+                for item in buckets_raw:
+                    if isinstance(item, dict):
+                        try:
+                            p = float(item.get("p", 0))
+                            b = float(item.get("b", 0))
+                            a = float(item.get("a", 0))
+                            q = float(item.get("q", b + a))
+                            compact.append([p, b, a, q])
+                        except Exception:
+                            pass
+            depth.append({
+                "t": _iso_to_ms(row.get("ts")),
+                "m": float(row.get("mid") or 0),
+                "bb": float(row.get("best_bid") or 0),
+                "ba": float(row.get("best_ask") or 0),
+                "sp": float(row.get("spread") or 0),
+                "s": float(row.get("bucket_step") or 1),
+                "x": compact,
+            })
+
+        trades = []
+        for row in trade_rows:
+            if not row.get("ts"): continue
+            trades.append([
+                _iso_to_ms(row.get("ts")),
+                float(row.get("open") or 0),
+                float(row.get("high") or 0),
+                float(row.get("low") or 0),
+                float(row.get("close") or 0),
+                float(row.get("volume") or 0),
+                float(row.get("buy_volume") or 0),
+                float(row.get("sell_volume") or 0),
+                float(row.get("delta") or 0),
+                float(row.get("vwap") or 0),
+                int(row.get("trade_count") or 0),
+            ])
+
+        return {
+            "symbol": symbol,
+            "minutes": minutes,
+            "generated_at_ms": int(now.timestamp() * 1000),
+            "depth": depth,
+            "trades": trades,
+            "depth_count": len(depth),
+            "trade_count": len(trades),
+        }
+    except Exception as exc:
+        return {
+            "symbol": symbol,
+            "minutes": minutes,
+            "depth": [],
+            "trades": [],
+            "depth_count": 0,
+            "trade_count": 0,
+            "error": str(exc),
+        }
 
 # =========================================================
-# HTML Y CSS DEL BOCETO 4 (INTERFAZ)
+# HTML Y CSS DEL BOCETO 4 (SIN LA BARRA FAKED)
 # =========================================================
 HTML = r"""
 <div id="axion-pro-root" class="axion-pro-layout">
-  <aside class="side-nav">
-    <div class="nav-logo">A</div>
-    <nav class="nav-icons">
-      <button class="nav-btn active"><span>🌊</span><small>Liquidity</small></button>
-      <button class="nav-btn"><span>📈</span><small>Trading</small></button>
-      <button class="nav-btn"><span>🛡️</span><small>Positions</small></button>
-      <button class="nav-btn"><span>📊</span><small>Analytics</small></button>
-    </nav>
-    <div class="nav-bottom">
-      <button class="nav-btn"><span>⚙️</span></button>
-    </div>
-  </aside>
-
   <header class="top-header">
     <div class="header-brand">AXION <span>PRIME</span></div>
     <div class="header-actions">
@@ -30,8 +168,8 @@ HTML = r"""
       <div class="user-profile">
         <div class="avatar">AP</div>
         <div class="user-info">
-          <b>AXION PRIME</b>
-          <span id="feed-status" style="color:#21c48a;">Conectando...</span>
+          <b>ORDER FLOW</b>
+          <span id="feed-status" style="color:#21c48a;">Activo</span>
         </div>
       </div>
     </div>
@@ -74,12 +212,11 @@ HTML = r"""
   <aside class="right-panel">
     <div class="panel-card ai-summary">
       <div class="card-header">🤖 AI Market Summary <span class="badge">AXION AI</span></div>
-      <p style="color:#8a9bbd; font-size:12px; line-height:1.5;">Liquidity concentration detected above current levels. Price is approaching a key liquidity zone. High probability of liquidity sweep before continuation to the upside.</p>
+      <p id="loading-message" style="color:#4db8ff;">Conectado a Binance WebSockets en tiempo real...</p>
       <div class="confidence">
         <span>Confidence</span> <span>78%</span>
       </div>
       <div class="progress-bar"><div class="fill" style="width:78%"></div></div>
-      <div id="loading-message" style="margin-top:15px; font-size:10px; color:#4db8ff; text-align:center;">Iniciando WebSockets...</div>
     </div>
 
     <div class="panel-card">
@@ -91,7 +228,6 @@ HTML = r"""
     </div>
 
     <div class="panel-card stats">
-      <div><span>Volume (24H)</span><b id="delta-value-2">—</b></div>
       <div><span>Bid Liquidity</span><b id="bid-value">—</b></div>
       <div><span>Ask Liquidity</span><b id="ask-value">—</b></div>
     </div>
@@ -108,21 +244,14 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 
 .axion-pro-layout {
   display: grid;
-  grid-template-columns: 70px 1fr 320px;
+  /* IMPORTANTE: Quitamos la columna de navegación falsa. Ahora son solo 2 columnas. */
+  grid-template-columns: 1fr 340px;
   grid-template-rows: 65px 1fr;
-  grid-template-areas: "nav header header" "nav main right";
+  grid-template-areas: "header header" "main right";
   width: 100%; height: 100vh; color: #c5d0e6; overflow: hidden; background-color: #05070a;
+  border-radius: 12px; border: 1px solid #141b26;
 }
-.axion-pro-layout:fullscreen { width: 100vw; height: 100vh; }
-
-.side-nav { grid-area: nav; background: #080b10; border-right: 1px solid #141b26; display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
-.nav-logo { font-size: 24px; font-weight: 900; color: #4db8ff; margin-bottom: 30px; letter-spacing: -1px;}
-.nav-icons { display: flex; flex-direction: column; gap: 20px; width: 100%; }
-.nav-btn { color: #4b5a77; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 0; width: 100%; transition: 0.3s; }
-.nav-btn:hover { color: #fff; }
-.nav-btn.active { color: #4db8ff; border-left: 2px solid #4db8ff; background: rgba(77, 184, 255, 0.05); }
-.nav-btn span { font-size: 20px; }
-.nav-btn small { font-size: 9px; font-weight: 600; letter-spacing: 0.5px;}
+.axion-pro-layout:fullscreen { width: 100vw; height: 100vh; border-radius: 0; border: none; }
 
 .top-header { grid-area: header; background: #080b10; display: flex; justify-content: space-between; align-items: center; padding: 0 25px; border-bottom: 1px solid #141b26; }
 .header-brand { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: #fff;}
@@ -299,17 +428,13 @@ export default function(component) {
   function bucketBook(){
     const m=mid();if(m==null)return null;
     const step=bucketStep(m),map=new Map(),book=sortedBook();
-    
-    // 🔥 EL ARREGLO DEL GRÁFICO APLASTADO:
-    // Filtramos para solo guardar órdenes límite muy cercanas al precio actual (rango de 0.3%).
-    // Si no hacemos esto, el gráfico intenta dibujar órdenes en 20k y 100k y aplasta todo.
     const rangoMaximo = m * 0.003; 
     const minP = m - rangoMaximo;
     const maxP = m + rangoMaximo;
 
     const add=(side,levels)=>{
       for(const[p,q]of levels){
-        if(p < minP || p > maxP) continue; // Descartamos precios locos
+        if(p < minP || p > maxP) continue; 
         if(!(q>0))continue;
         const bp=Math.round(p/step)*step;
         let r=map.get(bp);if(!r){r={p:bp,b:0,a:0,q:0};map.set(bp,r)}
@@ -378,7 +503,7 @@ export default function(component) {
 
   function robustRange(cols,cnds,m){
     const center = m || 65000;
-    const defaultSpread = center * 0.001; // Zoom predeterminado si hay pocos datos
+    const defaultSpread = center * 0.001;
     
     const samples=[];
     for(const col of cols){
@@ -443,14 +568,13 @@ export default function(component) {
 
   function lerp(a,b,t){return a+(b-a)*t}
 
-  // --- COLORES NEÓN AZUL/DORADO PARA EL BOCETO 4 ---
   function heatColor(n,bias){
     const a=intensity;
     if(n<.20) return `rgba(11, 15, 23, ${(0.05+n*0.2)*a})`;
-    if(n<.50) return `rgba(0, 102, 255, ${(0.15+n*0.5)*a})`; // Azul neón
-    if(n<.75) return `rgba(0, 180, 255, ${(0.3+n*0.5)*a})`; // Celeste
-    if(n<.90) return `rgba(246, 177, 48, ${(0.5+n*0.5)*a})`; // Dorado fuerte
-    return `rgba(255, 255, 200, ${(0.8+n*0.2)*a})`; // Núcleo brillante
+    if(n<.50) return `rgba(0, 102, 255, ${(0.15+n*0.5)*a})`; 
+    if(n<.75) return `rgba(0, 180, 255, ${(0.3+n*0.5)*a})`; 
+    if(n<.90) return `rgba(246, 177, 48, ${(0.5+n*0.5)*a})`; 
+    return `rgba(255, 255, 200, ${(0.8+n*0.2)*a})`; 
   }
 
   function drawGrid(ctx,w,h,q){
@@ -626,18 +750,9 @@ export default function(component) {
         dValue.style.color = delta>=0 ? '#21c48a' : '#f05c72';
     }
 
-    // Volumen añadido para el panel derecho al igual que el boceto
-    const dValue2 = $('#delta-value-2');
-    if (dValue2) dValue2.textContent = compact(buy+sell)+' BTC';
-
     if(sTime){
         const d=new Date(),hh=String(d.getUTCHours()).padStart(2,'0'),mm=String(d.getUTCMinutes()).padStart(2,'0'),ss=String(d.getUTCSeconds()).padStart(2,'0');
         sTime.textContent=`${hh}:${mm}:${ss} UTC`;
-    }
-    
-    const msg = $('#loading-message');
-    if(msg) {
-        msg.innerHTML = `Interfaz Cargada. Conectado a WebSockets <span style="color:#21c48a;">⚡</span>`;
     }
   }
 
@@ -745,18 +860,10 @@ def _handle_result(result) -> None:
         st.rerun()
 
 def render_live_heatmap() -> None:
-    # IMPORTANTE: Aquí arreglamos el código CSS que se filtraba como texto
-    st.markdown(
-        """
-        <style>
-            .block-container { padding: 0rem !important; max-width: 100% !important; margin: 0 !important; }
-            [data-testid="stSidebar"] { display: none !important; }
-            header { display: none !important; }
-            footer { display: none !important; }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    # 1. Este es el CSS en una sola línea plana. Así evitamos que Streamlit lo lea como código de Markdown.
+    # 2. Nota importante: ¡HE ELIMINADO EL CÓDIGO QUE OCULTABA TU BARRA LATERAL NATIVA! 
+    # Así conservarás tu menú original a la izquierda.
+    st.markdown('<style>.block-container { padding: 0rem !important; max-width: 100% !important; margin: 0 !important; } header { display: none !important; } footer { display: none !important; }</style>', unsafe_allow_html=True)
 
     _init_live_state()
     history = _history_payload()
