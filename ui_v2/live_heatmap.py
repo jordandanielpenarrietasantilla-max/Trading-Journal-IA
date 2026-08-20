@@ -1,165 +1,12 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import streamlit as st
-from supabase import Client, create_client
-
-def _secret(name: str) -> str | None:
-    value = os.getenv(name)
-    if value:
-        return str(value).strip()
-    try:
-        value = st.secrets.get(name)
-        if value:
-            return str(value).strip()
-    except Exception:
-        pass
-    try:
-        supabase_cfg = st.secrets.get("supabase", {})
-        nested_name = {
-            "SUPABASE_URL": "url",
-            "SUPABASE_SERVICE_ROLE_KEY": "service_role_key",
-        }.get(name)
-        if nested_name:
-            value = supabase_cfg.get(nested_name)
-            if value:
-                return str(value).strip()
-    except Exception:
-        pass
-    return None
-
-@st.cache_resource(show_spinner=False)
-def _client() -> Client:
-    url = _secret("SUPABASE_URL")
-    key = _secret("SUPABASE_SERVICE_ROLE_KEY")
-    if not url or not key:
-        raise RuntimeError("Faltan las credenciales de Supabase en los Secrets.")
-    return create_client(url, key)
-
-def _iso_to_ms(value: Any) -> int:
-    if value is None:
-        return 0
-    text = str(value).strip()
-    if text.endswith("Z"):
-        text = text[:-1] + "+00:00"
-    try:
-        dt = datetime.fromisoformat(text)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return int(dt.timestamp() * 1000)
-    except Exception:
-        return 0
-
-def _fetch_all(*, table: str, columns: str, symbol: str, cutoff_iso: str, page_size: int = 500) -> list[dict[str, Any]]:
-    """Función de rescate con límite estricto para evitar bucles infinitos."""
-    try:
-        client = _client()
-        response = (
-            client.table(table)
-            .select(columns)
-            .eq("symbol", symbol)
-            .gte("ts", cutoff_iso)
-            .order("ts", desc=False)
-            .limit(page_size) # Limitamos para que nunca se quede colgado
-            .execute()
-        )
-        return list(response.data or [])
-    except Exception as e:
-        print(f"Error consultando Supabase ({table}):", e)
-        return []
-
-@st.cache_data(ttl=5, show_spinner=False)
-def load_orderflow_history(*, symbol: str = "BTCUSDT", minutes: int = 5) -> dict[str, Any]:
-    try:
-        now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(minutes=minutes)
-        cutoff_iso = cutoff.isoformat()
-
-        depth_rows = _fetch_all(
-            table="orderflow_depth",
-            columns="ts,mid,best_bid,best_ask,spread,bucket_step,buckets",
-            symbol=symbol,
-            cutoff_iso=cutoff_iso,
-            page_size=200
-        )
-        
-        trade_rows = _fetch_all(
-            table="orderflow_trade_seconds",
-            columns="ts,open,high,low,close,volume,buy_volume,sell_volume,delta,vwap,trade_count",
-            symbol=symbol,
-            cutoff_iso=cutoff_iso,
-            page_size=200
-        )
-
-        depth = []
-        for row in depth_rows:
-            if not row.get("ts"): continue
-            buckets_raw = row.get("buckets") or []
-            compact = []
-            if isinstance(buckets_raw, list):
-                for item in buckets_raw:
-                    if isinstance(item, dict):
-                        try:
-                            p = float(item.get("p", 0))
-                            b = float(item.get("b", 0))
-                            a = float(item.get("a", 0))
-                            q = float(item.get("q", b + a))
-                            compact.append([p, b, a, q])
-                        except Exception:
-                            pass
-            depth.append({
-                "t": _iso_to_ms(row.get("ts")),
-                "m": float(row.get("mid") or 0),
-                "bb": float(row.get("best_bid") or 0),
-                "ba": float(row.get("best_ask") or 0),
-                "sp": float(row.get("spread") or 0),
-                "s": float(row.get("bucket_step") or 1),
-                "x": compact,
-            })
-
-        trades = []
-        for row in trade_rows:
-            if not row.get("ts"): continue
-            trades.append([
-                _iso_to_ms(row.get("ts")),
-                float(row.get("open") or 0),
-                float(row.get("high") or 0),
-                float(row.get("low") or 0),
-                float(row.get("close") or 0),
-                float(row.get("volume") or 0),
-                float(row.get("buy_volume") or 0),
-                float(row.get("sell_volume") or 0),
-                float(row.get("delta") or 0),
-                float(row.get("vwap") or 0),
-                int(row.get("trade_count") or 0),
-            ])
-
-        return {
-            "symbol": symbol,
-            "minutes": minutes,
-            "generated_at_ms": int(now.timestamp() * 1000),
-            "depth": depth,
-            "trades": trades,
-            "depth_count": len(depth),
-            "trade_count": len(trades),
-        }
-    except Exception as exc:
-        # Si algo falla gravemente, devolvemos vacío en lugar de congelar la app
-        return {
-            "symbol": symbol,
-            "minutes": minutes,
-            "depth": [],
-            "trades": [],
-            "depth_count": 0,
-            "trade_count": 0,
-            "error": str(exc),
-        }
 
 # =========================================================
-# HTML Y CSS DEL BOCETO 4
+# HTML Y CSS DEL BOCETO 4 (INTERFAZ)
 # =========================================================
 HTML = r"""
 <div id="axion-pro-root" class="axion-pro-layout">
@@ -185,7 +32,7 @@ HTML = r"""
         <div class="avatar">AP</div>
         <div class="user-info">
           <b>AXION PRIME</b>
-          <span id="feed-status" style="color:#21c48a;">Activo</span>
+          <span id="feed-status" style="color:#21c48a;">Conectando...</span>
         </div>
       </div>
     </div>
@@ -228,7 +75,7 @@ HTML = r"""
   <aside class="right-panel">
     <div class="panel-card ai-summary">
       <div class="card-header">🤖 AI Market Summary <span class="badge">AXION AI</span></div>
-      <p id="loading-message" style="color:#4db8ff;">Conectado a Binance WebSockets en tiempo real...</p>
+      <p id="loading-message" style="color:#4db8ff;">Iniciando interfaz y WebSockets...</p>
       <div class="confidence">
         <span>Confidence</span> <span>78%</span>
       </div>
@@ -326,7 +173,7 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
 """
 
 # =========================================================
-# JAVASCRIPT LOGIC
+# JAVASCRIPT - LOGICA Y RENDER NEON
 # =========================================================
 JS = r"""
 export default function(component) {
@@ -769,6 +616,11 @@ export default function(component) {
         const d=new Date(),hh=String(d.getUTCHours()).padStart(2,'0'),mm=String(d.getUTCMinutes()).padStart(2,'0'),ss=String(d.getUTCSeconds()).padStart(2,'0');
         sTime.textContent=`${hh}:${mm}:${ss} UTC`;
     }
+    
+    const msg = $('#loading-message');
+    if(msg) {
+        msg.innerHTML = `Interfaz Cargada. Conectado a WebSockets <span style="color:#21c48a;">⚡</span>`;
+    }
   }
 
   function connect(){
@@ -777,7 +629,7 @@ export default function(component) {
       const fs = $('#feed-status'); if(fs) fs.textContent='Live Connected';
       drawHeat();drawOverlay();
     }).catch(err=>{
-      console.error("Snapshot error:", err);
+      console.error(err);
     });
 
     ws=new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@depth@100ms/btcusdt@aggTrade');
@@ -834,30 +686,30 @@ export default function(component) {
 }
 """
 
-_component = st.components.v2.component(
-    "axion_boceto4_orderflow_pro_v2",
-    html=HTML,
-    css=CSS,
-    js=JS,
-    isolate_styles=True,
-)
+try:
+    _component = st.components.v2.component(
+        "axion_boceto4_orderflow_pro",
+        html=HTML,
+        css=CSS,
+        js=JS,
+        isolate_styles=True,
+    )
+except Exception:
+    # Fallback de seguridad en caso de que st.components.v2 falle
+    def _component(*args, **kwargs):
+        st.components.v1.html(HTML + "<style>" + CSS + "</style><script>" + JS + "</script>", height=kwargs.get("height", 900))
+        return None
 
 def _history_payload() -> dict:
-    try:
-        return load_orderflow_history(
-            symbol="BTCUSDT",
-            minutes=5,
-        )
-    except Exception as exc:
-        return {
-            "symbol": "BTCUSDT",
-            "minutes": 5,
-            "depth": [],
-            "trades": [],
-            "depth_count": 0,
-            "trade_count": 0,
-            "error": str(exc),
-        }
+    return {
+        "symbol": "BTCUSDT",
+        "minutes": 5,
+        "depth": [],
+        "trades": [],
+        "depth_count": 0,
+        "trade_count": 0,
+        "error": "Modo de Prueba",
+    }
 
 def _init_live_state() -> None:
     if "live_timeframe" not in st.session_state:
@@ -888,15 +740,17 @@ def render_live_heatmap() -> None:
     _init_live_state()
     history = _history_payload()
 
-    result = _component(
-        data={
-            "timeframe": st.session_state.live_timeframe,
-            "history": history,
-        },
-        default=None,
-        key="axion_boceto4_market_live_v2",
-        width="stretch",
-        height=900,
-    )
-
-    _handle_result(result)
+    try:
+        result = _component(
+            data={
+                "timeframe": st.session_state.live_timeframe,
+                "history": history,
+            },
+            default=None,
+            key="axion_boceto4_market_live",
+            width="stretch",
+            height=900,
+        )
+        _handle_result(result)
+    except Exception as e:
+        st.error(f"Error al renderizar el componente: {e}")
