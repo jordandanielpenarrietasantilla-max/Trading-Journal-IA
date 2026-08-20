@@ -1489,7 +1489,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_raster_final_v1",
+    "axion_orderflow_raster_final_fix_v1",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1557,6 +1557,17 @@ def _history_payload() -> dict:
         "payload": payload,
     }
     return payload
+
+
+def _init_live_state() -> None:
+    """Initialize Mercado Live session state without forcing reruns."""
+    defaults = {
+        "live_timeframe": "1m",
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
 
 def render_live_heatmap() -> None:
