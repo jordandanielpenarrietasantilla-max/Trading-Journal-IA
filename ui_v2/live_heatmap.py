@@ -35,10 +35,8 @@ def _secret(name: str) -> str | None:
 def _client() -> Client:
     url = _secret("SUPABASE_URL")
     key = _secret("SUPABASE_SERVICE_ROLE_KEY")
-    if not url:
-        raise RuntimeError("Falta SUPABASE_URL en los Secrets de Streamlit.")
-    if not key:
-        raise RuntimeError("Falta SUPABASE_SERVICE_ROLE_KEY en los Secrets de Streamlit. ")
+    if not url or not key:
+        raise RuntimeError("Faltan las credenciales de Supabase en los Secrets.")
     return create_client(url, key)
 
 def _iso_to_ms(value: Any) -> int:
@@ -47,116 +45,118 @@ def _iso_to_ms(value: Any) -> int:
     text = str(value).strip()
     if text.endswith("Z"):
         text = text[:-1] + "+00:00"
-    dt = datetime.fromisoformat(text)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return int(dt.timestamp() * 1000)
+    try:
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
+    except Exception:
+        return 0
 
-def _fetch_all(*, table: str, columns: str, symbol: str, cutoff_iso: str, page_size: int = 1000) -> list[dict[str, Any]]:
-    client = _client()
-    rows: list[dict[str, Any]] = []
-    offset = 0
-    while True:
+def _fetch_all(*, table: str, columns: str, symbol: str, cutoff_iso: str, page_size: int = 500) -> list[dict[str, Any]]:
+    """Función de rescate con límite estricto para evitar bucles infinitos."""
+    try:
+        client = _client()
         response = (
             client.table(table)
             .select(columns)
             .eq("symbol", symbol)
             .gte("ts", cutoff_iso)
             .order("ts", desc=False)
-            .range(offset, offset + page_size - 1)
+            .limit(page_size) # Limitamos para que nunca se quede colgado
             .execute()
         )
-        batch = list(response.data or [])
-        rows.extend(batch)
-        if len(batch) < page_size:
-            break
-        offset += page_size
-        if offset >= 10_000:
-            break
-    return rows
-
-def _downsample_evenly(rows: list[dict[str, Any]], max_points: int) -> list[dict[str, Any]]:
-    if len(rows) <= max_points:
-        return rows
-    if max_points <= 1:
-        return [rows[-1]]
-    last = len(rows) - 1
-    indices = sorted({round(i * last / (max_points - 1)) for i in range(max_points)})
-    return [rows[i] for i in indices]
-
-def _compact_depth_row(row: dict[str, Any]) -> dict[str, Any]:
-    buckets_raw = row.get("buckets") or []
-    compact: list[list[float]] = []
-    if isinstance(buckets_raw, list):
-        for item in buckets_raw:
-            if not isinstance(item, dict):
-                continue
-            try:
-                p = float(item.get("p"))
-                b = float(item.get("b", 0))
-                a = float(item.get("a", 0))
-                q = float(item.get("q", b + a))
-            except (TypeError, ValueError):
-                continue
-            compact.append([p, b, a, q])
-    return {
-        "t": _iso_to_ms(row.get("ts")),
-        "m": float(row.get("mid") or 0),
-        "bb": float(row.get("best_bid") or 0),
-        "ba": float(row.get("best_ask") or 0),
-        "sp": float(row.get("spread") or 0),
-        "s": float(row.get("bucket_step") or 1),
-        "x": compact,
-    }
-
-def _compact_trade_row(row: dict[str, Any]) -> list[float | int]:
-    return [
-        _iso_to_ms(row.get("ts")),
-        float(row.get("open") or 0),
-        float(row.get("high") or 0),
-        float(row.get("low") or 0),
-        float(row.get("close") or 0),
-        float(row.get("volume") or 0),
-        float(row.get("buy_volume") or 0),
-        float(row.get("sell_volume") or 0),
-        float(row.get("delta") or 0),
-        float(row.get("vwap") or 0),
-        int(row.get("trade_count") or 0),
-    ]
+        return list(response.data or [])
+    except Exception as e:
+        print(f"Error consultando Supabase ({table}):", e)
+        return []
 
 @st.cache_data(ttl=5, show_spinner=False)
-def load_orderflow_history(*, symbol: str = "BTCUSDT", minutes: int = 5, max_depth_columns: int = 900) -> dict[str, Any]:
-    # IMPORTANTE: Hemos bajado a 'minutes=5' para que Supabase cargue rápido.
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(minutes=minutes)
-    cutoff_iso = cutoff.isoformat()
+def load_orderflow_history(*, symbol: str = "BTCUSDT", minutes: int = 5) -> dict[str, Any]:
+    try:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=minutes)
+        cutoff_iso = cutoff.isoformat()
 
-    depth_rows = _fetch_all(
-        table="orderflow_depth",
-        columns="ts,mid,best_bid,best_ask,spread,bucket_step,buckets",
-        symbol=symbol,
-        cutoff_iso=cutoff_iso,
-    )
-    trade_rows = _fetch_all(
-        table="orderflow_trade_seconds",
-        columns="ts,open,high,low,close,volume,buy_volume,sell_volume,delta,vwap,trade_count",
-        symbol=symbol,
-        cutoff_iso=cutoff_iso,
-    )
+        depth_rows = _fetch_all(
+            table="orderflow_depth",
+            columns="ts,mid,best_bid,best_ask,spread,bucket_step,buckets",
+            symbol=symbol,
+            cutoff_iso=cutoff_iso,
+            page_size=200
+        )
+        
+        trade_rows = _fetch_all(
+            table="orderflow_trade_seconds",
+            columns="ts,open,high,low,close,volume,buy_volume,sell_volume,delta,vwap,trade_count",
+            symbol=symbol,
+            cutoff_iso=cutoff_iso,
+            page_size=200
+        )
 
-    depth_rows = _downsample_evenly(depth_rows, max_points=max_depth_columns)
-    depth = [_compact_depth_row(row) for row in depth_rows if row.get("ts")]
-    trades = [_compact_trade_row(row) for row in trade_rows if row.get("ts")]
+        depth = []
+        for row in depth_rows:
+            if not row.get("ts"): continue
+            buckets_raw = row.get("buckets") or []
+            compact = []
+            if isinstance(buckets_raw, list):
+                for item in buckets_raw:
+                    if isinstance(item, dict):
+                        try:
+                            p = float(item.get("p", 0))
+                            b = float(item.get("b", 0))
+                            a = float(item.get("a", 0))
+                            q = float(item.get("q", b + a))
+                            compact.append([p, b, a, q])
+                        except Exception:
+                            pass
+            depth.append({
+                "t": _iso_to_ms(row.get("ts")),
+                "m": float(row.get("mid") or 0),
+                "bb": float(row.get("best_bid") or 0),
+                "ba": float(row.get("best_ask") or 0),
+                "sp": float(row.get("spread") or 0),
+                "s": float(row.get("bucket_step") or 1),
+                "x": compact,
+            })
 
-    return {
-        "symbol": symbol,
-        "minutes": minutes,
-        "generated_at_ms": int(now.timestamp() * 1000),
-        "depth": depth,
-        "trades": trades,
-        "depth_count": len(depth),
-        "trade_count": len(trades),
-    }
+        trades = []
+        for row in trade_rows:
+            if not row.get("ts"): continue
+            trades.append([
+                _iso_to_ms(row.get("ts")),
+                float(row.get("open") or 0),
+                float(row.get("high") or 0),
+                float(row.get("low") or 0),
+                float(row.get("close") or 0),
+                float(row.get("volume") or 0),
+                float(row.get("buy_volume") or 0),
+                float(row.get("sell_volume") or 0),
+                float(row.get("delta") or 0),
+                float(row.get("vwap") or 0),
+                int(row.get("trade_count") or 0),
+            ])
+
+        return {
+            "symbol": symbol,
+            "minutes": minutes,
+            "generated_at_ms": int(now.timestamp() * 1000),
+            "depth": depth,
+            "trades": trades,
+            "depth_count": len(depth),
+            "trade_count": len(trades),
+        }
+    except Exception as exc:
+        # Si algo falla gravemente, devolvemos vacío en lugar de congelar la app
+        return {
+            "symbol": symbol,
+            "minutes": minutes,
+            "depth": [],
+            "trades": [],
+            "depth_count": 0,
+            "trade_count": 0,
+            "error": str(exc),
+        }
 
 # =========================================================
 # HTML Y CSS DEL BOCETO 4
@@ -185,7 +185,7 @@ HTML = r"""
         <div class="avatar">AP</div>
         <div class="user-info">
           <b>AXION PRIME</b>
-          <span id="feed-status" style="color:#21c48a;">Iniciando...</span>
+          <span id="feed-status" style="color:#21c48a;">Activo</span>
         </div>
       </div>
     </div>
@@ -228,7 +228,7 @@ HTML = r"""
   <aside class="right-panel">
     <div class="panel-card ai-summary">
       <div class="card-header">🤖 AI Market Summary <span class="badge">AXION AI</span></div>
-      <p id="loading-message" style="color:#4db8ff;">Sincronizando profundidad y WebSockets...</p>
+      <p id="loading-message" style="color:#4db8ff;">Conectado a Binance WebSockets en tiempo real...</p>
       <div class="confidence">
         <span>Confidence</span> <span>78%</span>
       </div>
@@ -437,10 +437,7 @@ export default function(component) {
         depthBuffer=[];
         snapshotReady=true;
     } catch(err) {
-        // En caso de que el adblocker bloquee Binance
-        console.error("Binance Snapshot bloqueado:", err);
         snapshotReady=true;
-        throw err;
     }
   }
 
@@ -772,13 +769,6 @@ export default function(component) {
         const d=new Date(),hh=String(d.getUTCHours()).padStart(2,'0'),mm=String(d.getUTCMinutes()).padStart(2,'0'),ss=String(d.getUTCSeconds()).padStart(2,'0');
         sTime.textContent=`${hh}:${mm}:${ss} UTC`;
     }
-    
-    // CORRECCIÓN DEL BUG VISUAL: Ahora SIEMPRE actualiza el texto, aunque esté en 0.
-    const msg = $('#loading-message');
-    if(msg) {
-        const count = history.depth_count || 0;
-        msg.innerHTML = `Loaded <b style="color:#4db8ff;">${count}</b> historical depth columns.<br><span style="color:#21c48a;">⚡ Live WebSockets Sync Active</span>`;
-    }
   }
 
   function connect(){
@@ -787,10 +777,7 @@ export default function(component) {
       const fs = $('#feed-status'); if(fs) fs.textContent='Live Connected';
       drawHeat();drawOverlay();
     }).catch(err=>{
-      console.error(err);
-      const fs = $('#feed-status'); if(fs) fs.textContent='API Error';
-      const msg = $('#loading-message');
-      if(msg) msg.innerHTML = `<span style="color:#f05c72;">API Binance bloqueada. Intenta desactivar tu AdBlock/Brave Shields.</span>`;
+      console.error("Snapshot error:", err);
     });
 
     ws=new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@depth@100ms/btcusdt@aggTrade');
@@ -848,7 +835,7 @@ export default function(component) {
 """
 
 _component = st.components.v2.component(
-    "axion_boceto4_orderflow_pro",
+    "axion_boceto4_orderflow_pro_v2",
     html=HTML,
     css=CSS,
     js=JS,
@@ -859,8 +846,7 @@ def _history_payload() -> dict:
     try:
         return load_orderflow_history(
             symbol="BTCUSDT",
-            minutes=5,  # Bajado a 5 minutos para que cargue rapidísimo
-            max_depth_columns=900,
+            minutes=5,
         )
     except Exception as exc:
         return {
@@ -880,7 +866,6 @@ def _init_live_state() -> None:
 def _handle_result(result) -> None:
     if result is None:
         return
-    # Corrección de seguridad en Python para evitar fallos si llega como diccionario
     if isinstance(result, dict):
         timeframe = result.get("timeframe")
     else:
@@ -891,7 +876,6 @@ def _handle_result(result) -> None:
         st.rerun()
 
 def render_live_heatmap() -> None:
-    # Quitamos márgenes y forzamos ancho completo en Streamlit
     st.markdown("""
         <style>
             .block-container { padding: 0rem !important; max-width: 100% !important; margin: 0 !important; }
@@ -910,7 +894,7 @@ def render_live_heatmap() -> None:
             "history": history,
         },
         default=None,
-        key="axion_boceto4_market_live",
+        key="axion_boceto4_market_live_v2",
         width="stretch",
         height=900,
     )
