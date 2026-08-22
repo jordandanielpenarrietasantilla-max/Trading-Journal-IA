@@ -748,10 +748,48 @@ export default function(component) {
     if(c.width!==w||c.height!==h){c.width=w;c.height=h}
   }
 
+  // Live capture pushes one column every ~1s. Historical columns loaded from
+  // Supabase are pre-aggregated at 1-per-minute. A flat slice(-MAX_DEPTH_COLS)
+  // ignores this resolution mismatch: after ~30 minutes of live streaming,
+  // the buffer fills entirely with high-frequency live columns and evicts
+  // the coarse historical ones, collapsing visible heatmap coverage down to
+  // whatever the last MAX_DEPTH_COLS seconds happen to be (~30 min) instead
+  // of the intended DEPTH_RETENTION_MS window (hours).
+  //
+  // Fix: once a column is older than DOWNSAMPLE_AFTER_MS, keep at most one
+  // column per DOWNSAMPLE_BUCKET_MS bucket (same 60s granularity as the
+  // historical load), so old live columns collapse in place instead of
+  // pushing out real history. Recent columns stay at full 1s resolution.
+  const DOWNSAMPLE_AFTER_MS=5*60_000;      // keep last 5 min at full resolution
+  const DOWNSAMPLE_BUCKET_MS=60_000;       // older than that: 1 column/minute
+
   function trimHistory(){
     const now=Date.now(),cutoff=now-DEPTH_RETENTION_MS;
-    depthHistory=depthHistory.filter(c=>Number(c.t)>=cutoff).slice(-MAX_DEPTH_COLS);
+    depthHistory=depthHistory.filter(c=>Number(c.t)>=cutoff);
     tradeSeconds=tradeSeconds.filter(r=>Number(r[0])>=cutoff);
+
+    if(depthHistory.length<=MAX_DEPTH_COLS)return;
+
+    const recentStart=now-DOWNSAMPLE_AFTER_MS;
+    const recent=[];
+    const bucketed=new Map(); // bucketStartMs -> chosen column (latest wins)
+    for(const c of depthHistory){
+      const t=Number(c.t);
+      if(t>=recentStart){recent.push(c);continue}
+      const bucket=Math.floor(t/DOWNSAMPLE_BUCKET_MS)*DOWNSAMPLE_BUCKET_MS;
+      const existing=bucketed.get(bucket);
+      if(!existing||Number(existing.t)<t)bucketed.set(bucket,c);
+    }
+    const old=[...bucketed.values()].sort((a,b)=>Number(a.t)-Number(b.t));
+    depthHistory=old.concat(recent);
+
+    // Safety net only: if something pathological still overflows (e.g. a
+    // retention window far longer than MAX_DEPTH_COLS minutes), fall back to
+    // trimming the oldest downsampled columns rather than the recent ones.
+    if(depthHistory.length>MAX_DEPTH_COLS){
+      const overflow=depthHistory.length-MAX_DEPTH_COLS;
+      depthHistory=depthHistory.slice(overflow);
+    }
   }
 
   function sortedBook(){
