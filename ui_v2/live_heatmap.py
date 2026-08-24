@@ -1546,7 +1546,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_boceto3_clean_v2_fix",
+    "axion_orderflow_boceto3_clean_v2_fix2",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1641,4 +1641,3 @@ def render_live_heatmap() -> None:
         height=820,
     )
 
-    _handle_result(result)
