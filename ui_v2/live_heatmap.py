@@ -1663,6 +1663,19 @@ def _init_live_state() -> None:
             st.session_state[key] = value
 
 
+def _handle_result(result) -> None:
+    """Handle the value returned by the JS component (currently just timeframe
+    changes triggered from inside the widget). This was defined in the older
+    components/axion_heatmap.py but never carried over here after the refactor,
+    causing a NameError every time the component returned a non-None result."""
+    if result is None:
+        return
+    timeframe = getattr(result, "timeframe", None)
+    if timeframe and timeframe != st.session_state.live_timeframe:
+        st.session_state.live_timeframe = timeframe
+        st.rerun()
+
+
 def render_live_heatmap() -> None:
     _init_live_state()
 
