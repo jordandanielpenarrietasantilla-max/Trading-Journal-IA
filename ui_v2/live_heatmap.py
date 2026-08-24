@@ -228,7 +228,7 @@ def _load_orderflow_history_fast_rpc(
                 compact.append([p, bid, ask, qty])
 
         depth.append({
-            "t": _epoch_ms(row.get("ts")),
+            "t": _iso_to_ms(row.get("ts")),
             "m": float(row.get("mid") or 0),
             "bb": float(row.get("best_bid") or 0),
             "ba": float(row.get("best_ask") or 0),
@@ -240,7 +240,7 @@ def _load_orderflow_history_fast_rpc(
     trades = []
     for row in payload.get("trades") or []:
         trades.append([
-            _epoch_ms(row.get("ts")),
+            _iso_to_ms(row.get("ts")),
             0.0, 0.0, 0.0, 0.0,
             float(row.get("volume") or 0),
             float(row.get("buy_volume") or 0),
@@ -748,48 +748,10 @@ export default function(component) {
     if(c.width!==w||c.height!==h){c.width=w;c.height=h}
   }
 
-  // Live capture pushes one column every ~1s. Historical columns loaded from
-  // Supabase are pre-aggregated at 1-per-minute. A flat slice(-MAX_DEPTH_COLS)
-  // ignores this resolution mismatch: after ~30 minutes of live streaming,
-  // the buffer fills entirely with high-frequency live columns and evicts
-  // the coarse historical ones, collapsing visible heatmap coverage down to
-  // whatever the last MAX_DEPTH_COLS seconds happen to be (~30 min) instead
-  // of the intended DEPTH_RETENTION_MS window (hours).
-  //
-  // Fix: once a column is older than DOWNSAMPLE_AFTER_MS, keep at most one
-  // column per DOWNSAMPLE_BUCKET_MS bucket (same 60s granularity as the
-  // historical load), so old live columns collapse in place instead of
-  // pushing out real history. Recent columns stay at full 1s resolution.
-  const DOWNSAMPLE_AFTER_MS=5*60_000;      // keep last 5 min at full resolution
-  const DOWNSAMPLE_BUCKET_MS=60_000;       // older than that: 1 column/minute
-
   function trimHistory(){
     const now=Date.now(),cutoff=now-DEPTH_RETENTION_MS;
-    depthHistory=depthHistory.filter(c=>Number(c.t)>=cutoff);
+    depthHistory=depthHistory.filter(c=>Number(c.t)>=cutoff).slice(-MAX_DEPTH_COLS);
     tradeSeconds=tradeSeconds.filter(r=>Number(r[0])>=cutoff);
-
-    if(depthHistory.length<=MAX_DEPTH_COLS)return;
-
-    const recentStart=now-DOWNSAMPLE_AFTER_MS;
-    const recent=[];
-    const bucketed=new Map(); // bucketStartMs -> chosen column (latest wins)
-    for(const c of depthHistory){
-      const t=Number(c.t);
-      if(t>=recentStart){recent.push(c);continue}
-      const bucket=Math.floor(t/DOWNSAMPLE_BUCKET_MS)*DOWNSAMPLE_BUCKET_MS;
-      const existing=bucketed.get(bucket);
-      if(!existing||Number(existing.t)<t)bucketed.set(bucket,c);
-    }
-    const old=[...bucketed.values()].sort((a,b)=>Number(a.t)-Number(b.t));
-    depthHistory=old.concat(recent);
-
-    // Safety net only: if something pathological still overflows (e.g. a
-    // retention window far longer than MAX_DEPTH_COLS minutes), fall back to
-    // trimming the oldest downsampled columns rather than the recent ones.
-    if(depthHistory.length>MAX_DEPTH_COLS){
-      const overflow=depthHistory.length-MAX_DEPTH_COLS;
-      depthHistory=depthHistory.slice(overflow);
-    }
   }
 
   function sortedBook(){
@@ -1584,7 +1546,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_boceto3_clean_v2",
+    "axion_orderflow_boceto3_clean_v2_fix",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1595,7 +1557,7 @@ _component = st.components.v2.component(
 def _history_minutes_for_timeframe(timeframe: str) -> int:
     # One fixed market window for every timeframe.
     # The timeframe changes candle aggregation, NOT the visible historical span.
-    # Recorder retention is currently 6 hours.
+    # Recorder retention is currently 24 hours.
     return 360
 
 
@@ -1661,19 +1623,6 @@ def _init_live_state() -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
-
-
-def _handle_result(result) -> None:
-    """Handle the value returned by the JS component (currently just timeframe
-    changes triggered from inside the widget). This was defined in the older
-    components/axion_heatmap.py but never carried over here after the refactor,
-    causing a NameError every time the component returned a non-None result."""
-    if result is None:
-        return
-    timeframe = getattr(result, "timeframe", None)
-    if timeframe and timeframe != st.session_state.live_timeframe:
-        st.session_state.live_timeframe = timeframe
-        st.rerun()
 
 
 def render_live_heatmap() -> None:
