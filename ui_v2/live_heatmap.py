@@ -706,7 +706,7 @@ export default function(component) {
   const history=data?.history||{};
   const DEPTH_RETENTION_MS=Math.max(5,Number(history.minutes||1440))*60_000;
 
-  const MAX_DEPTH_COLS=1800;
+  const MAX_DEPTH_COLS=9000;
 
   // Historical depth: {t,m,bb,ba,sp,s,x:[[p,b,a,q],...]}
   let depthHistory=Array.isArray(history.depth)?history.depth.slice():[];
@@ -777,7 +777,7 @@ export default function(component) {
   }
 
   async function fetchSnapshot(){
-    const res=await fetch('https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=180',{cache:'no-store'});
+    const res=await fetch('https://data-api.binance.vision/api/v3/depth?symbol=BTCUSDT&limit=1000',{cache:'no-store'});
     if(!res.ok)throw new Error('Depth HTTP '+res.status);
     const snap=await res.json();
     bids=new Map(normalizeLevels(snap.bids).filter(x=>x[1]>0));
@@ -948,12 +948,17 @@ export default function(component) {
       .sort((a,b)=>a.t-b.t)
   }
 
-  const TARGET_VISIBLE_CANDLES=120;
+  function targetVisibleCandles(){
+    // Keep the visible candle window inside the recorder's 24h depth envelope.
+    // This prevents 30m/1H from displaying large heatmap-empty regions.
+    const tf=tfMs();
+    return Math.max(20,Math.min(120,Math.floor((24*60*60*1000)/tf)))
+  }
 
   function candleWindow(){
     const cs=candles();
     if(cs.length){
-      const visible=cs.slice(-TARGET_VISIBLE_CANDLES);
+      const visible=cs.slice(-targetVisibleCandles());
       const first=visible[0];
       const last=visible[visible.length-1];
 
@@ -966,7 +971,7 @@ export default function(component) {
 
     const end=Date.now();
     return{
-      start:end-tfMs()*TARGET_VISIBLE_CANDLES,
+      start:end-tfMs()*targetVisibleCandles(),
       end,
       candleCount:0
     }
@@ -1037,18 +1042,23 @@ export default function(component) {
   }
 
 
-  const HEAT_ROWS=150;
-  const HEAT_COLS=300;
+  const HEAT_ROWS=180;
+  const HEAT_COLS=360;
 
   const heatOff=document.createElement('canvas');
   heatOff.width=HEAT_COLS;
   heatOff.height=HEAT_ROWS;
   const heatOctx=heatOff.getContext('2d',{alpha:true});
 
-  function buildObservedBandGrid(cols,minP,maxP,win){
-    const grid=new Float32Array(HEAT_ROWS*HEAT_COLS);
+  // V3 thermal engine -------------------------------------------------------
+  // The previous renderer kept only the strongest ~40% of each snapshot and
+  // then removed another ~52% globally. That produced isolated "hot pixels".
+  // V3 keeps the full observed book, adds temporal memory, rewards persistence,
+  // and applies a small separable blur before robust non-linear normalization.
+  function buildPersistentLiquidityGrid(cols,minP,maxP,win){
     const spanP=Math.max(maxP-minP,1e-9);
     const rowStep=spanP/(HEAT_ROWS-1);
+    const source=Array.from({length:HEAT_COLS},()=>new Map());
 
     const colOf=t=>clamp(
       Math.round(((Number(t)-win.start)/(win.end-win.start))*(HEAT_COLS-1)),
@@ -1059,98 +1069,121 @@ export default function(component) {
       0,HEAT_ROWS-1
     );
 
-    let prevStrong=null;
-    let prevCol=null;
-
+    // Preserve every non-zero level. Multiple raw snapshots that land in the
+    // same raster column are merged by max size; bid/ask totals remain genuine.
     for(const col of cols){
-      const c=colOf(col.t);
-      const raw=[];
-
+      const c=colOf(col.t),bucket=source[c];
       for(const row of col.x||[]){
         const p=Number(row[0]),q=Number(row[3]);
         if(!(q>0)||p<minP||p>maxP)continue;
-        raw.push({r:rowOf(p),q})
+        const r=rowOf(p);
+        if(q>(bucket.get(r)||0))bucket.set(r,q)
       }
-
-      if(!raw.length){
-        prevStrong=null;
-        prevCol=c;
-        continue
-      }
-
-      const quantities=raw.map(x=>x.q).sort((a,b)=>a-b);
-      const strongThreshold=percentile(quantities,.60)||0;
-      const current=new Map();
-
-      for(const x of raw){
-        if(x.q<strongThreshold)continue;
-        const existing=current.get(x.r)||0;
-        if(x.q>existing)current.set(x.r,x.q);
-        const idx=x.r*HEAT_COLS+c;
-        if(x.q>grid[idx])grid[idx]=x.q
-      }
-
-      if(prevStrong&&prevCol!=null){
-        const gap=c-prevCol;
-        if(gap>0&&gap<=10){
-          for(const [r,q] of current.entries()){
-            let bestPrev=0;
-            for(let dr=-2;dr<=2;dr++){
-              bestPrev=Math.max(bestPrev,prevStrong.get(r+dr)||0)
-            }
-            if(!(bestPrev>0))continue;
-
-            const strength=Math.min(q,bestPrev);
-            for(let cc=prevCol;cc<=c;cc++){
-              const idx=r*HEAT_COLS+cc;
-              if(strength>grid[idx])grid[idx]=strength
-            }
-          }
-        }
-      }
-
-      prevStrong=current;
-      prevCol=c
     }
 
-    return grid
+    const grid=new Float32Array(HEAT_ROWS*HEAT_COLS);
+    const memory=new Float32Array(HEAT_ROWS);
+    const age=new Float32Array(HEAT_ROWS);
+    const DECAY=.935;          // visual memory when liquidity is removed
+    const AGE_DECAY=.86;
+    const PERSIST_BOOST=.28;   // sustained walls become brighter than flashes
+
+    for(let c=0;c<HEAT_COLS;c++){
+      const current=source[c];
+
+      for(let r=0;r<HEAT_ROWS;r++){
+        const observed=current.get(r)||0;
+        if(observed>0){
+          // Use a hold/decay model rather than unbounded accumulation. A wall
+          // can strengthen, but a single giant print cannot permanently burn in.
+          memory[r]=Math.max(observed,memory[r]*DECAY);
+          age[r]=Math.min(18,age[r]+1)
+        }else{
+          memory[r]*=DECAY;
+          age[r]*=AGE_DECAY
+        }
+
+        if(memory[r]>0){
+          const persistence=1+PERSIST_BOOST*clamp(age[r]/10,0,1);
+          grid[r*HEAT_COLS+c]=memory[r]*persistence
+        }
+      }
+    }
+
+    return smoothLiquidityGrid(grid)
+  }
+
+  function smoothLiquidityGrid(grid){
+    // True raster smoothing (not canvas upscale interpolation): first time,
+    // then price. Horizontal kernel is intentionally wider to create bands.
+    const tmp=new Float32Array(grid.length);
+    const out=new Float32Array(grid.length);
+    const tw=[.06,.12,.20,.24,.20,.12,.06];
+
+    for(let r=0;r<HEAT_ROWS;r++){
+      const base=r*HEAT_COLS;
+      for(let c=0;c<HEAT_COLS;c++){
+        let sum=0,ws=0;
+        for(let k=-3;k<=3;k++){
+          const cc=c+k;if(cc<0||cc>=HEAT_COLS)continue;
+          const w=tw[k+3];sum+=grid[base+cc]*w;ws+=w
+        }
+        tmp[base+c]=ws?sum/ws:0
+      }
+    }
+
+    for(let r=0;r<HEAT_ROWS;r++){
+      for(let c=0;c<HEAT_COLS;c++){
+        let v=tmp[r*HEAT_COLS+c]*.68,ws=.68;
+        if(r>0){v+=tmp[(r-1)*HEAT_COLS+c]*.16;ws+=.16}
+        if(r+1<HEAT_ROWS){v+=tmp[(r+1)*HEAT_COLS+c]*.16;ws+=.16}
+        out[r*HEAT_COLS+c]=v/ws
+      }
+    }
+    return out
   }
 
   function gridQuantiles(grid){
     const vals=[];
-    for(let i=0;i<grid.length;i++)if(grid[i]>0)vals.push(grid[i]);
-    if(!vals.length)return{q52:1,q80:2,q94:3,q99:4};
+    for(let i=0;i<grid.length;i++)if(grid[i]>0)vals.push(Math.log1p(grid[i]));
+    if(!vals.length)return{q15:.1,q55:.3,q82:.6,q96:1};
     vals.sort((a,b)=>a-b);
     return{
-      q52:percentile(vals,.52)||1,
-      q80:percentile(vals,.80)||1,
-      q94:percentile(vals,.94)||1,
-      q99:percentile(vals,.99)||1
+      q15:percentile(vals,.15)||.1,
+      q55:percentile(vals,.55)||.3,
+      q82:percentile(vals,.82)||.6,
+      q96:percentile(vals,.96)||1
     }
   }
 
   function rasterNorm(v,q){
-    if(!(v>0)||v<q.q52)return 0;
-    if(v<q.q80)return .16+.26*((v-q.q52)/Math.max(q.q80-q.q52,1e-9));
-    if(v<q.q94)return .42+.30*((v-q.q80)/Math.max(q.q94-q.q80,1e-9));
-    if(v<q.q99)return .72+.22*((v-q.q94)/Math.max(q.q99-q.q94,1e-9));
-    return 1
+    if(!(v>0))return 0;
+    const x=Math.log1p(v);
+    // Weak liquidity stays visible as a faint field instead of being discarded.
+    if(x<q.q15)return .045+.105*clamp(x/Math.max(q.q15,1e-9),0,1);
+    if(x<q.q55)return .15+.25*((x-q.q15)/Math.max(q.q55-q.q15,1e-9));
+    if(x<q.q82)return .40+.28*((x-q.q55)/Math.max(q.q82-q.q55,1e-9));
+    if(x<q.q96)return .68+.24*((x-q.q82)/Math.max(q.q96-q.q82,1e-9));
+    return clamp(.92+.08*((x-q.q96)/Math.max(q.q96*.55,1e-9)),.92,1)
   }
 
   function heatColorRGBA(n){
     if(n<=0)return[0,0,0,0];
     let rgba;
-    if(n<.28)rgba=[32,51,121,42+n*105];
-    else if(n<.50)rgba=[82,52,160,55+n*120];
-    else if(n<.70)rgba=[169,49,132,70+n*130];
-    else if(n<.86)rgba=[228,67,77,88+n*140];
-    else if(n<.96)rgba=[255,126,35,110+n*145];
-    else rgba=[255,218,65,160+n*90];
+    // Dark blue foundation -> violet -> magenta/red -> amber/yellow core.
+    // Alpha starts higher than V2 so background structure is readable.
+    if(n<.20)rgba=[20,43,108,32+n*145];
+    else if(n<.42)rgba=[55,55,145,42+n*150];
+    else if(n<.64)rgba=[116,48,164,54+n*160];
+    else if(n<.80)rgba=[194,48,118,70+n*170];
+    else if(n<.92)rgba=[244,73,58,92+n*175];
+    else if(n<.985)rgba=[255,137,31,125+n*120];
+    else rgba=[255,225,76,205+n*45];
     rgba[3]=clamp(Math.round(rgba[3]*intensity),0,255);
     return rgba
   }
 
-  function paintObservedBandGrid(grid){
+  function paintPersistentLiquidityGrid(grid){
     const q=gridQuantiles(grid);
     const img=heatOctx.createImageData(HEAT_COLS,HEAT_ROWS);
     const d=img.data;
@@ -1211,10 +1244,9 @@ export default function(component) {
     const yOf=p=>h-((p-minP)/(maxP-minP))*h;
     const xOf=t=>((Number(t)-win.start)/(win.end-win.start))*w;
 
-    // Fixed-cost raster heatmap:
-    // 260 time cells × 140 price cells, independent of raw history size.
-    const grid=buildObservedBandGrid(cols,minP,maxP,win);
-    paintObservedBandGrid(grid);
+    // Fixed-cost V3 raster: persistent liquidity memory + real smoothing.
+    const grid=buildPersistentLiquidityGrid(cols,minP,maxP,win);
+    paintPersistentLiquidityGrid(grid);
 
     hctx.save();
     hctx.imageSmoothingEnabled=true;
@@ -1434,7 +1466,7 @@ export default function(component) {
     };
     ws.onerror=()=>{$('#feed-status').textContent='RECONNECT'};
     ws.onclose=()=>{if(!destroyed)scheduleReconnect()};
-    captureTimer=setInterval(captureDepth,1000);
+    captureTimer=setInterval(captureDepth,2000);
     drawTimer=setInterval(()=>{drawOverlay()},750)
   }
 
@@ -1480,7 +1512,7 @@ export default function(component) {
 
     ws.onerror=()=>{$('#feed-status').textContent='RECONNECT'};
     ws.onclose=()=>{if(!destroyed)scheduleReconnect()};
-    captureTimer=setInterval(captureDepth,1000);
+    captureTimer=setInterval(captureDepth,2000);
     drawTimer=setInterval(()=>{drawOverlay()},750)
   }
 
@@ -1546,7 +1578,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_boceto3_clean_v2_fix2",
+    "axion_orderflow_boceto3_clean_v3_persistent",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1566,8 +1598,8 @@ def _fetch_history_impl() -> dict:
         return _load_orderflow_history_fast_rpc(
             symbol="BTCUSDT",
             minutes=1440,
-            depth_step_seconds=60,
-            trade_step_seconds=60,
+            depth_step_seconds=20,
+            trade_step_seconds=10,
         )
     except Exception as fast_exc:
         try:
