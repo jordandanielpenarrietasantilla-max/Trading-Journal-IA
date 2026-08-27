@@ -365,20 +365,35 @@ HTML = r"""
   </header>
 
   <section class="b3-toolbar">
-    <div class="tabs">
-      <button class="tab active">Heatmap Order Flow</button>
-      <button class="tab">Volumen</button>
-      <button class="tab">VWAP</button>
-      <button class="tab">Liquidez</button>
+    <div class="tabs" id="view-tabs">
+      <button class="tab active" data-mode="heatmap">Heatmap Order Flow</button>
+      <button class="tab" data-mode="volume">Volumen</button>
+      <button class="tab" data-mode="vwap">VWAP</button>
+      <button class="tab" data-mode="liquidity">Liquidez</button>
     </div>
 
     <div class="toolbar-controls">
       <span>Intensidad</span>
-      <input id="heat-intensity" type="range" min="45" max="100" value="70">
+      <input id="heat-intensity" type="range" min="35" max="140" value="92">
       <span>Histórico</span>
-      <strong id="history-label">30m</strong>
+      <strong id="history-label">—</strong>
+      <button id="advanced-btn" class="advanced-btn" type="button">Avanzado ▾</button>
     </div>
   </section>
+
+  <div class="advanced-panel" id="advanced-panel">
+    <div class="advanced-grid">
+      <label>Persistencia <b id="persist-value">96%</b><input id="persist-range" type="range" min="80" max="995" value="965"></label>
+      <label>Contraste <b id="contrast-value">120%</b><input id="contrast-range" type="range" min="70" max="190" value="120"></label>
+      <label>Suavizado <b id="blur-value">6</b><input id="blur-range" type="range" min="1" max="10" value="6"></label>
+      <label>Fondo térmico <b id="floor-value">22%</b><input id="floor-range" type="range" min="5" max="45" value="22"></label>
+    </div>
+    <div class="advanced-actions">
+      <button id="auto-contrast-btn" type="button">Auto contraste</button>
+      <button id="reset-heat-btn" type="button">Restablecer</button>
+      <span id="mode-help">Heatmap: profundidad histórica + libro LIVE con persistencia temporal.</span>
+    </div>
+  </div>
 
   <main class="b3-workspace">
     <section class="chart-stage">
@@ -411,8 +426,8 @@ HTML = r"""
 
     <aside class="flow-profile">
       <div class="profile-header">
-        <span>FLOW PROFILE</span>
-        <small>1s VWAP BINS</small>
+        <span id="profile-title">FLOW PROFILE</span>
+        <small id="profile-subtitle">1s VWAP BINS</small>
       </div>
 
       <canvas id="profile-canvas"></canvas>
@@ -492,7 +507,7 @@ CSS = r"""
 button,input{font:inherit}
 
 .axion-b3{
-  width:100%;height:820px;min-height:700px;overflow:hidden;
+  position:relative;width:100%;height:820px;min-height:700px;overflow:hidden;
   display:grid;grid-template-rows:64px 44px minmax(0,1fr) 140px 24px;
   color:#dce6f4;background:#02060d;border:1px solid #172338;border-radius:12px
 }
@@ -564,6 +579,18 @@ button,input{font:inherit}
 .toolbar-controls{display:flex;align-items:center;gap:9px;color:#708098;font-size:6.5px}
 .toolbar-controls input{width:120px}
 .toolbar-controls strong{color:#9fb0c7;font-size:7px}
+.advanced-btn{height:28px;padding:0 10px;border:1px solid #263a55;border-radius:5px;background:#091523;color:#9fb3cb;font-size:7px;cursor:pointer}
+.advanced-btn.on{color:#65e1f0;border-color:#3f9ed0;background:#0a2030}
+.advanced-panel{position:absolute;z-index:30;right:12px;top:108px;width:430px;padding:12px;border:1px solid #223651;border-radius:9px;background:rgba(4,11,20,.97);box-shadow:0 18px 45px rgba(0,0,0,.42);display:none}
+.advanced-panel.open{display:block}
+.advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.advanced-grid label{display:grid;grid-template-columns:1fr auto;gap:4px 8px;color:#8294aa;font-size:7px}
+.advanced-grid label b{color:#d8e6f5;font-size:7px}
+.advanced-grid input{grid-column:1/-1;width:100%}
+.advanced-actions{display:flex;align-items:center;gap:8px;margin-top:11px;padding-top:10px;border-top:1px solid #1a2b40}
+.advanced-actions button{height:26px;padding:0 9px;border:1px solid #253b57;border-radius:5px;background:#0a1726;color:#a6b8cd;font-size:6.5px;cursor:pointer}
+.advanced-actions button:hover{border-color:#3aa4c8;color:#e7f8ff}
+.advanced-actions span{margin-left:auto;max-width:190px;text-align:right;color:#667991;font-size:6px;line-height:1.35}
 
 .b3-workspace{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 220px}
 .chart-stage{
@@ -701,7 +728,13 @@ export default function(component) {
   let resizeObserver=null;
 
   let currentTf=String(data?.timeframe||'1m');
-  let intensity=.74;
+  let intensity=.92;
+  let activeMode='heatmap';
+  let persistenceDecay=.965;
+  let contrastGain=1.20;
+  let blurRadius=6;
+  let thermalFloor=.22;
+  let autoContrast=true;
 
   const history=data?.history||{};
   const DEPTH_RETENTION_MS=Math.max(5,Number(history.minutes||1440))*60_000;
@@ -978,7 +1011,7 @@ export default function(component) {
   }
 
   function updateHistoryWindowLabel(){
-    const el=document.getElementById('history-window-label');
+    const el=$('#history-label');
     if(!el)return;
 
     const win=candleWindow();
@@ -1042,158 +1075,177 @@ export default function(component) {
   }
 
 
-  const HEAT_ROWS=180;
-  const HEAT_COLS=360;
+  const HEAT_ROWS=220;
+  const HEAT_COLS=480;
 
   const heatOff=document.createElement('canvas');
   heatOff.width=HEAT_COLS;
   heatOff.height=HEAT_ROWS;
   const heatOctx=heatOff.getContext('2d',{alpha:true});
 
-  // V3 thermal engine -------------------------------------------------------
-  // The previous renderer kept only the strongest ~40% of each snapshot and
-  // then removed another ~52% globally. That produced isolated "hot pixels".
-  // V3 keeps the full observed book, adds temporal memory, rewards persistence,
-  // and applies a small separable blur before robust non-linear normalization.
+  // AXION PRIME — THERMAL ENGINE V4 -----------------------------------------
+  // Core idea: an order-book snapshot is a STATE, not a one-frame event.
+  // Each observed state is therefore held until the next snapshot and then
+  // blended with temporal memory. This creates Bookmap-like horizontal bands
+  // instead of isolated dots around individual observations.
   function buildPersistentLiquidityGrid(cols,minP,maxP,win){
     const spanP=Math.max(maxP-minP,1e-9);
     const rowStep=spanP/(HEAT_ROWS-1);
-    const source=Array.from({length:HEAT_COLS},()=>new Map());
+    const rowOf=p=>clamp(Math.round((maxP-Number(p))/rowStep),0,HEAT_ROWS-1);
+    const colOf=t=>clamp(Math.round(((Number(t)-win.start)/(win.end-win.start))*(HEAT_COLS-1)),0,HEAT_COLS-1);
 
-    const colOf=t=>clamp(
-      Math.round(((Number(t)-win.start)/(win.end-win.start))*(HEAT_COLS-1)),
-      0,HEAT_COLS-1
-    );
-    const rowOf=p=>clamp(
-      Math.round((maxP-Number(p))/rowStep),
-      0,HEAT_ROWS-1
-    );
-
-    // Preserve every non-zero level. Multiple raw snapshots that land in the
-    // same raster column are merged by max size; bid/ask totals remain genuine.
+    const snapshots=[];
     for(const col of cols){
-      const c=colOf(col.t),bucket=source[c];
+      const t=Number(col.t);if(!Number.isFinite(t))continue;
+      const map=new Map();
       for(const row of col.x||[]){
-        const p=Number(row[0]),q=Number(row[3]);
+        const p=Number(row[0]),b=Number(row[1]||0),a=Number(row[2]||0),q=Number(row[3]||b+a);
         if(!(q>0)||p<minP||p>maxP)continue;
-        const r=rowOf(p);
-        if(q>(bucket.get(r)||0))bucket.set(r,q)
+        const r=rowOf(p),prev=map.get(r);
+        if(!prev||q>prev.q)map.set(r,{q,b,a})
       }
+      snapshots.push({c:colOf(t),t,map})
     }
+    snapshots.sort((a,b)=>a.c-b.c||a.t-b.t);
 
     const grid=new Float32Array(HEAT_ROWS*HEAT_COLS);
+    const bias=new Float32Array(HEAT_ROWS*HEAT_COLS);
     const memory=new Float32Array(HEAT_ROWS);
+    const memoryBias=new Float32Array(HEAT_ROWS);
     const age=new Float32Array(HEAT_ROWS);
-    const DECAY=.935;          // visual memory when liquidity is removed
-    const AGE_DECAY=.86;
-    const PERSIST_BOOST=.28;   // sustained walls become brighter than flashes
+
+    let snapIdx=-1,current=null,lastSnapC=-9999;
+    const HOLD_LIMIT=Math.max(4,Math.round(HEAT_COLS*.035));
 
     for(let c=0;c<HEAT_COLS;c++){
-      const current=source[c];
+      while(snapIdx+1<snapshots.length&&snapshots[snapIdx+1].c<=c){
+        snapIdx++;current=snapshots[snapIdx].map;lastSnapC=snapshots[snapIdx].c
+      }
+
+      // If there is a genuine data hole, fade rather than endlessly forward-fill.
+      const stale=c-lastSnapC>HOLD_LIMIT;
 
       for(let r=0;r<HEAT_ROWS;r++){
-        const observed=current.get(r)||0;
+        const cell=!stale&&current?current.get(r):null;
+        const observed=cell?.q||0;
+        const observedBias=cell&&cell.q>0?clamp((cell.b-cell.a)/cell.q,-1,1):0;
+
         if(observed>0){
-          // Use a hold/decay model rather than unbounded accumulation. A wall
-          // can strengthen, but a single giant print cannot permanently burn in.
-          memory[r]=Math.max(observed,memory[r]*DECAY);
-          age[r]=Math.min(18,age[r]+1)
+          // EMA + peak hold: persistent walls become stable bands, while spikes
+          // remain visible but do not permanently dominate the color scale.
+          const ema=memory[r]*persistenceDecay+observed*(1-persistenceDecay);
+          memory[r]=Math.max(observed*.68,ema);
+          memoryBias[r]=memoryBias[r]*.82+observedBias*.18;
+          age[r]=Math.min(40,age[r]+1)
         }else{
-          memory[r]*=DECAY;
-          age[r]*=AGE_DECAY
+          memory[r]*=persistenceDecay;
+          memoryBias[r]*=.94;
+          age[r]*=.92
         }
 
-        if(memory[r]>0){
-          const persistence=1+PERSIST_BOOST*clamp(age[r]/10,0,1);
-          grid[r*HEAT_COLS+c]=memory[r]*persistence
+        if(memory[r]>1e-8){
+          const persist=1+.42*clamp(age[r]/18,0,1);
+          const idx=r*HEAT_COLS+c;
+          grid[idx]=memory[r]*persist;
+          bias[idx]=memoryBias[r]
         }
       }
     }
 
-    return smoothLiquidityGrid(grid)
+    return smoothLiquidityGrid(grid,bias)
   }
 
-  function smoothLiquidityGrid(grid){
-    // True raster smoothing (not canvas upscale interpolation): first time,
-    // then price. Horizontal kernel is intentionally wider to create bands.
-    const tmp=new Float32Array(grid.length);
-    const out=new Float32Array(grid.length);
-    const tw=[.06,.12,.20,.24,.20,.12,.06];
+  function smoothLiquidityGrid(grid,bias){
+    const tmp=new Float32Array(grid.length),tmpB=new Float32Array(grid.length);
+    const out=new Float32Array(grid.length),outB=new Float32Array(grid.length);
+    const radius=Math.max(1,Math.round(blurRadius));
+    const sigma=Math.max(1,radius*.55);
+    const kernel=[];let kw=0;
+    for(let k=-radius;k<=radius;k++){const w=Math.exp(-(k*k)/(2*sigma*sigma));kernel.push(w);kw+=w}
 
     for(let r=0;r<HEAT_ROWS;r++){
       const base=r*HEAT_COLS;
       for(let c=0;c<HEAT_COLS;c++){
-        let sum=0,ws=0;
-        for(let k=-3;k<=3;k++){
+        let sum=0,bs=0,ws=0;
+        for(let k=-radius;k<=radius;k++){
           const cc=c+k;if(cc<0||cc>=HEAT_COLS)continue;
-          const w=tw[k+3];sum+=grid[base+cc]*w;ws+=w
+          const w=kernel[k+radius];sum+=grid[base+cc]*w;bs+=bias[base+cc]*grid[base+cc]*w;ws+=w
         }
-        tmp[base+c]=ws?sum/ws:0
+        const v=ws?sum/ws:0;tmp[base+c]=v;tmpB[base+c]=v>0?bs/Math.max(sum,1e-12):0
       }
     }
 
-    for(let r=0;r<HEAT_ROWS;r++){
-      for(let c=0;c<HEAT_COLS;c++){
-        let v=tmp[r*HEAT_COLS+c]*.68,ws=.68;
-        if(r>0){v+=tmp[(r-1)*HEAT_COLS+c]*.16;ws+=.16}
-        if(r+1<HEAT_ROWS){v+=tmp[(r+1)*HEAT_COLS+c]*.16;ws+=.16}
-        out[r*HEAT_COLS+c]=v/ws
+    for(let r=0;r<HEAT_ROWS;r++)for(let c=0;c<HEAT_COLS;c++){
+      let v=tmp[r*HEAT_COLS+c]*.58,bv=tmpB[r*HEAT_COLS+c]*tmp[r*HEAT_COLS+c]*.58,ws=.58;
+      for(const [dr,w] of [[-1,.18],[1,.18],[-2,.03],[2,.03]]){
+        const rr=r+dr;if(rr<0||rr>=HEAT_ROWS)continue;
+        const vv=tmp[rr*HEAT_COLS+c];v+=vv*w;bv+=tmpB[rr*HEAT_COLS+c]*vv*w;ws+=w
       }
+      const idx=r*HEAT_COLS+c;out[idx]=v/ws;outB[idx]=out[idx]>0?bv/Math.max(v,1e-12):0
     }
-    return out
+    return{grid:out,bias:outB}
   }
 
   function gridQuantiles(grid){
     const vals=[];
     for(let i=0;i<grid.length;i++)if(grid[i]>0)vals.push(Math.log1p(grid[i]));
-    if(!vals.length)return{q15:.1,q55:.3,q82:.6,q96:1};
+    if(!vals.length)return{q08:.02,q40:.10,q72:.25,q91:.55,q985:1};
     vals.sort((a,b)=>a-b);
     return{
-      q15:percentile(vals,.15)||.1,
-      q55:percentile(vals,.55)||.3,
-      q82:percentile(vals,.82)||.6,
-      q96:percentile(vals,.96)||1
+      q08:percentile(vals,.08)||.02,
+      q40:percentile(vals,.40)||.10,
+      q72:percentile(vals,.72)||.25,
+      q91:percentile(vals,.91)||.55,
+      q985:percentile(vals,.985)||1
     }
   }
 
   function rasterNorm(v,q){
     if(!(v>0))return 0;
     const x=Math.log1p(v);
-    // Weak liquidity stays visible as a faint field instead of being discarded.
-    if(x<q.q15)return .045+.105*clamp(x/Math.max(q.q15,1e-9),0,1);
-    if(x<q.q55)return .15+.25*((x-q.q15)/Math.max(q.q55-q.q15,1e-9));
-    if(x<q.q82)return .40+.28*((x-q.q55)/Math.max(q.q82-q.q55,1e-9));
-    if(x<q.q96)return .68+.24*((x-q.q82)/Math.max(q.q96-q.q82,1e-9));
-    return clamp(.92+.08*((x-q.q96)/Math.max(q.q96*.55,1e-9)),.92,1)
+    let n;
+    if(x<q.q08)n=.08+.12*clamp(x/Math.max(q.q08,1e-9),0,1);
+    else if(x<q.q40)n=.20+.22*((x-q.q08)/Math.max(q.q40-q.q08,1e-9));
+    else if(x<q.q72)n=.42+.22*((x-q.q40)/Math.max(q.q72-q.q40,1e-9));
+    else if(x<q.q91)n=.64+.20*((x-q.q72)/Math.max(q.q91-q.q72,1e-9));
+    else if(x<q.q985)n=.84+.13*((x-q.q91)/Math.max(q.q985-q.q91,1e-9));
+    else n=.97+.03*clamp((x-q.q985)/Math.max(q.q985*.45,1e-9),0,1);
+    return clamp(Math.pow(n,1/Math.max(.55,contrastGain)),0,1)
   }
 
-  function heatColorRGBA(n){
+  function thermalRGBA(n,biasValue=0){
     if(n<=0)return[0,0,0,0];
     let rgba;
-    // Dark blue foundation -> violet -> magenta/red -> amber/yellow core.
-    // Alpha starts higher than V2 so background structure is readable.
-    if(n<.20)rgba=[20,43,108,32+n*145];
-    else if(n<.42)rgba=[55,55,145,42+n*150];
-    else if(n<.64)rgba=[116,48,164,54+n*160];
-    else if(n<.80)rgba=[194,48,118,70+n*170];
-    else if(n<.92)rgba=[244,73,58,92+n*175];
-    else if(n<.985)rgba=[255,137,31,125+n*120];
-    else rgba=[255,225,76,205+n*45];
-    rgba[3]=clamp(Math.round(rgba[3]*intensity),0,255);
+    if(activeMode==='liquidity'){
+      // Liquidity mode uses side bias: bids turquoise, asks coral, balanced walls violet.
+      if(biasValue>.18)rgba=[35,220,176,0];
+      else if(biasValue<-.18)rgba=[244,78,104,0];
+      else rgba=[135,86,224,0];
+    }else{
+      if(n<.24)rgba=[28,55,126,0];
+      else if(n<.46)rgba=[74,66,167,0];
+      else if(n<.67)rgba=[137,61,184,0];
+      else if(n<.83)rgba=[210,55,117,0];
+      else if(n<.94)rgba=[250,82,55,0];
+      else if(n<.985)rgba=[255,145,32,0];
+      else rgba=[255,226,72,0]
+    }
+    // The V3 floor was ~9% opacity on weak levels. V4 deliberately starts
+    // around 18–25% so the order-book field is actually visible on black.
+    const floor=thermalFloor;
+    const a=clamp((floor+(1-floor)*Math.pow(n,1.15))*intensity,0,1);
+    rgba[3]=Math.round(a*255);
     return rgba
   }
 
-  function paintPersistentLiquidityGrid(grid){
-    const q=gridQuantiles(grid);
-    const img=heatOctx.createImageData(HEAT_COLS,HEAT_ROWS);
-    const d=img.data;
+  function paintPersistentLiquidityGrid(pack){
+    const {grid,bias}=pack,q=gridQuantiles(grid);
+    const img=heatOctx.createImageData(HEAT_COLS,HEAT_ROWS),d=img.data;
     for(let i=0;i<grid.length;i++){
-      const n=rasterNorm(grid[i],q);
-      const rgba=heatColorRGBA(n),j=i*4;
+      const n=rasterNorm(grid[i],q),rgba=thermalRGBA(n,bias[i]),j=i*4;
       d[j]=rgba[0];d[j+1]=rgba[1];d[j+2]=rgba[2];d[j+3]=rgba[3]
     }
-    heatOctx.clearRect(0,0,HEAT_COLS,HEAT_ROWS);
-    heatOctx.putImageData(img,0,0)
+    heatOctx.clearRect(0,0,HEAT_COLS,HEAT_ROWS);heatOctx.putImageData(img,0,0)
   }
 
   function heatNorm(value,q50,q85,q97){
@@ -1244,45 +1296,113 @@ export default function(component) {
     const yOf=p=>h-((p-minP)/(maxP-minP))*h;
     const xOf=t=>((Number(t)-win.start)/(win.end-win.start))*w;
 
-    // Fixed-cost V3 raster: persistent liquidity memory + real smoothing.
-    const grid=buildPersistentLiquidityGrid(cols,minP,maxP,win);
-    paintPersistentLiquidityGrid(grid);
+    const pack=buildPersistentLiquidityGrid(cols,minP,maxP,win);
+    paintPersistentLiquidityGrid(pack);
 
     hctx.save();
     hctx.imageSmoothingEnabled=true;
-    hctx.globalAlpha=.96;
-    hctx.drawImage(
-      heatOff,
-      0,0,HEAT_COLS,HEAT_ROWS,
-      0,0,w,h
-    );
+    // Soft bloom pass makes long liquidity bands read as a thermal field.
+    hctx.globalCompositeOperation='screen';
+    hctx.filter=`blur(${Math.max(1,blurRadius*.42)*q}px)`;
+    hctx.globalAlpha=activeMode==='volume'||activeMode==='vwap'?.18:.46;
+    hctx.drawImage(heatOff,0,0,HEAT_COLS,HEAT_ROWS,0,0,w,h);
+    hctx.filter='none';
+    hctx.globalAlpha=activeMode==='volume'||activeMode==='vwap'?.24:1;
+    hctx.drawImage(heatOff,0,0,HEAT_COLS,HEAT_ROWS,0,0,w,h);
     hctx.restore();
 
     drawPriceAxis(minP,maxP);
-    window.__axionViewport={win,minP,maxP,yOf,xOf,w,h,q,m}
+    window.__axionViewport={win,minP,maxP,yOf,xOf,w,h,q,m,pack}
+  }
+
+  function calcWindowFlow(rows){
+    let vol=0,notional=0,buy=0,sell=0,sq=0;
+    for(const r of rows){
+      const v=Number(r[5]),p=Number(r[9]);if(!(v>0)||!(p>0))continue;
+      vol+=v;notional+=p*v;buy+=Number(r[6]||0);sell+=Number(r[7]||0)
+    }
+    const mean=vol>0?notional/vol:null;
+    if(Number.isFinite(mean))for(const r of rows){const v=Number(r[5]),p=Number(r[9]);if(v>0&&p>0)sq+=v*(p-mean)*(p-mean)}
+    const sigma=vol>0?Math.sqrt(sq/vol):null;
+    return{vol,buy,sell,vwap:mean,sigma}
+  }
+
+  function drawVwapBands(rows,minP,maxP,yOf,w,q){
+    const f=calcWindowFlow(rows);if(!Number.isFinite(f.vwap))return f;
+    const drawLine=(p,color,dash,label,width=1)=>{
+      if(!(p>=minP&&p<=maxP))return;const y=yOf(p);
+      octx.strokeStyle=color;octx.lineWidth=width*q;octx.setLineDash(dash.map(x=>x*q));
+      octx.beginPath();octx.moveTo(0,y);octx.lineTo(w,y);octx.stroke();octx.setLineDash([]);
+      if(label){octx.fillStyle=color;octx.font=`${7*q}px Inter`;octx.fillText(label,8*q,Math.max(11*q,y-4*q))}
+    };
+    drawLine(f.vwap,'rgba(83,169,255,.92)',[7,5],'VWAP',1.15);
+    if(Number.isFinite(f.sigma)&&f.sigma>0){
+      drawLine(f.vwap+f.sigma,'rgba(91,137,236,.42)',[3,5],'+1σ');
+      drawLine(f.vwap-f.sigma,'rgba(91,137,236,.42)',[3,5],'-1σ');
+      if(activeMode==='vwap'){
+        drawLine(f.vwap+2*f.sigma,'rgba(127,91,226,.34)',[2,6],'+2σ');
+        drawLine(f.vwap-2*f.sigma,'rgba(127,91,226,.34)',[2,6],'-2σ')
+      }
+    }
+    return f
+  }
+
+  function drawVolumeBubbles(rows,win,minP,maxP,xOf,yOf,q){
+    if(activeMode!=='volume'||!rows.length)return;
+    const vols=rows.map(r=>Number(r[5]||0)).filter(v=>v>0).sort((a,b)=>a-b);
+    const q70=percentile(vols,.70)||1,q95=percentile(vols,.95)||q70;
+    // Aggregate 1-second trades into coarse screen-time buckets to keep it readable.
+    const bucketMs=Math.max(1000,Math.round((win.end-win.start)/180));
+    const agg=new Map();
+    for(const r of rows){
+      const t=Math.floor(Number(r[0])/bucketMs)*bucketMs,p=Number(r[9]),v=Number(r[5]);if(!(p>0)||!(v>0))continue;
+      const key=t,cur=agg.get(key)||{t,pv:0,v:0,b:0,s:0};cur.pv+=p*v;cur.v+=v;cur.b+=Number(r[6]||0);cur.s+=Number(r[7]||0);agg.set(key,cur)
+    }
+    for(const a of agg.values()){
+      const p=a.pv/Math.max(a.v,1e-9);if(p<minP||p>maxP)continue;
+      const x=xOf(a.t),y=yOf(p),ratio=clamp(a.v/Math.max(q95,1e-9),0,1),rad=(2.2+8*Math.sqrt(ratio))*q;
+      const buy=a.b>=a.s;octx.beginPath();octx.arc(x,y,rad,0,Math.PI*2);
+      octx.fillStyle=buy?'rgba(38,213,165,.28)':'rgba(239,83,110,.28)';octx.fill();
+      octx.strokeStyle=buy?'rgba(71,235,192,.75)':'rgba(255,117,137,.75)';octx.lineWidth=.75*q;octx.stroke()
+    }
+  }
+
+  function drawTopLiquidity(pack,minP,maxP,yOf,w,q){
+    if(activeMode!=='liquidity'||!pack?.grid)return;
+    let lastC=HEAT_COLS-1;
+    outer:for(let c=HEAT_COLS-1;c>=0;c--){
+      for(let r=0;r<HEAT_ROWS;r++)if(pack.grid[r*HEAT_COLS+c]>0){lastC=c;break outer}
+    }
+    const rows=[];
+    for(let r=0;r<HEAT_ROWS;r++){
+      const idx=r*HEAT_COLS+lastC,v=pack.grid[idx];if(v>0)rows.push({r,v,bias:pack.bias[idx]})
+    }
+    rows.sort((a,b)=>b.v-a.v);
+    const picked=[];
+    for(const row of rows){
+      if(picked.some(x=>Math.abs(x.r-row.r)<5))continue;picked.push(row);if(picked.length>=6)break
+    }
+    for(const x of picked){
+      const p=maxP-(x.r/(HEAT_ROWS-1))*(maxP-minP),y=yOf(p),bid=x.bias>.18,ask=x.bias<-.18;
+      const col=bid?'rgba(45,226,181,.88)':ask?'rgba(247,90,114,.88)':'rgba(170,108,238,.82)';
+      octx.strokeStyle=col;octx.lineWidth=.75*q;octx.setLineDash([2*q,4*q]);octx.beginPath();octx.moveTo(w*.62,y);octx.lineTo(w,y);octx.stroke();octx.setLineDash([]);
+      const label=`${bid?'BID':ask?'ASK':'LIQ'} ${fmt(p,0)}`;octx.font=`${6.5*q}px Inter`;octx.fillStyle=col;octx.fillText(label,w-octx.measureText(label).width-12*q,Math.max(9*q,y-3*q))
+    }
   }
 
   function drawOverlay(){
     resizeCanvas(overlayCanvas);
     const vp=window.__axionViewport;if(!vp)return;
-    const{win,minP,maxP,yOf,xOf,w,h,q}=vp;
+    const{win,minP,maxP,yOf,xOf,w,h,q,pack}=vp;
     octx.clearRect(0,0,w,h);
 
     const rows=allTradeRows().filter(r=>r[0]>=win.start&&r[0]<=win.end);
     const cnds=candles().filter(c=>c.t+tfMs()>=win.start&&c.t<=win.end);
 
-    // Window VWAP
-    let vol=0,notional=0,buy=0,sell=0;
-    for(const r of rows){
-      const v=Number(r[5]),vw=Number(r[9]);
-      vol+=v;notional+=vw*v;buy+=Number(r[6]);sell+=Number(r[7])
-    }
-    const vwap=vol>0?notional/vol:null;
-    if(Number.isFinite(vwap)&&vwap>=minP&&vwap<=maxP){
-      const y=yOf(vwap);octx.strokeStyle='rgba(83,169,255,.64)';octx.lineWidth=1*q;
-      octx.setLineDash([7*q,5*q]);octx.beginPath();octx.moveTo(0,y);octx.lineTo(w,y);octx.stroke();
-      octx.setLineDash([]);octx.fillStyle='#6eafff';octx.font=`${7*q}px Inter`;octx.fillText('VWAP',8*q,Math.max(11*q,y-4*q))
-    }
+    const flow=calcWindowFlow(rows);
+    const vwap=flow.vwap;
+    if(activeMode==='vwap'||activeMode==='heatmap')drawVwapBands(rows,minP,maxP,yOf,w,q);
+    drawVolumeBubbles(rows,win,minP,maxP,xOf,yOf,q);
 
     // Flow profile / Flow POC using actual 1-second VWAP and real volume.
     const profile=new Map();
@@ -1292,7 +1412,7 @@ export default function(component) {
       profile.set(bp,(profile.get(bp)||0)+v)
     }
     const poc=[...profile.entries()].sort((a,b)=>b[1]-a[1])[0];
-    if(poc&&poc[0]>=minP&&poc[0]<=maxP){
+    if((activeMode==='heatmap'||activeMode==='liquidity')&&poc&&poc[0]>=minP&&poc[0]<=maxP){
       const y=yOf(poc[0]);octx.strokeStyle='rgba(246,177,48,.74)';octx.lineWidth=1*q;
       octx.setLineDash([8*q,5*q]);octx.beginPath();octx.moveTo(0,y);octx.lineTo(w,y);octx.stroke();
       octx.setLineDash([]);octx.fillStyle='#f2b33c';octx.font=`${7*q}px Inter`;octx.fillText('FLOW POC',45*q,Math.max(11*q,y-4*q))
@@ -1345,6 +1465,8 @@ export default function(component) {
       );
     }
 
+    drawTopLiquidity(pack,minP,maxP,yOf,w,q);
+
     const m=mid()??vp.m;
     if(Number.isFinite(m)&&m>=minP&&m<=maxP){
       const y=yOf(m);octx.strokeStyle='rgba(246,250,255,.96)';octx.lineWidth=1*q;
@@ -1354,7 +1476,8 @@ export default function(component) {
       octx.fillStyle='#06101a';octx.fillText(label,w-tw-8*q,y+1*q)
     }
 
-    drawProfile(profile,minP,maxP);
+    if(activeMode==='liquidity')drawLiquidityProfile(minP,maxP);
+    else drawProfile(profile,minP,maxP);
     updateUI(rows,poc,vwap)
   }
 
@@ -1374,6 +1497,23 @@ export default function(component) {
       const width=(v/maxV)*w*.88,y=yOf(p),bh=Math.max(2*q,h/90);
       const grad=pctx.createLinearGradient(w-width,0,w,0);
       grad.addColorStop(0,'rgba(93,65,175,.28)');grad.addColorStop(.65,'rgba(126,75,199,.62)');grad.addColorStop(1,'rgba(49,206,176,.8)');
+      pctx.fillStyle=grad;pctx.fillRect(w-width,y-bh/2,width,bh)
+    }
+  }
+
+  function drawLiquidityProfile(minP,maxP){
+    resizeCanvas(profileCanvas);
+    const q=dpr(),w=profileCanvas.width,h=profileCanvas.height;
+    pctx.clearRect(0,0,w,h);pctx.fillStyle='#050b14';pctx.fillRect(0,0,w,h);
+    const col=bucketBook();if(!col)return;
+    const rows=(col.x||[]).filter(x=>Number(x[0])>=minP&&Number(x[0])<=maxP&&Number(x[3])>0);
+    if(!rows.length)return;
+    const maxV=Math.max(1,...rows.map(x=>Number(x[3]))),yOf=p=>h-((p-minP)/(maxP-minP))*h;
+    for(const row of rows){
+      const p=Number(row[0]),b=Number(row[1]||0),a=Number(row[2]||0),v=Number(row[3]||0),width=(v/maxV)*w*.90,y=yOf(p),bh=Math.max(2*q,h/105);
+      const bid=b>a,grad=pctx.createLinearGradient(w-width,0,w,0);
+      if(bid){grad.addColorStop(0,'rgba(25,104,91,.18)');grad.addColorStop(1,'rgba(47,224,179,.82)')}
+      else{grad.addColorStop(0,'rgba(112,39,61,.18)');grad.addColorStop(1,'rgba(244,82,108,.84)')}
       pctx.fillStyle=grad;pctx.fillRect(w-width,y-bh/2,width,bh)
     }
   }
@@ -1528,6 +1668,38 @@ export default function(component) {
     snapshotReady=false;depthBuffer=[]
   }
 
+  function setMode(mode){
+    activeMode=mode||'heatmap';
+    $$('#view-tabs .tab').forEach(b=>b.classList.toggle('active',b.dataset.mode===activeMode));
+    const help={
+      heatmap:'Heatmap: profundidad histórica + libro LIVE con persistencia temporal.',
+      volume:'Volumen: ejecuciones reales aggTrade agrupadas en burbujas de compra/venta.',
+      vwap:'VWAP: VWAP ponderado por volumen con bandas ±1σ y ±2σ.',
+      liquidity:'Liquidez: paredes activas con sesgo BID/ASK y niveles dominantes.'
+    };
+    $('#mode-help').textContent=help[activeMode]||help.heatmap;
+    const pt=$('#profile-title'),ps=$('#profile-subtitle');
+    if(activeMode==='liquidity'){pt.textContent='LIQUIDITY PROFILE';ps.textContent='BOOK DEPTH LIVE'}
+    else if(activeMode==='volume'){pt.textContent='VOLUME PROFILE';ps.textContent='EXECUTED VOLUME'}
+    else if(activeMode==='vwap'){pt.textContent='VWAP DISTRIBUTION';ps.textContent='1s VWAP BINS'}
+    else{pt.textContent='FLOW PROFILE';ps.textContent='1s VWAP BINS'}
+    drawHeat();drawOverlay()
+  }
+
+  $$('#view-tabs .tab').forEach(btn=>btn.onclick=()=>setMode(btn.dataset.mode));
+
+  $('#advanced-btn').onclick=()=>{
+    const panel=$('#advanced-panel'),open=!panel.classList.contains('open');
+    panel.classList.toggle('open',open);$('#advanced-btn').classList.toggle('on',open);
+    $('#advanced-btn').textContent=open?'Avanzado ▴':'Avanzado ▾'
+  };
+  $('#persist-range').oninput=e=>{persistenceDecay=clamp(Number(e.target.value)/1000,.80,.995);$('#persist-value').textContent=Math.round(persistenceDecay*100)+'%';drawHeat();drawOverlay()};
+  $('#contrast-range').oninput=e=>{contrastGain=clamp(Number(e.target.value)/100,.7,1.9);autoContrast=false;$('#contrast-value').textContent=Math.round(contrastGain*100)+'%';drawHeat();drawOverlay()};
+  $('#blur-range').oninput=e=>{blurRadius=clamp(Number(e.target.value),1,10);$('#blur-value').textContent=String(Math.round(blurRadius));drawHeat();drawOverlay()};
+  $('#floor-range').oninput=e=>{thermalFloor=clamp(Number(e.target.value)/100,.05,.45);$('#floor-value').textContent=Math.round(thermalFloor*100)+'%';drawHeat();drawOverlay()};
+  $('#auto-contrast-btn').onclick=()=>{autoContrast=true;contrastGain=1.20;thermalFloor=.22;$('#contrast-range').value='120';$('#contrast-value').textContent='120%';$('#floor-range').value='22';$('#floor-value').textContent='22%';drawHeat();drawOverlay()};
+  $('#reset-heat-btn').onclick=()=>{intensity=.92;persistenceDecay=.965;contrastGain=1.20;blurRadius=6;thermalFloor=.22;autoContrast=true;$('#heat-intensity').value='92';$('#persist-range').value='965';$('#persist-value').textContent='97%';$('#contrast-range').value='120';$('#contrast-value').textContent='120%';$('#blur-range').value='6';$('#blur-value').textContent='6';$('#floor-range').value='22';$('#floor-value').textContent='22%';setMode('heatmap')};
+
   $$('#timeframes button').forEach(btn=>btn.onclick=()=>{
     $$('#timeframes button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
     currentTf=btn.dataset.tf||'1m';
@@ -1549,7 +1721,7 @@ export default function(component) {
       })
       .catch(err=>console.error('Klines timeframe:',err))
   });
-  $('#heat-intensity').oninput=e=>{intensity=clamp(Number(e.target.value)/100,.45,1);drawHeat();drawOverlay()};
+  $('#heat-intensity').oninput=e=>{intensity=clamp(Number(e.target.value)/100,.35,1.40);drawHeat();drawOverlay()};
   $('#fullscreen-btn').onclick=async()=>{try{if(!document.fullscreenElement)await root.requestFullscreen();else await document.exitFullscreen()}catch(_){}};
   sessionInfo();clockTimer=setInterval(sessionInfo,1000);
 
@@ -1578,7 +1750,7 @@ export default function(component) {
 
 
 _component = st.components.v2.component(
-    "axion_orderflow_boceto3_clean_v3_persistent",
+    "axion_orderflow_terminal_v4_interactive",
     html=HTML,
     css=CSS,
     js=JS,
@@ -1593,14 +1765,56 @@ def _history_minutes_for_timeframe(timeframe: str) -> int:
     return 360
 
 
+def _merge_history_payloads(*payloads: dict) -> dict:
+    depth_by_t: dict[int, dict] = {}
+    trade_by_t: dict[int, list] = {}
+    errors: list[str] = []
+
+    for payload in payloads:
+        if not payload:
+            continue
+        for row in payload.get("depth") or []:
+            t = int(row.get("t") or 0)
+            if t:
+                depth_by_t[t] = row
+        for row in payload.get("trades") or []:
+            if row and row[0]:
+                trade_by_t[int(row[0])] = row
+        if payload.get("error"):
+            errors.append(str(payload["error"]))
+
+    depth = [depth_by_t[t] for t in sorted(depth_by_t)]
+    trades = [trade_by_t[t] for t in sorted(trade_by_t)]
+    return {
+        "symbol": "BTCUSDT",
+        "minutes": 1440,
+        "depth": depth,
+        "trades": trades,
+        "depth_count": len(depth),
+        "trade_count": len(trades),
+        "source": "rpc_multires",
+        "error": "; ".join(errors) if errors else None,
+    }
+
+
 def _fetch_history_impl() -> dict:
     try:
-        return _load_orderflow_history_fast_rpc(
+        # Multi-resolution history: recent data is deliberately denser so 1m/5m
+        # heatmaps do not look like isolated historical dots, while 24h remains
+        # available for 30m/1H context.
+        recent = _load_orderflow_history_fast_rpc(
+            symbol="BTCUSDT",
+            minutes=360,
+            depth_step_seconds=8,
+            trade_step_seconds=4,
+        )
+        long_range = _load_orderflow_history_fast_rpc(
             symbol="BTCUSDT",
             minutes=1440,
-            depth_step_seconds=20,
-            trade_step_seconds=10,
+            depth_step_seconds=60,
+            trade_step_seconds=15,
         )
+        return _merge_history_payloads(long_range, recent)
     except Exception as fast_exc:
         try:
             payload = load_orderflow_history(
@@ -1626,7 +1840,7 @@ def _fetch_history_impl() -> dict:
 
 def _history_payload() -> dict:
     now = datetime.now(timezone.utc)
-    cached = st.session_state.get("axion_history_cache_v2")
+    cached = st.session_state.get("axion_history_cache_v4")
 
     if cached:
         fetched_at = cached.get("_fetched_at")
@@ -1639,7 +1853,7 @@ def _history_payload() -> dict:
             return payload
 
     payload = _fetch_history_impl()
-    st.session_state["axion_history_cache_v2"] = {
+    st.session_state["axion_history_cache_v4"] = {
         "_fetched_at": now,
         "payload": payload,
     }
@@ -1668,7 +1882,7 @@ def render_live_heatmap() -> None:
             "history": history,
         },
         default=None,
-        key="axion_boceto3_market_live",
+        key="axion_market_live_v4",
         width="stretch",
         height=820,
     )
